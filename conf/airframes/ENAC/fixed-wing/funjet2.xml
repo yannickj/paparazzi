@@ -133,7 +133,7 @@
     <define name="CARROT" value="5." unit="s"/>
     <define name="KILL_MODE_DISTANCE" value="(1.5*MAX_DIST_FROM_HOME)"/>
     <define name="ALT_KALMAN_ENABLED" value="TRUE"/>
-    <define name="DEFAULT_CIRCLE_RADIUS" value="50."/>
+    <define name="DEFAULT_CIRCLE_RADIUS" value="80."/>
   </section>
 
   <section name="VERTICAL CONTROL" prefix="V_CTL_">
@@ -216,8 +216,7 @@
   </section>
 
   <section name="SIMU">
-    <define name="ROLL_RESPONSE_FACTOR" value="10"/>
-    <define name="MAX_ROLL_DOT" value="20" unit="rad/s"/>
+    <define name="YAW_RESPONSE_FACTOR" value="0.6"/>
   </section>
 
 </airframe>

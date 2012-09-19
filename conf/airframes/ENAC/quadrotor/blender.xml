@@ -113,8 +113,6 @@
 
   <!-- Magnetic field for Toulouse (declination -16°) -->
   <section name="AHRS" prefix="AHRS_">
-    <define name="MAG_UPDATE_YAW_ONLY" value="1"/>
-    <define name="PROPAGATE_FREQUENCY" value="512"/>
     <define name="H_X" value=" 0.513081"/>
     <define name="H_Y" value="-0.00242783"/>
     <define name="H_Z" value=" 0.858336"/>
@@ -251,8 +249,6 @@
 
  <section name="MISC">
    <define name="DEFAULT_CIRCLE_RADIUS" value="10."/>
-   <define name="BoozDropPwm(_v)" value="BoozSetPwm1Value(_v)"/>
-   <!--define name="IMU_MAG_OFFSET" value="-9."/-->
  </section>
 
   <section name="GCS">

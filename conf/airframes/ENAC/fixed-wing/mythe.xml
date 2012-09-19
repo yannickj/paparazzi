@@ -15,31 +15,17 @@
       <define name="AIRSPEED_QUADRATIC_SCALE" value="1.09378"/>
       <define name="AIRSPEED_BIAS" value="110"/>
     </load>
-    <!--load name="adc_generic.xml">
-      <configure name="ADC_CHANNEL_GENERIC1" value="ADC_2"/>
-    </load-->
-    <!--load name="baro_hca.xml">
-      <define name="I2C0_SCLL" value="25"/>
-      <define name="I2C0_SCLH" value="25"/>
-    </load-->
     <load name="baro_bmp.xml">
       <define name="BMP_I2C_DEV" value="i2c1"/>
     </load>
-    <load name="baro_ms5611_i2c.xml">
-      <define name="MS5611_I2C_DEV" value="i2c0"/>
-    </load>
-    <!-- load name="airspeed_ads1114.xml"/-->
-    <!--load name="mcp355x.xml"/-->
     <!--load name="sys_mon.xml"/-->
   </modules>
 
   <firmware name="fixedwing">
     <define name="USE_I2C0"/>
     <define name="USE_I2C1"/>
-    <!--define name="AGR_CLIMB"/-->
     <define name="ALT_KALMAN"/>
     <define name="USE_AIRSPEED"/>
-    <!--define name="LOITER_TRIM"/-->
     <!--define name="PITCH_TRIM"/-->
     <define name="USE_GYRO_PITCH_RATE"/>
     <define name="SENSOR_SYNC_SEND"/>
@@ -149,7 +135,6 @@
   </section>
 
   <section name="BAT">
-    <define name="MILLIAMP_AT_FULL_THROTTLE" value="10000."/>
     <define name="CATASTROPHIC_BAT_LEVEL" value="9.3" unit="V"/>
     <define name="MilliAmpereOfAdc(_adc)" value="(_adc-158)*16.5698"/>
   </section>
@@ -159,8 +144,6 @@
     <define name="CARROT" value="5." unit="s"/>
     <define name="KILL_MODE_DISTANCE" value="(1.5*MAX_DIST_FROM_HOME)"/>
     <define name="ALT_KALMAN_ENABLED" value="TRUE"/>
-
-    <define name="TRIGGER_DELAY" value="1."/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="80."/>
 
     <define name="UNLOCKED_HOME_MODE" value="TRUE"/>
@@ -252,13 +235,7 @@
   </section>
 
   <section name="SIMU">
-    <!--define name="ROLL_RESPONSE_FACTOR" value="10"/>
-    <define name="MAX_ROLL_DOT" value="20" unit="rad/s"/-->
-    <define name="JSBSIM_MODEL" value="&quot;Malolo1&quot;"/>
-    <!--define name="JSBSIM_INIT"	value="&quot;Malolo1-IC&quot;"/-->
-    <define name="JSBSIM_LAUNCHSPEED"	value="15.0"/>
-    <define name="JSBSIM_IR_ROLL_NEUTRAL" value="RadOfDeg(0.)"/>
-    <define name="JSBSIM_IR_PITCH_NEUTRAL" value="RadOfDeg(0.)"/>
+    <!--define name="ROLL_RESPONSE_FACTOR" value="10"/-->
   </section>
 
 </airframe>
