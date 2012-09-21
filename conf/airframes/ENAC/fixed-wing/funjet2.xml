@@ -120,7 +120,7 @@
 
   <section name="INS" prefix="INS_">
     <define name="ROLL_NEUTRAL_DEFAULT" value="0." unit="deg"/>
-    <define name="PITCH_NEUTRAL_DEFAULT" value="0." unit="deg"/>
+    <define name="PITCH_NEUTRAL_DEFAULT" value="8." unit="deg"/>
   </section>
 
   <section name="BAT">
@@ -134,23 +134,27 @@
     <define name="KILL_MODE_DISTANCE" value="(1.5*MAX_DIST_FROM_HOME)"/>
     <define name="ALT_KALMAN_ENABLED" value="TRUE"/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="80."/>
+
+    <define name="UNLOCKED_HOME_MODE" value="TRUE"/>
   </section>
 
   <section name="VERTICAL CONTROL" prefix="V_CTL_">
     <!-- outer loop proportional gain -->
-    <define name="ALTITUDE_PGAIN" value="0.06"/>
+    <define name="ALTITUDE_PGAIN" value="0.1"/>
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="4."/>
+    <!-- disable climb rate limiter -->
+    <define name="AUTO_CLIMB_LIMIT" value="2*V_CTL_ALTITUDE_MAX_CLIMB"/>
 
     <!-- auto throttle inner loop -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.5"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.45"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
     <!--define name="AUTO_THROTTLE_LOITER_TRIM" value="1000"/>
     <define name="AUTO_THROTTLE_DASH_TRIM" value="-1000"/-->
     <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.1" unit="%/(m/s)"/>
     <define name="AUTO_THROTTLE_PGAIN" value="0.005"/>
-    <define name="AUTO_THROTTLE_IGAIN" value="0.005"/>
+    <define name="AUTO_THROTTLE_IGAIN" value="0.003"/>
     <define name="AUTO_THROTTLE_PITCH_OF_VZ_PGAIN" value="0.02"/>
 
     <!-- auto pitch inner loop -->
@@ -185,20 +189,20 @@
   </section>
 
   <section name="HORIZONTAL CONTROL" prefix="H_CTL_">
-    <define name="COURSE_PGAIN" value="1."/>
+    <define name="COURSE_PGAIN" value="0.6"/>
     <define name="ROLL_MAX_SETPOINT" value="0.8" unit="rad"/>
     <define name="PITCH_MAX_SETPOINT" value="0.5" unit="rad"/>
     <define name="PITCH_MIN_SETPOINT" value="-0.5" unit="rad"/>
 
     <define name="ROLL_ATTITUDE_GAIN" value="9000."/>
-    <define name="ROLL_RATE_GAIN" value="1500."/>
+    <define name="ROLL_RATE_GAIN" value="1000."/>
     <define name="ROLL_IGAIN" value="150."/>
 
-    <define name="PITCH_PGAIN" value="20000."/>
+    <define name="PITCH_PGAIN" value="18000."/>
     <define name="PITCH_DGAIN" value="500"/>
     <define name="PITCH_IGAIN" value="250."/>
 
-    <define name="PITCH_OF_ROLL" value="0." unit="deg"/>
+    <define name="PITCH_OF_ROLL" value="1." unit="deg"/>
     <define name="AILERON_OF_THROTTLE" value="0.0"/>
     <!--define name="ELEVATOR_OF_ROLL" value="1400"/-->
   </section>
