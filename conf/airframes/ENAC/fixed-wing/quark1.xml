@@ -27,9 +27,9 @@
     <subsystem name="telemetry" type="transparent"/>
 
     <!-- Actuators are automatically chosen according to board-->
-    <subsystem name="imu"   type="umarim"/>
-    <subsystem name="ahrs"  type="float_dcm"/>
-    <subsystem name="ins"   type="alt_float"/>
+    <subsystem name="imu" type="umarim"/>
+    <subsystem name="ahrs" type="float_dcm"/>
+    <subsystem name="ins" type="alt_float"/>
     <subsystem name="control" type="new"/>
     <subsystem name="navigation"/>
     <!-- Sensors -->
@@ -40,8 +40,8 @@
 <!-- commands section -->
   <servos>
     <servo name="MOTOR" no="2" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_LEFT" no="0" min="1900" neutral="1394" max="1100"/>
-    <servo name="AILEVON_RIGHT" no="1" min="1100" neutral="1369" max="1900"/>
+    <servo name="AILEVON_LEFT" no="0" min="1688" neutral="1394" max="1050"/>
+    <servo name="AILEVON_RIGHT" no="1" min="1075" neutral="1369" max="1763"/>
   </servos>
 
   <commands>
@@ -110,7 +110,7 @@
 
   <section name="INS" prefix="INS_">
     <define name="ROLL_NEUTRAL_DEFAULT" value="0." unit="deg"/>
-    <define name="PITCH_NEUTRAL_DEFAULT" value="0." unit="deg"/>
+    <define name="PITCH_NEUTRAL_DEFAULT" value="7.18798473125" unit="deg"/>
   </section>
 
   <section name="BAT">
@@ -192,7 +192,7 @@
     <define name="ROLL_KFFA" value="0"/>
     <define name="ROLL_KFFD" value="0"/>
 
-    <define name="PITCH_PGAIN" value="10000."/>
+    <define name="PITCH_PGAIN" value="8187"/>
     <define name="PITCH_DGAIN" value="100."/>
     <define name="PITCH_IGAIN" value="250."/>
     <define name="PITCH_KFFA" value="0."/>
