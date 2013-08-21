@@ -40,8 +40,8 @@
 <!-- commands section -->
   <servos>
     <servo name="MOTOR" no="2" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_LEFT" no="0" min="1688" neutral="1394" max="1050"/>
-    <servo name="AILEVON_RIGHT" no="1" min="1075" neutral="1369" max="1763"/>
+    <servo name="AILEVON_LEFT" no="0" min="1688" neutral="1300" max="1050"/>
+    <servo name="AILEVON_RIGHT" no="1" min="1075" neutral="1500" max="1763"/>
   </servos>
 
   <commands>
