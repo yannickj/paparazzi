@@ -7,7 +7,7 @@
     <axis index="5" name="mode"/>
   </input>
 
-  <messages period="0.005">
+  <messages period="0.05">
 
     <message class="datalink" name="RC_4CH" send_always="true">
       <field name="mode" value="PprzMode(mode)"/>

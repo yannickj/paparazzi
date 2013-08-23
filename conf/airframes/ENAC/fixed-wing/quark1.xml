@@ -40,7 +40,7 @@
 <!-- commands section -->
   <servos>
     <servo name="MOTOR" no="2" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_LEFT" no="0" min="1688" neutral="1300" max="1050"/>
+    <servo name="AILEVON_LEFT" no="0" min="1688" neutral="1270" max="1050"/>
     <servo name="AILEVON_RIGHT" no="1" min="1075" neutral="1500" max="1763"/>
   </servos>
 
@@ -128,7 +128,7 @@
     <define name="TRIGGER_DELAY" value="1."/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="50."/>
 
-    <define name="UNLOCKED_HOME_MODE" value="TRUE"/>
+    <!--define name="UNLOCKED_HOME_MODE" value="TRUE"/-->
   </section>
 
   <section name="VERTICAL CONTROL" prefix="V_CTL_">
