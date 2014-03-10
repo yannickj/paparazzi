@@ -33,12 +33,12 @@
 #include "rtcAccess.h"
 #include "airframe.h"
 #include "chibios_init.h"
+#include "iridium.h"
 
 // Delay before starting SD log
 #ifndef SDLOG_START_DELAY
 #define SDLOG_START_DELAY 30
 #endif
-
 
 #ifndef  SYS_TIME_FREQUENCY
 #error SYS_TIME_FREQUENCY should be defined in Makefile.chibios or airframe.xml and be equal to CH_FREQUENCY
@@ -76,6 +76,8 @@ bool_t chibios_init(void) {
       NORMALPRIO, thd_heartbeat, NULL);
 
   usbStorageStartPolling ();
+  //  iridiumStart ();
+
   return RDY_OK;
 }
 

@@ -20,8 +20,8 @@
  */
 
 /*
- * @file subsystems/chibios-libopencm3/usb_msd.c
- *
+ * @file  subsystems/chibios-libopencm3/usb_msd.c
+ * @brief low level usb storage function and thread
  */
 
 #include "usb_msd.h"

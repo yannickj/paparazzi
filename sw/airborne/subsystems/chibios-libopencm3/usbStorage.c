@@ -20,7 +20,8 @@
  */
 
 /*
- * @file subsystems/chibios-libopencm3/usbStorage.c
+ * @file  subsystems/chibios-libopencm3/usbStorage.c
+ * @brief application level usb storage management
  *
  */
 
