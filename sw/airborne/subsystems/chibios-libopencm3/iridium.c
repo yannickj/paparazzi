@@ -33,6 +33,8 @@
  *
  */
 
+#ifdef USE_IRIDIUM_SATCOM
+
 #include <ch.h>
 #include <hal.h>
 #include <ctype.h>
@@ -44,54 +46,94 @@
 /*
   MACRO HELPER to port from arduino to stm32/chibios
 */
-#define millis() (chTimeNow())
+
+static inline uint32_t millis(void) {return chTimeNow();}
 #define stream_available() (chQSizeI(&(IRIDIUM_SD->iqueue)))
 
 // Internal utilities
-static  bool_t smartWait (uint32_t seconds);
 static  bool_t waitForATResponse (Iridium *irdm, char *response, int responseSize, 
 				  const char *prompt, const char *terminator);
 // char *response=NULL, int responseSize=0, const char *prompt=NULL, const char *terminator="OK\r\n");
 
-static  int  internalBegin (Iridium *irdm);
-static  int  internalSendReceiveSBD (Iridium *irdm, const char *txTxtMessage, const uint8_t *txData,
+static  int    internalBegin (Iridium *irdm);
+static  int    internalSendReceiveSBD (Iridium *irdm, const char *txTxtMessage, const uint8_t *txData,
 				     size_t txDataSize, uint8_t *rxBuffer, size_t *prxBufferSize);
-static  int  internalGetSignalQuality (Iridium *irdm, int *quality);
-static  int  internalMSSTMWorkaround (Iridium *irdm, bool_t *okToProceed);
-static  int  internalSleep (Iridium *irdm);
+static  int    internalGetSignalQuality (Iridium *irdm, int *quality);
+static  int    internalMSSTMWorkaround (Iridium *irdm, bool_t *okToProceed);
+static  int    internalSleep (Iridium *irdm);
 
-static  int  doSBDIX (Iridium *irdm, uint16_t *moCode, uint16_t *moMSN, uint16_t *mtCode, 
+static  int    doSBDIX (Iridium *irdm, uint16_t *moCode, uint16_t *moMSN, uint16_t *mtCode, 
 		      uint16_t *mtMSN, uint16_t *mtLen, uint16_t *mtRemaining);
-static  int  doSBDRB (Iridium *irdm, uint8_t *rxBuffer, size_t *prxBufferSize); // in/out
-static  void power (Iridium *irdm, bool_t on);
-
-static  void sendStr (const char *str);
-static  void sendInt (uint16_t n);
-
-static  bool_t cancelled (Iridium *irdm);
-static void dbg(const char*  msg);
+static  int    doSBDRB (Iridium *irdm, uint8_t *rxBuffer, size_t *prxBufferSize); // in/out
+static  void   awake (Iridium *irdm, bool_t on);
+static  void   power (Iridium *irdm, bool_t on);
 
 
+static  void   sendStr (const char *str);
+static  void   sendInt (uint16_t n);
+
+#if IRIDIUM_ENABLE_FLOW_CONTROL == 1
+static const char AT_FLOW_CONTROL[] = "AT&K3\r";		// configure iridium for cts/rts control
+#define USART_CR3_FLOW_CONTROL (USART_CR3_RTSE | USART_CR3_CTSE) // enable hardware flow control
+#else
+static const char AT_FLOW_CONTROL[] = "AT&K0\r";                // configure iridium for no flow control
+#define USART_CR3_FLOW_CONTROL 0				// disable hardware flow control
+#endif
+
+#if defined IRIDIUM_DIAGS && defined OLED_EMUL_SD
+#include "printf.h"
+#define dbgStr(...) {{ \
+      chprintf ((BaseSequentialStream *)&OLED_EMUL_SD, "IRIDIUM> ");	\
+      chprintf ((BaseSequentialStream *)&OLED_EMUL_SD, __VA_ARGS__);	\
+      chprintf ((BaseSequentialStream *)&OLED_EMUL_SD, "\r\n");}}
+#else
+#define dbgStr(...) {}
+#endif 
 
 void iridium_init (Iridium *irdm) 
 {
+
+  static const SerialConfig iridiumConfig =  {
+    IRIDIUM_BAUD_RATE,
+    0,
+    USART_CR2_STOP1_BITS,
+    USART_CR3_FLOW_CONTROL
+  };
+
+  palSetPadMode (GPIOB, GPIOB_USART3_TX, PAL_MODE_ALTERNATE(7));
+  palSetPadMode (GPIOB, GPIOB_USART3_RX, PAL_MODE_ALTERNATE(7));
+  palSetPadMode (GPIOB, GPIOB_IRIDIUM_SLEEP, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode (GPIOA, GPIOA_IRIDIUM_POWER, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode (GPIOA, GPIOA_IRIDIUM_RI, PAL_MODE_INPUT);
+
+#if IRIDIUM_ENABLE_FLOW_CONTROL == 1
+  palSetPadMode (GPIOB, GPIOB_USART3_CTS, PAL_MODE_ALTERNATE(7));
+  palSetPadMode (GPIOB, GPIOB_USART3_RTS, PAL_MODE_ALTERNATE(7));
+#else
+  palSetPadMode (GPIOB, GPIOB_USART3_CTS, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode (GPIOB, GPIOB_USART3_RTS, PAL_MODE_INPUT);
+  palClearPad (GPIOB, GPIOB_USART3_CTS);
+#endif
+  
+  sdStart (IRIDIUM_SD, &iridiumConfig);
+  
   irdm->csqInterval = IRIDIUM_DEFAULT_CSQ_INTERVAL;
   irdm->sbdixInterval = IRIDIUM_DEFAULT_SBDIX_INTERVAL;
   irdm->atTimeout = IRIDIUM_DEFAULT_AT_TIMEOUT;
   irdm->sendReceiveTimeout = IRIDIUM_DEFAULT_SENDRECEIVE_TIME;
   irdm->remainingMessages = -1;
   irdm->asleep = true;
+  irdm->powered = false;
   irdm->reentrant = false;
   irdm->minimumCSQ = IRIDIUM_DEFAULT_CSQ_MINIMUM;
   irdm->useWorkaround = true;
   
-  palSetPadMode (IRIDIUM_SLEEP_GPIO, IRIDIUM_SLEEP_PIN, PAL_MODE_OUTPUT_PUSHPULL);
 }
 
 
 
 
-// Power on the RockBLOCK or return from sleep
+// Awake the RockBLOCK or return from sleep
 int    iridium_begin (Iridium *irdm)
 {
   if (irdm->reentrant)
@@ -102,9 +144,10 @@ int    iridium_begin (Iridium *irdm)
   irdm->reentrant = false;
 
   // Absent a successful startup, keep the device turned off
-  if (ret != IRIDIUM_SUCCESS)
-    power(irdm, false);
-  
+  if (ret != IRIDIUM_SUCCESS) {
+    awake (irdm, false);
+    power (irdm, false);
+  }
   return ret;
 }
 
@@ -181,7 +224,7 @@ int    iridium_sleep (Iridium *irdm)
   irdm->reentrant = false;
   
   if (ret == IRIDIUM_SUCCESS)
-    power(irdm, false); // power off
+    awake(irdm, false); // power off
   return ret;
 }
 
@@ -199,7 +242,7 @@ int    iridium_getWaitingMessageCount (Iridium *irdm)
 
 // Define capacitor recharge times
 void   iridium_setPowerProfile (Iridium *irdm, int profile)  // 0 = direct connect  (default), 
-							     // 1 = USB
+							     // 1 = USB which implies low consumption
 {
   switch(profile)
     {
@@ -242,6 +285,18 @@ void   iridium_useMSSTMWorkaround (Iridium *irdm, bool_t useWorkAround) // true 
   irdm->useWorkaround = useWorkAround;
 }
 
+bool_t iridium_isSatlinkPresent (void)
+{
+  return palReadPad (GPIOA, GPIOA_IRIDIUM_GETLINK);
+}
+
+bool_t iridium_isMessagePendingPinUp (void)
+{
+  return ! (palReadPad (GPIOA, GPIOA_IRIDIUM_RI));
+}
+
+
+
 
 /*
   #                 ______   _              _      _                 
@@ -253,80 +308,83 @@ void   iridium_useMSSTMWorkaround (Iridium *irdm, bool_t useWorkAround) // true 
 */
 static  int  internalBegin (Iridium *irdm)
 {
-  //   dbg("Calling internalBegin\r\n");
+  dbgStr ("Calling internalBegin");
 
   if (!irdm->asleep)
     return IRIDIUM_ALREADY_AWAKE;
   
-  power(irdm, true); // power on
+  awake (irdm, true); // power on
+  power (irdm, true); // switch power supply on
+
 
   bool_t modemAlive = false;
 
-  uint32_t startupTime = 500; //ms
-  for (uint32_t start = millis(); millis() - start < startupTime;)
-    if (cancelled (irdm))
-      return IRIDIUM_CANCELLED;
+  static const uint32_t startupTime = 500; //ms
+  chThdSleepMilliseconds(startupTime);
 
+  
   // Turn on modem and wait for a response from "AT" command to begin
-  for (uint32_t start = millis(); !modemAlive && millis() - start < 1000 * IRIDIUM_STARTUP_MAX_TIME;)
-    {
-      sendStr("AT\r");
-      modemAlive = waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n");
-      if (cancelled (irdm))
-	return IRIDIUM_CANCELLED;
-      chThdSleepMilliseconds(5);
-    }
+  for (uint32_t start = millis(); !modemAlive && (millis() - start) < (1000 * IRIDIUM_STARTUP_MAX_TIME);)  {
+    sendStr("AT\r");
+    modemAlive = waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n");
+  }
 
-  if (!modemAlive)
-    {
-      //      dbg("No modem detected.\r\n");
-      return IRIDIUM_NO_MODEM_DETECTED;
-    }
+  if (!modemAlive)  {
+    dbgStr ("No modem detected.");
+    return IRIDIUM_NO_MODEM_DETECTED;
+  }
 
-  const char * strings[3] = { "ATE1\r", "AT&D0\r", "AT&K0\r" };
-  for (int i=0; i<3; ++i)
-    {
-      sendStr(strings[i]); 
-      if (!waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n"))
-	return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
-      chThdSleepMilliseconds(5);
-    }
+  const char * strings[3] = { "ATE1\r", "AT&D0\r", AT_FLOW_CONTROL };
+  for (int i=0; i<3; ++i) {
+    sendStr(strings[i]); 
+    if (!waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n"))
+      return IRIDIUM_PROTOCOL_ERROR;
+  }
 
-  //  dbg("InternalBegin: success!\r\n");
+  dbgStr ("InternalBegin: success!");
   return IRIDIUM_SUCCESS;
+}
+
+static inline void zeroizeSize (size_t *prxBufferSize) {
+  if (prxBufferSize)  
+    *prxBufferSize = 0;
 }
 
 static  int  internalSendReceiveSBD (Iridium *irdm, const char *txTxtMessage, const uint8_t *txData,
 				     size_t txDataSize, uint8_t *rxBuffer, size_t *prxBufferSize)
 {
-  //  dbg("internalSendReceive\r\n"); 
+
+  dbgStr ("internalSendReceive"); 
   
-  if (irdm->asleep)
+  if (irdm->asleep) {
+    zeroizeSize (prxBufferSize);
     return IRIDIUM_IS_ASLEEP;
+  }
   
   // Binary transmission?
   if (txData && txDataSize)
     {
-      sendStr("AT+SBDWB");
+      sendStr("AT+SBDWB=");
       sendInt(txDataSize);
       sendStr("\r");
-      if (!waitForATResponse(irdm, NULL, 0, NULL, "READY\r\n"))
-	return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
-      
+      if (!waitForATResponse(irdm, NULL, 0, NULL, "READY\r\n")) {
+	zeroizeSize (prxBufferSize);
+	return IRIDIUM_PROTOCOL_ERROR;
+      }
       uint16_t checksum = 0;
       for (uint32_t i=0; i<txDataSize; ++i)	{
 	sdPut (IRIDIUM_SD, txData[i]);
 	checksum += (uint16_t)txData[i];
       }
       
-      //      dbg("Checksum:");
-      //      dbg(checksum);
-      //      dbg("\r\n");
+      dbgStr ("Checksum= %d", checksum);
       sdPut (IRIDIUM_SD, checksum >> 8);
       sdPut (IRIDIUM_SD, checksum & 0xFF);
       
-      if (!waitForATResponse(irdm, NULL, 0, NULL, "0\r\n\r\nOK\r\n"))
-	return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+      if (!waitForATResponse(irdm, NULL, 0, NULL, "0\r\n\r\nOK\r\n")) {
+	zeroizeSize (prxBufferSize);
+	return IRIDIUM_PROTOCOL_ERROR;
+      }
     }
   
   else // Text transmission
@@ -336,8 +394,10 @@ static  int  internalSendReceiveSBD (Iridium *irdm, const char *txTxtMessage, co
       if (txTxtMessage) // It's ok to have a NULL txtTxtMessage if the transaction is RX only
 	sendStr(txTxtMessage);
       sendStr("\r");
-      if (!waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n"))
-	return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+      if (!waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n")) {
+	zeroizeSize (prxBufferSize);
+	return IRIDIUM_PROTOCOL_ERROR;
+      }
     }
   
   // Long SBDIX loop begins here
@@ -346,72 +406,71 @@ static  int  internalSendReceiveSBD (Iridium *irdm, const char *txTxtMessage, co
       int strength = 0;
       bool_t okToProceed = true;
       int ret = internalGetSignalQuality(irdm, &strength);
-      if (ret != IRIDIUM_SUCCESS)
+      if (ret != IRIDIUM_SUCCESS) {
+	zeroizeSize (prxBufferSize);
 	return ret;
-      
+      }
+
       if (irdm->useWorkaround && strength >= irdm->minimumCSQ)
 	{
 	  okToProceed = false;
 	  ret = internalMSSTMWorkaround(irdm, &okToProceed);
-	  if (ret != IRIDIUM_SUCCESS) 
+	  if (ret != IRIDIUM_SUCCESS) {
+	    zeroizeSize (prxBufferSize);
             return ret; 
+	  }
 	} 
       
       if ( okToProceed && strength >= irdm->minimumCSQ)
 	{ 
 	   uint16_t moCode = 0, moMSN = 0, mtCode = 0, mtMSN = 0, mtLen = 0, mtRemaining = 0;
 	   ret = doSBDIX(irdm, &moCode, &moMSN, &mtCode, &mtMSN, &mtLen, &mtRemaining);
-	   if (ret != IRIDIUM_SUCCESS)
+	   if (ret != IRIDIUM_SUCCESS)  {
+	     zeroizeSize (prxBufferSize);
 	     return ret;
+	   }
 	  
-	  /* dbg("SBDIX MO code: "); */
-	  /* dbg(moCode); */
-	  /* dbg("\r\n"); */
-	  
-	  if (moCode <= 4) // successful return!
+	   dbgStr ("SBDIX MO code: %d",moCode);
+	   
+	   if (moCode <= 4) // successful return!
 	    {
-	      //	      dbg("SBDIX success!\r\n");
+	      dbgStr ("SBDIX success!");
 	      
 	      irdm->remainingMessages = mtRemaining;
-	      if (mtCode == 1 && rxBuffer) // retrieved 1 message
-		{
-		  //  dbg("Incoming message!\r\n");
-		  return doSBDRB(irdm, rxBuffer, prxBufferSize);
-		}
-	      
-	      else
-            {
-	      // No data returned
-	      if (prxBufferSize) 
-		*prxBufferSize = 0;
-            }
+	      if (mtCode == 1 && rxBuffer) { // retrieved 1 message
+		dbgStr ("Incoming message!");
+		return doSBDRB(irdm, rxBuffer, prxBufferSize);
+	      } else {
+		// No data returned
+		zeroizeSize (prxBufferSize);
+	      }
 	      return IRIDIUM_SUCCESS;
 	    }
 
-	  else if (moCode == 12 || moCode == 14 || moCode == 16) // fatal failure: no retry
-	    {
-	      dbg("SBDIX fatal!\r\n");
-	      return IRIDIUM_SBDIX_FATAL_ERROR;
-	    }
-
-	  else // retry      
-	    {
-	      dbg("Waiting for SBDIX retry...\r\n");
-	      if (!smartWait(irdm->sbdixInterval))
-		return IRIDIUM_CANCELLED;
-	    }
+	   else if (moCode == 12 || moCode == 14 || moCode == 16) // fatal failure: no retry
+	     {
+	       dbgStr ("SBDIX fatal!");
+	       zeroizeSize (prxBufferSize);
+	       return IRIDIUM_SBDIX_FATAL_ERROR;
+	     }
+	   
+	   else // retry      
+	     {
+	       dbgStr ("Waiting for SBDIX retry...");
+	       chThdSleepSeconds(irdm->sbdixInterval);
+	     }
 	}
-
+      
       else // signal strength == 0
 	{
-	  dbg("Waiting for CSQ retry...\r\n");
-	  if (!smartWait(irdm->csqInterval))
-            return IRIDIUM_CANCELLED;
+	  dbgStr ("Waiting for CSQ retry...");
+	  chThdSleepSeconds(irdm->csqInterval);
 	}
       chThdSleepMilliseconds(5);
     } // big wait loop
   
-  dbg("SBDIX timeout!\r\n");
+  dbgStr ("SBDIX timeout!");
+  zeroizeSize (prxBufferSize);
   return IRIDIUM_SENDRECEIVE_TIMEOUT;
 }
 
@@ -424,7 +483,7 @@ static  int  internalGetSignalQuality (Iridium *irdm, int *quality)
   
   sendStr("AT+CSQ\r");
   if (!waitForATResponse(irdm, csqResponseBuf, sizeof(csqResponseBuf), "+CSQ:", "OK\r\n"))
-    return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+    return IRIDIUM_PROTOCOL_ERROR;
   
   if (isdigit((uint8_t) csqResponseBuf[0])) {
     *quality = atoi(csqResponseBuf);
@@ -458,7 +517,7 @@ static  int  internalMSSTMWorkaround (Iridium *irdm, bool_t *okToProceed)
 
   sendStr("AT-MSSTM\r");
   if (!waitForATResponse(irdm, msstmResponseBuf, sizeof(msstmResponseBuf), "-MSSTM: ", "OK\r\n"))
-    return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+    return  IRIDIUM_PROTOCOL_ERROR;
 
   // Response buf now contains either an 8-digit number or the string "no network service"
   *okToProceed = isdigit((uint8_t) msstmResponseBuf[0]);
@@ -474,19 +533,11 @@ static  int  internalSleep (Iridium *irdm)
   sendStr("AT*F\r");
   
   if (!waitForATResponse (irdm, NULL, 0, NULL, "OK\r\n"))
-    return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+    return  IRIDIUM_PROTOCOL_ERROR;
   
   return IRIDIUM_SUCCESS;
 }
 
-static  bool_t smartWait (uint32_t seconds)
-{
-  for (uint32_t start=millis(); (millis() - start) < (1000 * seconds);) {
-    chThdSleepMilliseconds (5);
-  }
-  
-  return true;
-}
 
 // Wait for response from previous AT command.  This process terminates when "terminator" string is seen or upon timeout.
 // If "prompt" string is provided (example "+CSQ:"), then all characters following prompt up to the next CRLF are
@@ -500,6 +551,7 @@ static  bool_t waitForATResponse (Iridium *irdm, char *response, int responseSiz
   /* const char *prompt=NULL */
   /* const char *terminator="OK\r\n" */
 
+  dbgStr ("entering waitForATResponse");
 
   if (response)
     memset(response, 0, responseSize);
@@ -509,67 +561,53 @@ static  bool_t waitForATResponse (Iridium *irdm, char *response, int responseSiz
   enum {LOOKING_FOR_PROMPT, GATHERING_RESPONSE, LOOKING_FOR_TERMINATOR};
   int promptState = prompt ? LOOKING_FOR_PROMPT : LOOKING_FOR_TERMINATOR;
 
-  for (uint32_t start=millis(); millis() - start < 1000 * irdm->atTimeout;)
-    {
-      if (cancelled (irdm))
-	return false;
+  for (uint32_t start=millis(); millis() - start < 1000 * irdm->atTimeout;)   {
+    int sgc = sdGetTimeout (IRIDIUM_SD, TIME_IMMEDIATE);
 
-      while (!sdGetWouldBlock(IRIDIUM_SD)) {
-	char c = sdGet (IRIDIUM_SD);
-	if (prompt)
-	  switch(promptState)
-	    {
-            case LOOKING_FOR_PROMPT:
-	      if (c == prompt[matchPromptPos])	{
-		++matchPromptPos;
-		if (prompt[matchPromptPos] == '\0')
-		  promptState = GATHERING_RESPONSE;
-	      } else {
-		matchPromptPos = c == prompt[0] ? 1 : 0;
-	      }
-
-	      break;
-            case GATHERING_RESPONSE: // gathering reponse from end of prompt to first \r
-	      if (response)  {
-		if (c == '\r' || responseSize < 2)  {
-		  promptState = LOOKING_FOR_TERMINATOR;
-		} else {
-		  *response++ = c;
-		  responseSize--;
-		}
-	      }
-	      break;
+    if (sgc >= 0) {
+      uint8_t c = sgc;
+      //      dbgStr ("waitForATResponse «%c»", sgc);
+      if (prompt)
+	switch(promptState)
+	  {
+	  case LOOKING_FOR_PROMPT:
+	    if (c == prompt[matchPromptPos])	{
+	      ++matchPromptPos;
+	      if (prompt[matchPromptPos] == '\0')
+		promptState = GATHERING_RESPONSE;
+	    } else {
+	      matchPromptPos = c == prompt[0] ? 1 : 0;
 	    }
-
-	if (c == terminator[matchTerminatorPos]) {
-	  ++matchTerminatorPos;
-	  if (terminator[matchTerminatorPos] == '\0')
-	    return true;
-	} else {
-	  matchTerminatorPos = c == terminator[0] ? 1 : 0;
+	    
+	    break;
+	  case GATHERING_RESPONSE: // gathering reponse from end of prompt to first \r
+	    if (response)  {
+	      if (c == '\r' || responseSize < 2)  {
+		promptState = LOOKING_FOR_TERMINATOR;
+	      } else {
+		*response++ = c;
+		responseSize--;
+	      }
+	    }
+	    break;
+	  }
+      
+      if (c == terminator[matchTerminatorPos]) {
+	++matchTerminatorPos;
+	if (terminator[matchTerminatorPos] == '\0') {
+	  dbgStr ("waitForATResponse return TRUE");
+	  return true;
 	}
-      } // while (stream_available() > 0)
-    } // timer loop
+      } else {
+	matchTerminatorPos = c == terminator[0] ? 1 : 0;
+      }
+    } else { // while (stream_available() > 0)
+      chThdSleepMilliseconds(2);
+    }
+  } // timer loop
+  dbgStr ("waitForATResponse return FALSE");
   return false;
 }
-
-static  bool_t cancelled (Iridium *irdm)
-{
-  (void) irdm;
-  //  if (ISBDCallback != NULL)
-  //return !ISBDCallback();
-  
-  return false;
-}
-
-static void dbg(const char*  msg)
-{
-  (void) msg;
-#if IRIDIUM_DIAGS
-  DebugTrace (msg);
-#endif
-}
-
 
 static  int  doSBDIX (Iridium *irdm, uint16_t *moCode, uint16_t *moMSN, uint16_t *mtCode, 
 		      uint16_t *mtMSN, uint16_t *mtLen, uint16_t *mtRemaining)
@@ -578,7 +616,7 @@ static  int  doSBDIX (Iridium *irdm, uint16_t *moCode, uint16_t *moMSN, uint16_t
   char sbdixResponseBuf[32];
   sendStr("AT+SBDIX\r");
   if (!waitForATResponse(irdm, sbdixResponseBuf, sizeof(sbdixResponseBuf), "+SBDIX: ", "OK\r\n"))
-    return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+    return  IRIDIUM_PROTOCOL_ERROR;
 
   uint16_t *values[6] = { moCode, moMSN, mtCode, mtMSN, mtLen, mtRemaining };
   for (int i=0; i<6; ++i)   {
@@ -595,28 +633,27 @@ static  int  doSBDRB (Iridium *irdm, uint8_t *rxBuffer, size_t *prxBufferSize) /
   bool_t rxOverflow = false;
 
   sendStr("AT+SBDRB\r");
-  if (!waitForATResponse(irdm, NULL, 0, NULL, "AT+SBDRB\r")) // waits for its own echo
-    return cancelled (irdm) ? IRIDIUM_CANCELLED : IRIDIUM_PROTOCOL_ERROR;
+  if (!waitForATResponse(irdm, NULL, 0, NULL, "AT+SBDRB\r")) {// waits for its own echo
+    zeroizeSize (prxBufferSize);
+    return  IRIDIUM_PROTOCOL_ERROR;
+  }
 
   // Time to read the binary data: size[2], body[size], checksum[2]
   uint32_t start = millis();
   while (millis() - start < 1000 * irdm->atTimeout)    {
-    if (cancelled (irdm))
-      return IRIDIUM_CANCELLED;
     if (stream_available() >= 2)
       break;
     chThdSleepMilliseconds(5);
   }
 
-  if (stream_available() < 2)
+  if (stream_available() < 2) {
+    zeroizeSize (prxBufferSize);
     return IRIDIUM_SENDRECEIVE_TIMEOUT;
+  }
 
   uint16_t size = (256 * sdGet (IRIDIUM_SD)) + sdGet (IRIDIUM_SD);
 
   for (uint16_t bytesRead = 0; bytesRead < size;)   {
-    if (cancelled (irdm))
-      return IRIDIUM_CANCELLED;
-
     if (stream_available())	{
       uint8_t c = sdGet (IRIDIUM_SD);
       bytesRead++;
@@ -630,21 +667,23 @@ static  int  doSBDRB (Iridium *irdm, uint8_t *rxBuffer, size_t *prxBufferSize) /
       }
     }
     
-    if (millis() - start >= 1000 * irdm->atTimeout)
+    if (millis() - start >= 1000 * irdm->atTimeout) {
+      zeroizeSize (prxBufferSize);
       return IRIDIUM_SENDRECEIVE_TIMEOUT;
+    }
     chThdSleepMilliseconds(1);
   }
 
   while (millis() - start < 1000 * irdm->atTimeout)  {
-    if (cancelled (irdm))
-      return IRIDIUM_CANCELLED;
     if (stream_available() >= 2)
       break;
      chThdSleepMilliseconds(5);
   }
 
-  if (stream_available() < 2)
+  if (stream_available() < 2) {
+    zeroizeSize (prxBufferSize);
     return IRIDIUM_SENDRECEIVE_TIMEOUT;
+  }
 
   uint16_t checksum = (256 * sdGet (IRIDIUM_SD)) + sdGet (IRIDIUM_SD);
 
@@ -655,15 +694,37 @@ static  int  doSBDRB (Iridium *irdm, uint8_t *rxBuffer, size_t *prxBufferSize) /
   return rxOverflow ? IRIDIUM_RX_OVERFLOW : IRIDIUM_SUCCESS;
 }
 
-static  void power (Iridium *irdm, bool_t on)
+static  void awake (Iridium *irdm, bool_t on)
 {
-  static uint32_t lastPowerOnTime = 0;
+  static uint32_t lastAwakeOnTime = 0;
   
   irdm->asleep = !on;
   
   if (on)   {
-    //    dbg("Powering on RockBLOCK...!\r\n");
-    palSetPad (IRIDIUM_SLEEP_GPIO, IRIDIUM_SLEEP_PIN); // HIGH = awake
+    dbgStr ("Awakeing on RockBLOCK...!");
+    palSetPad (GPIOB, GPIOB_IRIDIUM_SLEEP); // HIGH = awake
+    lastAwakeOnTime = millis();
+  } else  {
+    // Best Practices Guide suggests waiting at least 2 seconds
+    // before awakeing off again
+    uint32_t elapsed = millis() - lastAwakeOnTime;
+    if (elapsed < 2000)
+      chThdSleepMilliseconds(elapsed);
+    
+    dbgStr ("Awakeing off RockBLOCK...!");
+    palClearPad (GPIOB, GPIOB_IRIDIUM_SLEEP); // LOW = irdm->asleep
+  }
+}
+
+static  void power (Iridium *irdm, bool_t on)
+{
+  static uint32_t lastPowerOnTime = 0;
+  
+  irdm->powered = on;
+  
+  if (on)   {
+    dbgStr ("Powering on RockBLOCK...!");
+    palSetPad (GPIOA, GPIOA_IRIDIUM_POWER); // HIGH = power
     lastPowerOnTime = millis();
   } else  {
     // Best Practices Guide suggests waiting at least 2 seconds
@@ -672,8 +733,8 @@ static  void power (Iridium *irdm, bool_t on)
     if (elapsed < 2000)
       chThdSleepMilliseconds(elapsed);
     
-    dbg("Powering off RockBLOCK...!\r\n");
-    palClearPad (IRIDIUM_SLEEP_GPIO, IRIDIUM_SLEEP_PIN); // LOW = irdm->asleep
+    dbgStr ("Powering off RockBLOCK...!");
+    palClearPad (GPIOA, GPIOA_IRIDIUM_POWER); // LOW = irdm->powered
   }
 }
 
@@ -682,10 +743,14 @@ static  void sendStr (const char *str)
 {
   // stream.print(str);
   sdWrite (IRIDIUM_SD, (const uint8_t *) str, strlen(str));
+  dbgStr ("sendStr %s", str);
 }
 
 static  void sendInt (uint16_t n)
 {
   //   stream.print(n);
   chprintf ((BaseSequentialStream *) IRIDIUM_SD, "%u", n); 
+  dbgStr ("sendInt %u", n);
 }
+
+#endif

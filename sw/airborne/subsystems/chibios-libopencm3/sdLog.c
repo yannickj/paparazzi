@@ -324,8 +324,8 @@ static msg_t thdSdLog(void *arg)
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminate()) {
     //     if ((retLen = varLenMsgQueuePop (&messagesQueue, lm, LOG_MESSAGE_PREBUF_LEN)) > 0) {
-    const ChunkBufferRO cbro = varLenMsgQueuePopChunk (&messagesQueue);
-    const int32_t retLen = cbro.blen;
+    ChunkBufferRO cbro ;
+    const int32_t retLen = varLenMsgQueuePopChunk (&messagesQueue, &cbro);
     if (retLen > 0) {
       const LogMessage *lm = (LogMessage *) cbro.bptr;
       if (lm->fileObject == NULL) {
@@ -358,11 +358,13 @@ static msg_t thdSdLog(void *arg)
         FRESULT rc = f_write(lm->fileObject, perfBuffer, FATFS_PREBUF_SIZE, &bw);
         f_sync (lm->fileObject);
         if (rc) {
+	  varLenMsgQueueFreeChunk (&messagesQueue, &cbro);
           return SDLOG_FATFS_ERROR;
         } else if (bw != FATFS_PREBUF_SIZE) {
+	  varLenMsgQueueFreeChunk (&messagesQueue, &cbro);
           return SDLOG_FSFULL;
         }
-
+	
         memcpy (perfBuffer, &(lm->mess[stayLen]), messLen-stayLen);
         curBufFill=messLen-stayLen;
       }
@@ -371,9 +373,9 @@ static msg_t thdSdLog(void *arg)
       return SDLOG_INTERNAL_ERROR;
     }
   }
-
+  
   return SDLOG_OK;
-  }
+}
 
 static size_t logMessageLen (const LogMessage *lm)
 {

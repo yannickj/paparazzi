@@ -17,20 +17,20 @@ static void       varLenMsgQueueUnlock(void);
 static uint16_t   popSparseChunkMap (VarLenMsgQueue* que, const uint16_t  mplAddr);
 static void       pushSparseChunkMap (VarLenMsgQueue* que, const MsgPtrLen mpl);
 static uint16_t   getSparseChunkMapFirstFreeIndex (const VarLenMsgQueue* que);
-static int32_t    varLenMsgQueuePushForZeroCopy (VarLenMsgQueue* que, const void* msg,
-    const size_t msgLen,
-    const VarLenMsgQueueUrgency urgency);
+static int32_t 	  varLenMsgQueuePushForZeroCopy (VarLenMsgQueue* que, const void* msg,
+						 const size_t msgLen,
+						 const VarLenMsgQueueUrgency urgency);
 
 
 // Work around of still to be resolved bug : static init of array don't work in
 // ccmram, so this init function has to be called at init.
-void varLenMsgDynamicInit   (VarLenMsgQueue* que)
+void		varLenMsgDynamicInit   (VarLenMsgQueue* que)
 {
   memset (que->sparseChunkMap, 0, que->mbAndSparseChunkSize*sizeof(MsgPtrLen));
   que->sparseChunkNumber=0;
 }
 
-bool_t varLenMsgQueueIsFull (VarLenMsgQueue* que)
+bool_t		varLenMsgQueueIsFull (VarLenMsgQueue* que)
 {
   varLenMsgQueueLock (que);
   bool_t retVal = ringBufferIsFull (&que->circBuf) || chMBGetFreeCountI (&que->mb) <= 0;
@@ -38,15 +38,15 @@ bool_t varLenMsgQueueIsFull (VarLenMsgQueue* que)
   return retVal;
 }
 
-bool_t varLenMsgQueueIsEmpty (VarLenMsgQueue* que)
+bool_t 		varLenMsgQueueIsEmpty (VarLenMsgQueue* que)
 {
   varLenMsgQueueLock (que);
-  bool_t retVal = ringBufferIsEmpty (&que->circBuf) && chMBGetUsedCountI (&que->mb) <= 0;
+   bool_t retVal = ringBufferIsEmpty (&que->circBuf) && chMBGetUsedCountI (&que->mb) <= 0;
   varLenMsgQueueUnlock ();
   return retVal;
 }
 
-int32_t varLenMsgQueueUsedSize (VarLenMsgQueue* que)
+int32_t 	varLenMsgQueueUsedSize (VarLenMsgQueue* que)
 {
   varLenMsgQueueLock (que);
   int32_t  retVal =  ringBufferUsedSize (&que->circBuf);
@@ -54,7 +54,7 @@ int32_t varLenMsgQueueUsedSize (VarLenMsgQueue* que)
   return retVal;
 }
 
-int32_t varLenMsgQueueFreeSize (VarLenMsgQueue* que)
+int32_t 	varLenMsgQueueFreeSize (VarLenMsgQueue* que)
 {
   varLenMsgQueueLock (que);
   int32_t  retVal =  ringBufferFreeSize (&que->circBuf);
@@ -63,8 +63,8 @@ int32_t varLenMsgQueueFreeSize (VarLenMsgQueue* que)
 }
 
 
-static int32_t varLenMsgQueuePushForZeroCopy(VarLenMsgQueue* que, const void* msg, const size_t msgLen,
-    const VarLenMsgQueueUrgency urgency)
+static int32_t 	varLenMsgQueuePushForZeroCopy(VarLenMsgQueue* que, const void* msg, const size_t msgLen,
+					      const VarLenMsgQueueUrgency urgency)
 {
   int32_t retVal;
   ChunkBuffer cbuf;
@@ -80,8 +80,8 @@ static int32_t varLenMsgQueuePushForZeroCopy(VarLenMsgQueue* que, const void* ms
 }
 
 
-int32_t varLenMsgQueuePush(VarLenMsgQueue* que, const void* msg, const size_t msgLen,
-    const VarLenMsgQueueUrgency urgency)
+int32_t 	varLenMsgQueuePush(VarLenMsgQueue* que, const void* msg, const size_t msgLen,
+				   const VarLenMsgQueueUrgency urgency)
 {
   // if we use zeroCopyApi, whe sould only expose linear address buffer, so we do not
   // allow message splitted between end end of buffer ans start of buffer
@@ -92,7 +92,7 @@ int32_t varLenMsgQueuePush(VarLenMsgQueue* que, const void* msg, const size_t ms
     int32_t retVal;
 
     varLenMsgQueueLock (que);
-    const uint16_t writeIdx = ringBufferGetWritePointer(&que->circBuf);
+    const uint16_t writeIdx = 	ringBufferGetWritePointer(&que->circBuf);
 
     if (chMBGetFreeCountI (&que->mb) <= que->mbReservedSlot) {
       retVal = ERROR_MAILBOX_FULL;
@@ -103,39 +103,50 @@ int32_t varLenMsgQueuePush(VarLenMsgQueue* que, const void* msg, const size_t ms
 
     if (retVal != ERROR_CIRCULAR_BUFFER_FULL) {
       const MsgPtrLen mpl = {{
-        .ptr = writeIdx,
-          .len = (uint16_t) msgLen
-      }};
+	  .ptr = writeIdx,
+	  .len = (uint16_t) msgLen
+	}};
 
       // if mailbox is too small, we should remove the writen message from circular buffer
       // and return error message
       if (urgency == VarLenMsgQueue_REGULAR) {
-        postRet = chMBPost (&que->mb, mpl.msgPtrLen, TIME_IMMEDIATE);
+	postRet = chMBPost (&que->mb, mpl.msgPtrLen, TIME_IMMEDIATE);
       } else {
-        postRet = chMBPostAhead (&que->mb, mpl.msgPtrLen, TIME_IMMEDIATE);
+	postRet = chMBPostAhead (&que->mb, mpl.msgPtrLen, TIME_IMMEDIATE);
       }
       if (postRet != RDY_OK) {
-        retVal = ERROR_MAILBOX_FAIL;
-        ringBufferSetWritePointer (&que->circBuf, writeIdx);
+	retVal = ERROR_MAILBOX_FAIL;
+	ringBufferSetWritePointer (&que->circBuf, writeIdx);
       }
     }
-unlockAndExit:
+  unlockAndExit:
     varLenMsgQueueUnlock ();
     return retVal;
   }
 }
 
-int32_t varLenMsgQueuePop(VarLenMsgQueue* que, void* msg, const size_t msgLen)
+int32_t 	varLenMsgQueuePop(VarLenMsgQueue* que, void* msg, const size_t msgLen)
 {
-  uint32_t retVal;
+  return varLenMsgQueuePopTimeout (que, msg, msgLen, TIME_INFINITE);
+}
+
+
+int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg,
+					  const size_t msgLen, const systime_t  time)
+{
+  int32_t retVal, status;
   MsgPtrLen mpl;
 
-  if (chMBFetch (&que->mb, &mpl.msgPtrLen, TIME_INFINITE) != RDY_OK) {
-    retVal = ERROR_MAILBOX_FAIL;
+  varLenMsgQueueLock (que);
+
+  if ((status = chMBFetch (&que->mb, &mpl.msgPtrLen, time) != RDY_OK)) {
+    if (status == RDY_TIMEOUT)
+      retVal = ERROR_MAILBOX_TIMEOUT;
+    else
+      retVal = ERROR_MAILBOX_FAIL;
     goto unlockAndExit;
   }
 
-  varLenMsgQueueLock (que);
 
   if (mpl.ptr != ringBufferGetReadPointer(&que->circBuf)) {
     // OUT OF BAND CONDITION
@@ -169,21 +180,21 @@ int32_t varLenMsgQueuePop(VarLenMsgQueue* que, void* msg, const size_t msgLen)
     ringBufferReadSeek(&que->circBuf, lenOfChunk);
   }
 
-unlockAndExit:
+ unlockAndExit:
   varLenMsgQueueUnlock ();
-  return retVal;
+   return retVal;
 }
 
 // WARNING NOT FULLY REENTRANT ALGORITHM
 // do not take into account when a reserved chunk is not sended, so queue will be stuck full if
 // a thread take to much time between varLenMsgQueueReserveChunk and varLenMsgQueueSendChunk
 // a mecanism should be provided which will discard chunk if circular buffer rollback on this chunk
-int32_t varLenMsgQueueReserveChunk (VarLenMsgQueue* que, ChunkBuffer *cbuf, const size_t msgLen)
+int32_t	varLenMsgQueueReserveChunk (VarLenMsgQueue* que, ChunkBuffer *cbuf, const size_t msgLen)
 {
-  uint32_t retVal = msgLen;
+  int32_t retVal = msgLen;
   varLenMsgQueueLock(que);
 
-  // if there is not enough room, return
+ // if there is not enough room, return
   const uint16_t freeSize=ringBufferFreeSize (&que->circBuf);
   if (msgLen > freeSize) {
     retVal=ERROR_CIRCULAR_BUFFER_FULL;
@@ -213,9 +224,9 @@ int32_t varLenMsgQueueReserveChunk (VarLenMsgQueue* que, ChunkBuffer *cbuf, cons
       goto unlockAndExit;
     } else {
       const MsgPtrLen mpl = {{
-        .ptr = ringBufferGetWritePointer(&que->circBuf),
-          .len = sizeToEnd
-      }};
+	  .ptr = ringBufferGetWritePointer(&que->circBuf),
+	  .len = sizeToEnd
+	}};
       pushSparseChunkMap (que, mpl);
       ringBufferSetWritePointer(&que->circBuf, 0);
     }
@@ -227,21 +238,21 @@ int32_t varLenMsgQueueReserveChunk (VarLenMsgQueue* que, ChunkBuffer *cbuf, cons
   cbuf->bptr= ringBufferGetAddrOfElem(&que->circBuf, ringBufferGetWritePointer(&que->circBuf));
   cbuf->blen= (const uint16_t) msgLen;
   /* DebugTrace ("pre write seek R=%d, W=%d",  */
-  /*       ringBufferGetReadPointer(&que->circBuf), */
-  /*       ringBufferGetWritePointer(&que->circBuf)); */
+  /* 	      ringBufferGetReadPointer(&que->circBuf), */
+  /* 	      ringBufferGetWritePointer(&que->circBuf)); */
   ringBufferWriteSeek (&que->circBuf, msgLen);
   /* DebugTrace ("post write seek R=%d, W=%d",  */
-  /*       ringBufferGetReadPointer(&que->circBuf), */
-  /*       ringBufferGetWritePointer(&que->circBuf)); */
+  /* 	      ringBufferGetReadPointer(&que->circBuf), */
+  /* 	      ringBufferGetWritePointer(&que->circBuf)); */
 
-unlockAndExit:
+ unlockAndExit:
   varLenMsgQueueUnlock();
   return retVal;
 }
 
 
-int32_t varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
-    const VarLenMsgQueueUrgency urgency)
+int32_t	varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
+				 const VarLenMsgQueueUrgency urgency)
 {
   int32_t retVal = cbuf->blen;
   msg_t   postRet;
@@ -253,9 +264,9 @@ int32_t varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
   varLenMsgQueueLock(que);
 
   const MsgPtrLen mpl = {{
-    .ptr = ringBufferGetIndexOfElemAddr(&que->circBuf, cbuf->bptr),
+      .ptr = ringBufferGetIndexOfElemAddr(&que->circBuf, cbuf->bptr),
       .len = cbuf->blen
-  }};
+    }};
 
   if (urgency == VarLenMsgQueue_REGULAR) {
     postRet = chMBPost (&que->mb, mpl.msgPtrLen, TIME_IMMEDIATE);
@@ -276,25 +287,37 @@ int32_t varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
   return retVal;
 }
 
+uint32_t	varLenMsgQueuePopChunk (VarLenMsgQueue* que, ChunkBufferRO *cbro)
+{
+  return varLenMsgQueuePopChunkTimeout (que,  cbro, TIME_INFINITE);
+}
 
-ChunkBufferRO varLenMsgQueuePopChunk (VarLenMsgQueue* que)
+
+uint32_t	varLenMsgQueuePopChunkTimeout (VarLenMsgQueue* que, ChunkBufferRO *cbro,
+					       const systime_t  time)
 {
   MsgPtrLen mpl ;
-  static const ChunkBufferRO cbroNull =  {.blen=0, .bptr = 0};
+  ChunkBuffer *cbrw = (ChunkBuffer *) cbro;
+
 
   // cannot use this function if queue is not declared zero copy compliant
-  if (que->useZeroCopyApi == FALSE)
-    return cbroNull;
-
-  if (chMBFetch (&que->mb, &mpl.msgPtrLen, TIME_INFINITE) == RDY_OK) {
-    const ChunkBufferRO cbro =  {.blen=mpl.len, .bptr = ringBufferGetAddrOfElem(&que->circBuf, mpl.ptr)};
-    return cbro;
+  if (que->useZeroCopyApi == FALSE) {
+    cbrw->blen=0;
+    cbrw->bptr = NULL;
+    return ERROR_ZEROCOPY_NOT_ENABLED;
+  }
+  if (chMBFetch (&que->mb, &mpl.msgPtrLen, time) == RDY_OK) {
+    cbrw->blen=mpl.len;
+    cbrw->bptr = ringBufferGetAddrOfElem(&que->circBuf, mpl.ptr);
+    return mpl.len;
   } else {
-    return cbroNull;
+    cbrw->blen=0;
+    cbrw->bptr = NULL;
+    return ERROR_MAILBOX_TIMEOUT;
   }
 }
 
-void varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf)
+void	varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf)
 {
   varLenMsgQueueLock (que);
   const MsgPtrLen mpl = {.len = cbuf->blen, .ptr = ringBufferGetIndexOfElemAddr(&que->circBuf, cbuf->bptr)};
@@ -336,7 +359,7 @@ static void varLenMsgQueueUnlock()
 }
 
 
-static uint16_t getSparseChunkMapFirstFreeIndex(const VarLenMsgQueue* que)
+static uint16_t     getSparseChunkMapFirstFreeIndex(const VarLenMsgQueue* que)
 {
   for (uint16_t i=0; i<que->mbAndSparseChunkSize; i++) {
     if (que->sparseChunkMap[i].msgPtrLen == 0) {
@@ -346,7 +369,7 @@ static uint16_t getSparseChunkMapFirstFreeIndex(const VarLenMsgQueue* que)
   return 0;
 }
 
-static void pushSparseChunkMap (VarLenMsgQueue* que, const MsgPtrLen mpl)
+static void     pushSparseChunkMap (VarLenMsgQueue* que, const MsgPtrLen mpl)
 {
   const uint16_t nextNextFreeIndex = getSparseChunkMapFirstFreeIndex(que);
   que->sparseChunkMap[nextNextFreeIndex] = mpl;
@@ -368,7 +391,7 @@ static uint16_t popSparseChunkMap (VarLenMsgQueue* que, const uint16_t  mplAddr)
   return associatedLen;
 }
 
-bool_t varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que)
+bool_t		varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que)
 {
   bool_t retVal = TRUE;
   varLenMsgQueueLock(que);
@@ -407,7 +430,7 @@ bool_t varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que)
     }
   }
 
-unlockAndExit:
+ unlockAndExit:
   varLenMsgQueueUnlock();
   return retVal;
 }
@@ -415,11 +438,11 @@ unlockAndExit:
 const char*     varLenMsgQueueError (int32_t messIndex)
 {
   switch (messIndex) {
-    case ERROR_MAILBOX_FULL: return "mailbox full";
-    case ERROR_MAILBOX_FAIL: return "mailbox fail";
-    case ERROR_CHUNKBUFFER_INVALID: return "chunkbuffer invalid";
-    case ERROR_CIRCULAR_BUFFER_FULL: return "circular buffer full";
-    case ERROR_CIRCULAR_BUFFER_UNSYNC: return "circular buffer unsync";
+  case ERROR_MAILBOX_FULL: return "mailbox full";
+  case ERROR_MAILBOX_FAIL: return "mailbox fail";
+  case ERROR_CHUNKBUFFER_INVALID: return "chunkbuffer invalid";
+  case ERROR_CIRCULAR_BUFFER_FULL: return "circular buffer full";
+  case ERROR_CIRCULAR_BUFFER_UNSYNC: return "circular buffer unsync";
   }
 
   return "unknown error";
@@ -428,39 +451,39 @@ const char*     varLenMsgQueueError (int32_t messIndex)
 
 /*
 
-   =========SCENARIO 1
+=========SCENARIO 1
 
-   initial
-
-   0 1 2 3 4 5 6 7 8 9
-   |r| | | | | | | | | |
-   ---------------------
-   |w| | | | | | | | | |
-
-   after write 3
-
-   0 1 2 3 4 5 6 7 8 9
-   |.|.|.|w| | | | | | |
-   ---------------------
-   |r| | | | | | | | | |
-
-   after write out of band 2
-
-   0 1 2 3 4 5 6 7 8 9
-   |.|.|.|O|O|w| | | | |
-   ---------------------
-   |r| | | | | | | | | |
-
-   after reading out of band 2:
-   msg.ptr(3) != readPtr(0) so OUT OF BAND CONDITION
- * let sparseChunkNumber=1
- * let sparseChunkMap[0] = .len=2 .ptr=3
- * keep readPtr @ 0
+initial
 
  0 1 2 3 4 5 6 7 8 9
- |.|.|.|o|o|w| | | | |
- ---------------------
- |r| | | | | | | | | |
+|r| | | | | | | | | |
+---------------------
+|w| | | | | | | | | |
+
+after write 3
+
+ 0 1 2 3 4 5 6 7 8 9
+|.|.|.|w| | | | | | |
+---------------------
+|r| | | | | | | | | |
+
+after write out of band 2
+
+ 0 1 2 3 4 5 6 7 8 9
+|.|.|.|O|O|w| | | | |
+---------------------
+|r| | | | | | | | | |
+
+after reading out of band 2:
+  msg.ptr(3) != readPtr(0) so OUT OF BAND CONDITION
+  * let sparseChunkNumber=1
+  * let sparseChunkMap[0] = .len=2 .ptr=3
+  * keep readPtr @ 0
+
+ 0 1 2 3 4 5 6 7 8 9
+|.|.|.|o|o|w| | | | |
+---------------------
+|r| | | | | | | | | |
 
 
 after reading reglar first message

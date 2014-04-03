@@ -33,18 +33,21 @@
  *
  */
 
+#pragma once
+
 #include <ch.h>
 #include <hal.h>
 
+#define IRIDIUM_DIAGS			   1
+#define IRIDIUM_ENABLE_FLOW_CONTROL	   1
 #define IRIDIUM_LIBRARY_REVISION           1
-#define IRIDIUM_SD			   (&SD6)
-#define IRIDIUM_SLEEP_GPIO		   GPIOB
-#define IRIDIUM_SLEEP_PIN		   GPIOB_AUX4_PIN15
+#define IRIDIUM_SD			   (&SD3)
+#define IRIDIUM_BAUD_RATE		   19200
 
-#define IRIDIUM_DEFAULT_AT_TIMEOUT         30
-#define IRIDIUM_DEFAULT_CSQ_INTERVAL       10
+#define IRIDIUM_DEFAULT_AT_TIMEOUT         20
+#define IRIDIUM_DEFAULT_CSQ_INTERVAL        8
 #define IRIDIUM_DEFAULT_CSQ_INTERVAL_USB   20
-#define IRIDIUM_DEFAULT_SBDIX_INTERVAL     30
+#define IRIDIUM_DEFAULT_SBDIX_INTERVAL     24
 #define IRIDIUM_DEFAULT_SBDIX_INTERVAL_USB 30
 #define IRIDIUM_DEFAULT_SENDRECEIVE_TIME   300
 #define IRIDIUM_STARTUP_MAX_TIME           240
@@ -54,14 +57,12 @@
 #define IRIDIUM_ALREADY_AWAKE       1
 #define IRIDIUM_SERIAL_FAILURE      2
 #define IRIDIUM_PROTOCOL_ERROR      3
-#define IRIDIUM_CANCELLED           4
 #define IRIDIUM_NO_MODEM_DETECTED   5
 #define IRIDIUM_SBDIX_FATAL_ERROR   6
 #define IRIDIUM_SENDRECEIVE_TIMEOUT 7
 #define IRIDIUM_RX_OVERFLOW         8
 #define IRIDIUM_REENTRANT           9
 #define IRIDIUM_IS_ASLEEP           10
-#define IRIDIUM_NO_SLEEP_PIN        11
 
 
 
@@ -75,6 +76,7 @@ typedef struct {
    // State variables  
    int remainingMessages;
    bool_t asleep;
+   bool_t powered;
    bool_t reentrant;
   //   int  sleepPin;
    int  minimumCSQ;
@@ -96,7 +98,8 @@ int    iridium_getSignalQuality (Iridium *irdm, int *quality);
 int    iridium_getWaitingMessageCount (Iridium *irdm);
 int    iridium_sleep (Iridium *irdm);
 bool_t iridium_isAsleep (Iridium *irdm);
-
+bool_t iridium_isSatlinkPresent (void);
+bool_t iridium_isMessagePendingPinUp (void); // warn: when msg pending, send just a pulse, not a level
 void   iridium_setPowerProfile (Iridium *irdm, int profile);  // 0 = direct connect  (default), 1 = USB
 void   iridium_adjustATTimeout (Iridium *irdm, int seconds);          // default value = 20 seconds
 void   iridium_adjustSendReceiveTimeout (Iridium *irdm, int seconds); // default value = 300 seconds
