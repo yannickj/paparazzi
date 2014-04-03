@@ -33,7 +33,6 @@
  *
  */
 
-#ifdef USE_IRIDIUM_SATCOM
 
 #include <ch.h>
 #include <hal.h>
@@ -42,6 +41,8 @@
 #include <string.h>
 #include "iridium.h"
 #include "printf.h"
+
+#ifdef USE_IRIDIUM_SATCOM
 
 /*
   MACRO HELPER to port from arduino to stm32/chibios
