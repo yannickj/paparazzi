@@ -26,14 +26,30 @@
 
 #include <ch.h>
 #include <hal.h>
+#include <string.h>
 #include "subsystems/chibios-libopencm3/chibios_sdlog.h"
+#include "printf.h"
 #include "sdLog.h"
 #include "usbStorage.h"
 #include "pprz_stub.h"
 #include "rtcAccess.h"
 #include "airframe.h"
 #include "chibios_init.h"
-#include "iridium.h"
+
+
+#define IRIDIUM_SATCOM_DEBUG 1
+//#undef IRIDIUM_SATCOM_DEBUG // 0
+//#undef USE_IRIDIUM_SATCOM
+
+#ifdef USE_IRIDIUM_SATCOM
+#include "satCom.h"
+#endif
+
+
+#ifdef  IRIDIUM_SATCOM_DEBUG
+#include "chibios_sdlog.h"
+static __attribute__((noreturn)) msg_t thdSatcomReceive(void *arg) ;
+#endif
 
 // Delay before starting SD log
 #ifndef SDLOG_START_DELAY
@@ -62,6 +78,11 @@ bool_t sdOk = FALSE;
 static int32_t get_stack_free (Thread *tp);
 #endif
 
+
+#ifdef IRIDIUM_SATCOM_DEBUG
+static WORKING_AREA(waThdSatcomReceive, 1024);
+#endif
+
 /*
  * Init ChibiOS HAL and Sys
  */
@@ -76,7 +97,17 @@ bool_t chibios_init(void) {
       NORMALPRIO, thd_heartbeat, NULL);
 
   usbStorageStartPolling ();
-  //  iridiumStart ();
+
+#if USE_IRIDIUM_SATCOM
+  satcomInit ();
+  satcomSetPollingInterval (60); // Not sleeping between attempts : more electrical consumption, less data consumption
+#endif
+
+#ifdef  IRIDIUM_SATCOM_DEBUG
+  chThdCreateStatic(waThdSatcomReceive, sizeof(waThdSatcomReceive),
+		    NORMALPRIO, thdSatcomReceive, NULL);
+#endif
+  
 
   return RDY_OK;
 }
@@ -91,6 +122,12 @@ void launch_pprz_thd (int32_t (*thd) (void *arg))
 /*
  * Heartbeat thread
  */
+
+typedef struct {
+  uint32_t gps;
+  uint32_t satcom;
+} TimeStamps;
+
 static __attribute__((noreturn)) msg_t thd_heartbeat(void *arg)
 {
   (void) arg;
@@ -105,37 +142,50 @@ static __attribute__((noreturn)) msg_t thd_heartbeat(void *arg)
   while (TRUE) {
     palTogglePad (GPIOC, GPIOC_LED3);
     chThdSleepMilliseconds (sdOk == TRUE ? 1000 : 200);
-    static uint32_t timestamp = 0;
+    static TimeStamps timestamps = {.gps=0, .satcom=0};
 
 #if LOG_PROCESS_STATE
     sdLogWriteLog (&processLogFile, "    addr    stack  frestk prio refs  state  time name\r\n");
 #endif
 
     // chSysDisable ();
+#if LOG_PROCESS_STATE
     Thread *tp = chRegFirstThread();
     do {
 
-#if LOG_PROCESS_STATE
       sdLogWriteLog (&processLogFile, "%.8lx %.8lx %6lu %4lu %4lu [S:%d] %5lu %s\r\n",
           (uint32_t)tp, (uint32_t)tp->p_ctx.r13,
           get_stack_free (tp),
           (uint32_t)tp->p_prio, (uint32_t)(tp->p_refs - 1),
           tp->p_state, (uint32_t)tp->p_time,
           chRegGetThreadName(tp));
-#endif
+
 
       tp = chRegNextThread(tp);
     } while (tp != NULL);
+#endif
     // chSysEnable ();
 
     // we sync gps time to rtc every 5 seconds
-    if (chTimeNow() - timestamp > 5000) {
-      timestamp = chTimeNow();
+    if (chTimeNow() - timestamps.gps > 5000) {
+      timestamps.gps = chTimeNow();
       if (getGpsTimeOfWeek() != 0) {
         setRtcFromGps (getGpsWeek(), getGpsTimeOfWeek());
       }
     }
-
+ 
+    // IRIDIUM DEBUG AND TEST
+    // we send a message every 120 seconds
+#ifdef  IRIDIUM_SATCOM_DEBUG
+    if (chTimeNow() - timestamps.satcom > 120000) {
+      static int cnt=0;
+      char buff[16];
+      
+      timestamps.satcom = chTimeNow();
+      chsnprintf (buff, sizeof(buff), "iri_%d", cnt++);
+      satcomSendBuffer ((uint8_t *) buff, strlen(buff));
+    }
+#endif
   }
 }
 
@@ -155,5 +205,32 @@ static int32_t get_stack_free (Thread *tp)
 
   const int32_t freeBytes = index * sizeof(long long);
   return MAX(0, freeBytes - internalStructSize);
+}
+#endif
+
+
+#ifdef  IRIDIUM_SATCOM_DEBUG
+static __attribute__((noreturn)) msg_t thdSatcomReceive(void *arg) 
+{
+  (void)arg;
+  uint8_t recBuf[64];
+  int32_t  recBytes;
+
+  chRegSetThreadName("SatcomReceive");
+  chThdSleepSeconds (60);
+
+
+  while (TRUE) { 
+    recBytes = satcomReceiveBuffer (recBuf, sizeof(recBuf));
+    if (recBytes > 0) {
+      recBuf[recBytes] = 0;
+      sdLogWriteLog(&pprzLogFile, "Satcom thread has received %d bytes : «%s»",
+		    recBytes, recBuf);
+    } else if (recBytes < 0) {
+      sdLogWriteLog(&pprzLogFile, "Satcom thread satcomReceiveBuffer return ERROR %d",
+		    recBytes);
+    }
+    chThdSleepSeconds (1);
+  }
 }
 #endif
