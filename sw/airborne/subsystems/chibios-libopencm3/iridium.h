@@ -73,7 +73,7 @@ typedef struct {
    uint32_t atTimeout;
    uint32_t sendReceiveTimeout;
 
-   // State variables  
+   // State variables
    int remainingMessages;
    bool_t asleep;
    bool_t powered;
@@ -89,9 +89,9 @@ void   iridium_init (Iridium *irdm);
 int    iridium_begin (Iridium *irdm);
 int    iridium_sendSBDText (Iridium *irdm, const char *message);
 int    iridium_sendSBDBinary (Iridium *irdm, const uint8_t *txData, size_t txDataSize);
-int    iridium_sendReceiveSBDText (Iridium *irdm, const char *message, uint8_t *rxBuffer, 
+int    iridium_sendReceiveSBDText (Iridium *irdm, const char *message, uint8_t *rxBuffer,
 			       size_t *rxBufferSize);
-int    iridium_sendReceiveSBDBinary (Iridium *irdm, const uint8_t *txData, size_t txDataSize, 
+int    iridium_sendReceiveSBDBinary (Iridium *irdm, const uint8_t *txData, size_t txDataSize,
 				 uint8_t *rxBuffer, size_t *rxBufferSize);
 int    iridium_getSignalQuality (Iridium *irdm, int *quality);
 
@@ -103,10 +103,10 @@ bool_t iridium_isMessagePendingPinUp (void); // warn: when msg pending, send jus
 void   iridium_setPowerProfile (Iridium *irdm, int profile);  // 0 = direct connect  (default), 1 = USB
 void   iridium_adjustATTimeout (Iridium *irdm, int seconds);          // default value = 20 seconds
 void   iridium_adjustSendReceiveTimeout (Iridium *irdm, int seconds); // default value = 300 seconds
-void   iridium_setMinimumSignalQuality (Iridium *irdm, int quality);  // a number between 1 and 5, 
+void   iridium_setMinimumSignalQuality (Iridium *irdm, int quality);  // a number between 1 and 5,
 						    // default IRIDIUM_DEFAULT_CSQ_MINIMUM
-void   iridium_useMSSTMWorkaround (Iridium *irdm, bool_t useWorkAround); // true to use 
-						   // workaround from Iridium Alert 5/7 
+void   iridium_useMSSTMWorkaround (Iridium *irdm, bool_t useWorkAround); // true to use
+						   // workaround from Iridium Alert 5/7
 
 
 

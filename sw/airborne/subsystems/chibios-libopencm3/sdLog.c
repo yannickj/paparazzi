@@ -364,7 +364,7 @@ static msg_t thdSdLog(void *arg)
 	  varLenMsgQueueFreeChunk (&messagesQueue, &cbro);
           return SDLOG_FSFULL;
         }
-	
+
         memcpy (perfBuffer, &(lm->mess[stayLen]), messLen-stayLen);
         curBufFill=messLen-stayLen;
       }
@@ -373,7 +373,7 @@ static msg_t thdSdLog(void *arg)
       return SDLOG_INTERNAL_ERROR;
     }
   }
-  
+
   return SDLOG_OK;
 }
 

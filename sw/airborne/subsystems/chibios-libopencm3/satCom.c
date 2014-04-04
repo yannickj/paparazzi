@@ -17,11 +17,11 @@
       chThdSleepMilliseconds (100) ;  }};
 #else
 #define dbgStr(...) {}
-#endif 
+#endif
 
-VARLEN_MSGQUEUE_DECL(static, FALSE, satComQueueIn, 512, 16, 
+VARLEN_MSGQUEUE_DECL(static, FALSE, satComQueueIn, 512, 16,
 		     __attribute__ ((section(".ccmram"), aligned(8))));
-VARLEN_MSGQUEUE_DECL(static, TRUE, satComQueueOut, 512, 16, 
+VARLEN_MSGQUEUE_DECL(static, TRUE, satComQueueOut, 512, 16,
 		     __attribute__ ((section(".ccmram"), aligned(8))));
 
 static Iridium irdm;
@@ -56,14 +56,14 @@ int32_t satcomReceiveBuffer (uint8_t * const buffer, const uint8_t bufferSize)
   if (varLenMsgQueueIsEmpty (&satComQueueIn)) {
     return 0;
   }
-  
+
   return varLenMsgQueuePop (&satComQueueIn, buffer, bufferSize);
 }
 
 
 
 /*
-  
+
  */
 static __attribute__((noreturn)) msg_t thdSatcomRiPolling (void *arg)
 {
@@ -95,7 +95,7 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
   // The thread wait for iridium module to be ready
   while (iridium_begin (&irdm) != IRIDIUM_SUCCESS) {
     dbgStr ("iridium_begin FAIL");
-    chThdSleepMilliseconds (100) ;    
+    chThdSleepMilliseconds (100) ;
   }
 
   dbgStr ("***************** INITIAL iridium begin ********************");
@@ -111,18 +111,18 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
     if ((status != IRIDIUM_SUCCESS) || varLenMsgQueueIsEmpty (&satComQueueOut)) {
       dbgStr ("varLenMsgQueueIsEmpty");
       if (satcom.pollingInterval >= 60) {
-	iridium_sleep (&irdm); 
+	iridium_sleep (&irdm);
 	dbgStr ("mode sleep");
       }
       chThdSleepSeconds (satcom.pollingInterval);
-      
+
       if (satcom.pollingInterval >= 60) {
 	while (iridium_begin (&irdm) != IRIDIUM_SUCCESS) {
 	  dbgStr ("iridium_begin FAIL");
-	  chThdSleepMilliseconds (100) ;    
+	  chThdSleepMilliseconds (100) ;
 	}
 	dbgStr ("iridium_begin PASS : mode wake");
-      }      
+      }
     }
 
     // We wait for satcom link to be present
@@ -131,11 +131,11 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
       //      chThdSleepMilliseconds (10);
       //#warning "change waiting time for DEBUG, should be changed"
       dbgStr ("NO LINK");
-      chThdSleepMilliseconds (1000) ;    
+      chThdSleepMilliseconds (1000) ;
     }
     palClearPad(GPIOC, GPIOC_LED2);
     dbgStr ("LINK OK");
-    
+
     ChunkBufferRO cbro;
     txDataLen = varLenMsgQueuePopChunkTimeout (&satComQueueOut, &cbro, TIME_IMMEDIATE);
 
@@ -150,7 +150,7 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
       rxDataLen = sizeof (rxData); // in out param of sendReceiveSBDBinary
       status = iridium_sendReceiveSBDBinary (&irdm, txData, txDataLen, rxData, &rxDataLen);
       varLenMsgQueueFreeChunk (&satComQueueOut, &cbro);
-      if (status != IRIDIUM_SUCCESS) 
+      if (status != IRIDIUM_SUCCESS)
 	goto outerLoop; // continue would work here, but not in some inner loop at end of function
       // if there was message from modem, push them on queue
       if (rxDataLen) {
@@ -164,12 +164,12 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
 	satcom.msgPending = FALSE;
       }
     } else {
-      if (satcom.msgPending) { 
+      if (satcom.msgPending) {
 	dbgStr ("No msg to send, test for receive");
 	// no message to send, but have to test is there is message to receive
 	rxDataLen = sizeof (rxData); // in out param of sendReceiveSBDBinary
 	status = iridium_sendReceiveSBDBinary (&irdm, NULL, 0, rxData, &rxDataLen);
-	if (status != IRIDIUM_SUCCESS) 
+	if (status != IRIDIUM_SUCCESS)
 	  goto outerLoop; // continue would work here, but not in some inner loop at end of function
 	// if there was message from modem, push them on queue
 	if (rxDataLen) {
@@ -184,15 +184,15 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
 	}
       } else {
       	dbgStr ("No Ring Condition Received");
-      } 
+      }
     }
-    
+
     // if there was pending messages, get them all
     while (iridium_getWaitingMessageCount (&irdm)) {
       dbgStr ("** loop for more Received Msg");
       rxDataLen = sizeof (rxData); // in out param of sendReceiveSBDBinaryiridium
       status = iridium_sendReceiveSBDBinary (&irdm, NULL, 0, rxData, &rxDataLen);
-      if (status != IRIDIUM_SUCCESS) 
+      if (status != IRIDIUM_SUCCESS)
 	goto outerLoop; // continue would NOT work here since we want to continue on outer loop
       if (rxDataLen) {
 	varLenMsgQueuePush (&satComQueueIn, rxData, rxDataLen,
@@ -205,7 +205,7 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
     }
     satcom.msgPending = FALSE;
   }
-  
+
 }
 
 
