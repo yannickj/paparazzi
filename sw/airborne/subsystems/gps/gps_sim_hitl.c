@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010  Gautier Hattenberger
+ * Copyright (C) 2014 Sergey Krukowski <softsr@yahoo.de>
  *
  * This file is part of paparazzi.
  *
@@ -17,27 +17,19 @@
  * along with paparazzi; see the file COPYING.  If not, write to
  * the Free Software Foundation, 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- *
  */
 
-/** @file sonar_adc.h
- *  @brief simple driver to deal with one sonar sensor on ADC
+/**
+ * @file subsystems/gps/gps_sim_hitl.c
+ * GPS subsystem simulation from rotorcrafts horizontal/vertical reference system
  */
 
-#ifndef SONAR_ADC_H
-#define SONAR_ADC_H
+#include "subsystems/gps.h"
 
-#include "std.h"
+bool_t gps_available;
+uint32_t gps_sim_hitl_timer;
 
-struct SonarAdc {
-  uint16_t meas;          ///< Raw ADC value
-  uint16_t offset;        ///< Sonar offset in ADC units
-  float distance;         ///< Distance measured in meters
-};
-
-extern struct SonarAdc sonar_adc;
-
-extern void sonar_adc_init(void);
-extern void sonar_adc_read(void);
-
-#endif
+void gps_impl_init(void) {
+  gps.fix = GPS_FIX_NONE;
+  gps_available = FALSE;
+}
