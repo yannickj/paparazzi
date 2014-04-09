@@ -9,9 +9,14 @@
 # aircraft id is not yet in the binary message, so it must be given on command line
 # with --acid
 # If several iridium modem could send message, a filtering is possible specifing
-# a --imei option. Not all 15 digits of imei should be given, but only 
-# any discriminent part of it.
+# a --imei option. ALL 15 digits of imei should be given as is is used for uplink communication
 
+# TODO :
+# * utiliser l'adresse mail d'emission reelle
+# * testIridium sur maquette stm32 :
+#   ° reception => depaqueter les 3 types de messages et afficher les messages dans ttyConsole
+#   ° envoi => envoyer le message descendant de 23 octets
+# * faire la même chose dans pprz dans la section TEST
 
 
 use strict;
@@ -21,6 +26,8 @@ use feature ':5.12';
 use Mail::IMAPClient;
 use IO::Socket::SSL;
 use MIME::Parser;
+use Net::SMTP;
+use MIME::Lite;
 use File::Path; 
 use Getopt::Long;
 use Ivy;
@@ -35,21 +42,27 @@ my @md5 = (0207 ,0151 ,0313 ,0256 ,0355 ,0252 ,0016 ,0273 ,0072 ,0126 ,0273 ,022
 
 
 sub periodicMailfetch ();
-sub imapConnectGmail ();
+sub imapConnectGmail ($$);
 sub imapDisconnectGmail ();
 sub getNextUnseenMessage(); # return undef when no more unseen message
 sub getLastReceivedMessage(); 
 sub getAttachment ($);
 sub decodeBinaryAttachment ($);
+sub smtpSend ($);
 sub RadOfDeg($);
 sub DegOfRad($) ;
 sub statusFunc ($$);
 sub defaultOption ($$);
 sub usage (;$);
+sub receiveMoveWPCb(@);
+sub receiveSettingCb(@);
+sub receiveBlockCb(@);
 
 
 
-my $gmail;
+
+my $gmailImap;
+my $gmailSmtp;
 my $mimeParser = MIME::Parser->new;
 my %options;
 
@@ -70,13 +83,26 @@ END {
 
 
 #OPTIONS
-GetOptions (\%options, "bus=s", "imei=i", "acid=i");
+GetOptions (\%options, "bus=s", "imei=s", "acid=i", "gmuser=s", "gmpasswd=s", "lan");
 defaultOption ("bus", $ENV{IVYBUS});
 usage ("aircraft id is mandatory") unless exists $options{'acid'};
-warn "imei not given, no filtering on imei will be done\n" unless 
+usage ("gmail user is mandatory") unless exists $options{'gmuser'};
+usage ("gmail passwd is mandatory") unless exists $options{'gmpasswd'};
+usage ("imei (15 digits) is mandatory\n") unless 
     exists $options{'imei'};
-imapConnectGmail ();
+usage ("imei should be 15 digits long\n") unless  $options{'imei'} =~ /^\d{15}$/;
+imapConnectGmail ($options{'gmuser'}, $options{'gmpasswd'});
 
+if (exists($options{'lan'})) {
+    warn "use local, *NO* authenticated, smtp server\n";
+} else {
+    warn "use gmail, authenticated, smtp server\n";
+}
+
+# TEST SEND
+#smtpSend ("un buffer de test");
+#exit (0);
+# END TEST SEND
 
 $mimeParser->output_to_core(1);
 $mimeParser->tmp_dir("/tmp");
@@ -91,14 +117,16 @@ my $bus = Ivy->new (-statusFunc => \&statusFunc,
 #                    -neededApp => 
     );
 
+$bus->bindRegexp ('^(\S+)\s+MOVE_WP\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)', [\&receiveMoveWPCb]);
+$bus->bindRegexp ('^(\S+)\s+SETTING\s+(\S+)\s+(\S+)\s+(\S+)', [\&receiveSettingCb]);
+$bus->bindRegexp ('^(\S+)\s+BLOCK\s+(\S+)\s+(\S+)', [\&receiveBlockCb]);
+
+$bus->after (1, [\&periodicMailfetch]);
 $bus->repeat (FETCHMAIL_PERIOD, [\&periodicMailfetch]);
 $bus->repeat (ALIVE_TIMEOUT_PERIOD, [\&alive]);
 
 $bus->start ();
 Ivy::mainLoop ();
-
-
-
 
 #                        _
 #                       | |
@@ -106,11 +134,12 @@ Ivy::mainLoop ();
 #        / __|  | | | | | '_ \
 #        \__ \  | |_| | | |_) |
 #        |___/   \__,_| |_.__/
+#
 sub periodicMailfetch ()
 {
     while (my @unseenMails = getLastReceivedMessage()) {
 	foreach my $unseen  (@unseenMails) {
-	    my $msgBody = $gmail->message_string($unseen);
+	    my $msgBody = $gmailImap->message_string($unseen);
 	    if (defined $msgBody) {
 		my $entity =  $mimeParser->parse_data($msgBody);
 		getAttachment ($entity);
@@ -119,7 +148,7 @@ sub periodicMailfetch ()
 	    }
 	
 	    # debug, on le garde non lu
-            #$gmail->unset_flag("Seen", $unseen);
+            #$gmailImap->unset_flag("Seen", $unseen);
 	}
     }
  }
@@ -136,7 +165,7 @@ sub alive ()
 
 sub getNextUnseenMessage() # return undef when no more unseen message
 {
-    return $gmail->unseen();
+    return $gmailImap->unseen();
 }
 
 sub getLastReceivedMessage() # return undef when no more unseen message
@@ -144,16 +173,16 @@ sub getLastReceivedMessage() # return undef when no more unseen message
     state %allSeen;
     my $mn;
 
-    unless ($gmail->IsConnected) {
+    unless ($gmailImap->IsConnected) {
 	say "Warn: reconnect after beeing deconnected";
-	imapConnectGmail ();
+	imapConnectGmail ($options{'gmuser'}, $options{'gmpasswd'});
     }
     
-    $gmail->select("INBOX");
-    my @mailno = $gmail->search("ALL");
-    push  @mailno, $gmail->unseen();
+    $gmailImap->select("INBOX");
+    my @mailno = $gmailImap->search("ALL");
+    push  @mailno, $gmailImap->unseen();
 
-    @mailno = grep (!exists $allSeen{$_}, $gmail->search("ALL"));
+    @mailno = grep (!exists $allSeen{$_}, $gmailImap->search("ALL"));
     foreach $mn (@mailno) {
 	$allSeen{$mn} =1;
     }
@@ -163,8 +192,9 @@ sub getLastReceivedMessage() # return undef when no more unseen message
 
 
 
-sub imapConnectGmail () 
+sub imapConnectGmail ($$) 
 {
+    my ($u,$p) =@_;
 # Connect to the IMAP server via SSL
     my $socket = IO::Socket::SSL->new(
 	PeerAddr => 'imap.gmail.com',
@@ -174,13 +204,13 @@ sub imapConnectGmail ()
     
 # Build up a gmail attached to the SSL socket.
 # Login is automatic as usual when we provide User and Password
-    $gmail = Mail::IMAPClient->new(
+    $gmailImap = Mail::IMAPClient->new(
 	Socket   => $socket,
-	User     => 'test.corsica',
-	Password => 'spokecorsica',
+	User     => $u,
+	Password => $p,
 	)
 	or die "new(): $@";
-    $gmail->select("INBOX");
+    $gmailImap->select("INBOX");
 }
 
 
@@ -189,7 +219,7 @@ sub imapConnectGmail ()
 sub imapDisconnectGmail ()
 {
 # Say bye
-    $gmail->logout() if defined $gmail;
+    $gmailImap->logout() if defined $gmailImap;
 }
 
 
@@ -202,8 +232,7 @@ sub getAttachment ($) {
 
     if (@parts) {        # multipart...
 	map { getAttachment($_) } @parts;
-    }
-    elsif (($fileName= $ent->head->recommended_filename) && ($fileName =~ /.sbd$/)) {
+    } elsif (($fileName= $ent->head->recommended_filename) && ($fileName =~ /.sbd$/)) {
 	my ($modemImei) = $fileName =~ /^(\d+)/;
 	say "Filename : $fileName ;;  modem imei : $modemImei";
 	if (exists $options{'imei'}) {
@@ -213,7 +242,9 @@ sub getAttachment ($) {
 	    }
 	}
 	if ($io = $ent->open("r")) {
-	    my $pbc = <$io>;
+	    #my $pbc = <$io>;
+	    my $pbc;
+	    read ($io, $pbc, 100);
 	    if (length $pbc == DATAGRAM_LENGTH) {
 		decodeBinaryAttachment ($pbc) ;
 	    } else {
@@ -228,8 +259,10 @@ sub getAttachment ($) {
 }
 
 
-
-
+# C  An unsigned char (octet) value.
+# s  A signed short (16-bit) value.
+# S  An unsigned short value.
+# i  A signed integer value.
 sub decodeBinaryAttachment ($)
 {
     my $binaryData = shift;
@@ -266,17 +299,6 @@ sub decodeBinaryAttachment ($)
 }
 
 
-sub RadOfDeg($) 
-{
-    my $x = shift;
-    return ($x * (M_PI/180.));
-}
-
-sub DegOfRad($) 
-{ 
-    my $x = shift;
-    return ($x * (180. / M_PI));
-}
 
 sub statusFunc ($$)
 {
@@ -298,13 +320,101 @@ sub defaultOption ($$)
   }
 }
 
+ # <message name="MOVE_WP" id="2" link="forwarded">
+ #  <field name="wp_id" type="uint8"/>
+ #  <field name="ac_id" type="uint8"/>
+ #  <field name="lat" type="int32" unit="e-7deg"/>
+ #  <field name="lon" type="int32" unit="e-7deg"/>
+ #  <field name="alt" type="int32" unit="cm"/>
+ # </message>
+sub receiveMoveWPCb(@)
+{
+    my ($app, $from, $wp_id, $ac_id, $lat, $lon, $alt) = @_;
+    my $msgId = 2;
 
+    say "DBG> receiveMoveWPCb => wp_id=$wp_id, ac_id=$ac_id, lat=$lat, long=$lon, alt=$alt";
+    return unless $ac_id == $options{'acid'};
+    smtpSend (pack ("CCClll", $msgId, $wp_id, $ac_id, $lat, $lon, $alt));
+}
+
+ # <message name="SETTING" id="4" link="forwarded">
+ #  <field name="index" type="uint8"/>
+ #  <field name="ac_id" type="uint8"/>
+ #  <field name="value" type="float"/>
+ # </message>
+
+sub receiveSettingCb(@)
+{
+    my ($app, $from, $index, $ac_id, $value) = @_;
+    my $msgId = 4;
+  
+    say "receiveSettingCb index=$index, ac_id=$ac_id, value=$value";
+    return unless $ac_id == $options{'acid'};
+     smtpSend (pack ("CCCf", $msgId, $index, $ac_id, $value));
+}
+
+
+ # <message name="BLOCK" id="5" link="forwarded">
+ #  <field name="block_id" type="uint8"/>
+ #  <field name="ac_id" type="uint8"/>
+ # </message>
+sub receiveBlockCb(@)
+{
+    my ($app, $from, $block_id, $ac_id) = @_;
+    my $msgId = 5;
+
+    say "receiveBlockCb  block_id=$block_id, ac_id=$ac_id";
+    return unless $ac_id == $options{'acid'};
+    smtpSend (pack ("CCC", $msgId, $block_id, $ac_id));
+}
+
+
+
+sub smtpSend ($)
+{
+    my $binaryBuffer = shift;
+    
+    my $msg = MIME::Lite->new(
+        From     => $options{'gmuser'},
+#        To       => 'alexandre.bustico@free.fr',
+	To       => 'Data@SBD.Iridium.com',
+        Subject  => $options{'imei'},
+        Type     => 'application/octet-stream',
+        Encoding => 'base64',
+        Filename => 'msg.sbd',
+        Data     => $binaryBuffer
+    );
+
+    if (exists($options{'lan'})) {
+	$msg->send (smtp => 'smtp');
+    } else {
+	$msg->send (smtp => 'smtp.gmail.com:587',
+		    AuthUser =>  $options{'gmuser'},
+		    AuthPass => $options{'gmpasswd'});
+    }
+}
 
 sub usage (;$)
 {
     my $msg = shift;
     say "Error: $msg" if defined $msg;
-    say "USAGE: $0 \n[(optional) --bus 'ivybus'] \n(mandatory) --acid 'aircraft_id'\n".
+    say "USAGE: $0 ".
+	"\n[(optional) --bus 'ivybus'] \n".
+	"(mandatory) --acid 'aircraft_id'\n".
+	"(mandatory) --gmuser 'gmail user'\n".
+	"(mandatory) --gmpasswd 'gmail password'\n".
 	"[(optional) --imei 'filtering pattern on imei']";
     exit;
+}
+
+sub RadOfDeg($) 
+{
+    my $x = shift;
+    return ($x * (M_PI/180.));
+}
+
+sub DegOfRad($) 
+{ 
+    my $x = shift;
+    return ($x * (180. / M_PI));
 }
