@@ -316,6 +316,7 @@ let send_aircraft_msg = fun ac ->
                   "unix_time", f a.unix_time;
                   "itow", Pprz.Int32 a.itow;
                   "speed", f a.gspeed;
+                  "airspeed", f a.airspeed; (* negative value is sent if no airspeed available *)
                   "course", f (Geometry_2d.rad2deg a.course);
                   "alt", f a.alt;
                   "agl", f a.agl;
