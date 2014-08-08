@@ -1,0 +1,46 @@
+<!DOCTYPE module SYSTEM "../module.dtd">
+
+<module name="ObstacleAvoidSkySegmentation">
+  <doc>
+    <description>Video ARDone 2</description>
+  </doc>
+
+  <header>
+    <file name="sky_seg_avoid.h"/>
+  </header>
+
+  <init fun="sky_seg_avoid_init()"/>
+
+  <periodic fun="sky_seg_avoid_run()" freq="200" start="sky_seg_avoid_start()" stop="sky_seg_avoid_stop()" autorun="FALSE"/>
+  <makefile>
+    <define name="ARDRONE_VIDEO_PORT" value="2002" />
+    <define name="USE_ARDRONE_VIDEO" />
+<!--    <file name="video.c"/>  -->
+      <raw>
+
+include $(PAPARAZZI_HOME)/sw/ext/ardrone2_vision/Makefile.paths
+          
+VISION_MODULE_FOLDER = $(DIR_MODULES)/ObstacleAvoidSkySegmentation
+          
+$(TARGET).srcs += $(VISION_MODULE_FOLDER)/sky_seg_avoid_gst.c
+$(TARGET).srcs += $(VISION_MODULE_FOLDER)/avoid_navigation.c
+$(TARGET).srcs += $(DIR_LIB)/udp/socket.c
+$(TARGET).CFLAGS += -I$(DIR_MODULES) -I$(DIR_CV) -I$(DIR_LIB)
+
+all:
+	echo "Compiling libObstacleAvoidSkySegmentation.so plugin"
+	sb2 make -C $(VISION_MODULE_FOLDER)/gst_plugin clean all
+	make -C $(VISION_MODULE_FOLDER)/visionresult/
+
+#clean:
+#	sb2 make -C $(VISION_MODULE_FOLDER)/gst_plugin clean
+
+	
+upload_extra:
+	@echo "====================================VISION UPLOAD======================================"
+	make -C $(VISION_MODULE_FOLDER) upload
+
+    </raw>
+  </makefile>
+</module>
+

@@ -1,0 +1,36 @@
+<!DOCTYPE module SYSTEM "../module.dtd">
+
+<module name="Mjpeg">
+  <doc>
+    <description>Video ARDone 2</description>
+  </doc>
+
+  <header>
+    <file name="viewvideo.h"/>
+  </header>
+
+  <periodic fun="viewvideo_run()" freq="1" start="viewvideo_start()" stop="viewvideo_stop()" autorun="TRUE"/>
+  <makefile target="ap">
+    <file name="viewvideo.c" dir="modules/Mjpeg"/>
+    <file name="jpeg.c" dir="cv/encoding"/>
+    <file name="rtp.c" dir="cv/encoding"/>
+    <file name="socket.c" dir="lib/udp"/>
+    <file name="video.c" dir="lib/v4l"/>
+    <file name="ardrone2.c" dir="lib/v4l"/>
+    <define name="." type="include"/>
+    <define name="modules" type="include"/>
+    <define name="cv" type="include"/>
+    <define name="lib" type="include"/>
+    <define name="pthread" type="raw"/>
+    <define name="__USE_GNU"/>
+    <flag name="LDFLAGS" value="pthread"/>
+    <flag name="LDFLAGS" value="lrt"/>
+    <flag name="LDFLAGS" value="static"/>
+  </makefile>
+  <makefile target="nps">
+    <file name="viewvideo_nps.c" dir="modules/Mjpeg"/>
+    <define name="." type="include"/>
+    <define name="modules" type="include"/>
+  </makefile>
+</module>
+

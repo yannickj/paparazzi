@@ -1,0 +1,34 @@
+sudo apt-get install libtool autoconf
+
+git clone git://linuxtv.org/v4l-utils.git
+
+cd v4l-utils
+autoreconf --force --install
+mkdir build
+cd build
+../configure --prefix=/data/video/v4l-utils-nojpeg --host=arm-linux-gnueabi --without-jpeg
+make -i
+sudo make -i install
+
+cd /data/video
+tar -cf ~/v4l-utils-nojpeg.tar v4l-util-nojpeg
+
+cd $(PAPARZZI_SRC)/sw/ext/ardrone2_drivers
+./ardrone2.py upload_file ~/v4l-utils-nojpeg.tar .
+
+# only possible if enough space (i.e. not with gst) !
+
+
+
+LDFLAGS=-L/home/gautier/usr/gcc-linaro-arm-linux-gnueabihf-4.8-2013.06_linux/arm-linux-gnueabihf/libc/lib/arm-linux-gnueabihf LIBS="-lpthread -lrt -ldl -lm" ../configure --host=arm-linux-gnueabihf --without-jpeg --prefix=/data/video/v4l-utils
+
+DESTDIR=~/tmp/v4l-utils make install
+
+
+../configure --host=arm-linux-gnueabihf --without-jpeg --prefix=/data/video/v4l-utils CFLAGS=-fPIC LDFLAGS=-static
+
+
+CFLAGS="-O3 -fPIC -static -mfloat-abi=softfp -mtune=cortex-a8 -mfpu=vfp -march=armv7-a -fno-short-enums -Wall -Wcast-qual -Wimplicit -Wcast-align -Wpointer-arith -Wswitch -Wredundant-decls -Wreturn-type -Wshadow -Wunused -lm -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wnested-externs" LDFLAGS="-O3 -static -mfloat-abi=softfp -mtune=cortex-a8 -mfpu=vfp -march=armv7-a -fno-short-enums -Wall -Wcast-qual -Wimplicit -Wcast-align -Wpointer-arith -Wswitch -Wredundant-decls -Wreturn-type -Wshadow -Wunused -lm -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wnested-externs" LIBS="-static -lm -pthread -lrt" CXXFLAGS="-pipe -O3 -fshow-column -ffast-math -fPIC -g -ffunction-sections -fdata-sections -mfloat-abi=softfp -mtune=cortex-a8 -mfpu=vfp -march=armv7-a -Wall -Wextra" ../configure --host=arm-linux-gnueabi --without-jpeg --prefix=/data/video/v4l-utils
+
+
+gst-launch-0.10 udpsrc port=5000 ! rtpmp4vdepay ! decodebin ! xvimagesink

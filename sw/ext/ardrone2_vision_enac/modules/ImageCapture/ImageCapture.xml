@@ -1,0 +1,31 @@
+<!DOCTYPE module SYSTEM "../module.dtd">
+
+<module name="ImageCapture">
+  <doc>
+    <description>Download Images from ARDone 2 with netcat</description>
+  </doc>
+
+  <header>
+    <file name="image_capture.h"/>
+  </header>
+
+  <periodic fun="image_capture_run()" freq="1" start="image_capture_start()" stop="image_capture_stop()" autorun="FALSE"/>
+  <makefile target="ap">
+    <file name="image_capture.c" dir="modules/ImageCapture"/>
+    <file name="jpeg.c" dir="cv/encoding"/>
+    <file name="video.c" dir="lib/v4l"/>
+    <define name="modules" type="include"/>
+    <define name="cv" type="include"/>
+    <define name="lib" type="include"/>
+    <define name="pthread" type="raw"/>
+    <define name="__USE_GNU"/>
+    <flag name="LDFLAGS" value="pthread"/>
+    <flag name="LDFLAGS" value="lrt"/>
+    <flag name="LDFLAGS" value="static"/>
+  </makefile>
+  <makefile target="nps">
+    <file name="image_capture_nps.c" dir="modules/ImageCapture"/>
+    <define name="modules" type="include"/>
+  </makefile>
+</module>
+

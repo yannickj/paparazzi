@@ -1,0 +1,12 @@
+DIR_ARDRONE2_VISION := $(dir $(lastword $(MAKEFILE_LIST)))
+# ${shell echo ${PWD}}
+
+# Paths
+DIR_GSTREAMER   ?= $(DIR_ARDRONE2_VISION)ardrone2_gstreamer
+DIR_LIB		    ?= $(DIR_ARDRONE2_VISION)lib
+DIR_CV          ?= $(DIR_ARDRONE2_VISION)cv
+DIR_MODULES     ?= $(DIR_ARDRONE2_VISION)modules
+
+# Tools
+DRONE_TOOL      ?= $(DIR_GSTREAMER)/ardrone2.py
+
