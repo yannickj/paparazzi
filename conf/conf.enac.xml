@@ -1,0 +1,272 @@
+<conf>
+  <aircraft
+   name="ANT_TRACKER"
+   ac_id="5"
+   airframe="airframes/ENAC/ant_tracker.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/rotorcraft_basic.xml"
+   settings=" settings/dummy.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="ARD2_101"
+   ac_id="101"
+   airframe="airframes/ENAC/quadrotor/ard2_base_vision.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/ardrone_imav.xml"
+   flight_plan="flight_plans/rotorcraft_enac_safety.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int.xml settings/estimation/ins_float_invariant.xml settings/modules/rotorcraft_cam.xml ../sw/ext/ardrone2_vision_enac/modules/Mjpeg/ViewVideo_Settings.xml"
+   gui_color="red"
+  />
+  <aircraft
+   name="ARD2_102"
+   ac_id="102"
+   airframe="airframes/ENAC/quadrotor/ard2_base_digit.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/ardrone_imav.xml"
+   flight_plan="flight_plans/rotorcraft_enac_safety.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int.xml settings/estimation/ins_float_invariant.xml settings/modules/rotorcraft_cam.xml"
+   gui_color="lime"
+  />
+  <aircraft
+   name="ARD2_103"
+   ac_id="103"
+   airframe="airframes/ENAC/quadrotor/ard2_base_vision.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/ardrone_imav.xml"
+   flight_plan="flight_plans/rotorcraft_enac_safety.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int.xml settings/estimation/ins_float_invariant.xml settings/modules/rotorcraft_cam.xml"
+   gui_color="yellow"
+  />
+  <aircraft
+   name="ARD2_104"
+   ac_id="104"
+   airframe="airframes/ENAC/quadrotor/ard2_base_digit.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/ardrone_imav.xml"
+   flight_plan="flight_plans/rotorcraft_enac_safety.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int.xml settings/estimation/ins_float_invariant.xml settings/modules/rotorcraft_cam.xml"
+   gui_color="pink"
+  />
+  <aircraft
+   name="B4"
+   ac_id="1"
+   airframe="airframes/ENAC/quadrotor/b4.xml"
+   radio="radios/T9cap.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/Motion_Project_Rotorcraft_ENAC_Safety.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/stabilization_rate.xml settings/control/stabilization_att_int.xml settings/control/rotorcraft_guidance.xml settings/modules/servo_switch.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="BLACK_CAT"
+   ac_id="2"
+   airframe="airframes/ENAC/fixed-wing/twinjet2.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_fixedwing.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/infrared.xml settings/modules/light.xml settings/control/ctl_adaptive.xml"
+   gui_color="white"
+  />
+  <aircraft
+   name="BLENDER"
+   ac_id="3"
+   airframe="airframes/ENAC/quadrotor/blender.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/rotorcraft_basic.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/stabilization_rate.xml settings/control/stabilization_att_int.xml settings/control/rotorcraft_guidance.xml settings/modules/rotorcraft_cam.xml settings/modules/servo_switch.xml settings/estimation/ahrs_int_cmpl_quat.xml"
+   gui_color="#3cf2d51335a7"
+  />
+  <aircraft
+   name="ETERNITY"
+   ac_id="4"
+   airframe="airframes/ENAC/misc/eternity2.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_basic.xml"
+   gui_color="#e3b7debd17b1"
+  />
+  <aircraft
+   name="FENIX2"
+   ac_id="6"
+   airframe="airframes/ENAC/fixed-wing/fenix2.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/fixedwing_control_new.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_new.xml"
+   gui_color="#571dffff0000"
+  />
+  <aircraft
+   name="FIRESTORM"
+   ac_id="7"
+   airframe="airframes/ENAC/fixed-wing/firestorm.xml"
+   radio="radios/FlyElectricRx25_MODE_AUX2.xml"
+   telemetry="telemetry/default_fixedwing.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_basic.xml settings/estimation/ins_neutrals.xml settings/modules/poles.xml"
+   gui_color="red"
+  />
+  <aircraft
+   name="FJ2"
+   ac_id="8"
+   airframe="airframes/ENAC/misc/funjet_apogee.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/perso/basic_gls_esperce.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_new.xml settings/estimation/ins_neutrals.xml"
+   gui_color="#0000fffff0ed"
+  />
+  <aircraft
+   name="G1"
+   ac_id="9"
+   airframe="airframes/ENAC/quadrotor/booz2_g1.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/rotorcraft_basic.xml"
+   settings=" settings/rotorcraft_basic.xml settings/control/stabilization_att_int.xml settings/control/rotorcraft_guidance.xml settings/modules/servo_switch.xml settings/estimation/ins_sonar.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="GHOST"
+   ac_id="10"
+   airframe="airframes/ENAC/fixed-wing/ghost.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_new.xml settings/estimation/ins_neutrals.xml"
+   gui_color="#ffffffffffff"
+  />
+  <aircraft
+   name="JP"
+   ac_id="12"
+   airframe="airframes/ENAC/fixed-wing/jp.xml"
+   radio="radios/R617FS_5ch_enac.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_float_invariant.xml settings/control/ctl_new.xml settings/estimation/ins_neutrals.xml"
+   gui_color="#ffff7d7d0000"
+  />
+  <aircraft
+   name="JUMPER"
+   ac_id="11"
+   airframe="airframes/ENAC/fixed-wing/jumper.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/IMAV2014_carto.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_new.xml settings/estimation/ins_neutrals.xml settings/modules/hackhd.xml"
+   gui_color="#ffffa4910000"
+  />
+  <aircraft
+   name="MERLIN"
+   ac_id="13"
+   airframe="airframes/ENAC/fixed-wing/merlin.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_fixedwing.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_basic.xml settings/estimation/infrared.xml"
+   gui_color="#feed4f854f85"
+  />
+  <aircraft
+   name="MJ6"
+   ac_id="14"
+   airframe="airframes/examples/microjet.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_fixedwing.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_basic.xml"
+   gui_color="#ffffac1f0000"
+  />
+  <aircraft
+   name="MTO_ES1"
+   ac_id="24"
+   airframe="airframes/MTO/test_ptu.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/ZRT_Lannemezan_mai14.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_basic.xml settings/estimation/ins_neutrals.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="MTO_ES2"
+   ac_id="23"
+   airframe="airframes/MTO/easystar2.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/azur_11mars.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_basic.xml settings/estimation/ins_neutrals.xml settings/modules/meteo_france_DAQ.xml"
+   gui_color="#fffff6d00000"
+  />
+  <aircraft
+   name="MYTHE"
+   ac_id="15"
+   airframe="airframes/ENAC/fixed-wing/mythe.xml"
+   radio="radios/R617FS_5ch_enac.xml"
+   telemetry="telemetry/default_fixedwing_imu_9k6.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_new_airspeed.xml"
+   gui_color="#ffffffffffff"
+  />
+  <aircraft
+   name="QUARK"
+   ac_id="16"
+   airframe="airframes/ENAC/fixed-wing/quark1.xml"
+   radio="radios/FlyElectricRx25_MODE_AUX2.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_new.xml settings/estimation/ins_neutrals.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="TEST"
+   ac_id="17"
+   airframe="airframes/ENAC/fixed-wing/led.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/modules/hackhd.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="TWINSTAR"
+   ac_id="18"
+   airframe="airframes/ENAC/fixed-wing/twinstar_gps.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/_ZRT_Lannemezan_mai14v2.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/estimation/ins_float_invariant.xml settings/control/ctl_new.xml"
+   gui_color="#ffff7f880000"
+  />
+  <aircraft
+   name="WEASEL"
+   ac_id="19"
+   airframe="airframes/ENAC/fixed-wing/weasel.xml"
+   radio="radios/R617FS_5ch_enac.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_new.xml"
+   gui_color="#f08d1ff61ff6"
+  />
+  <aircraft
+   name="ZAGI"
+   ac_id="20"
+   airframe="airframes/ENAC/fixed-wing/zagi.xml"
+   radio="radios/R617FS_5ch_enac.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/mission_fw.xml"
+   settings=" settings/fixedwing_basic.xml settings/estimation/ins_neutrals.xml settings/control/ctl_new.xml settings/modules/hackhd.xml"
+   gui_color="blue"
+  />
+  <aircraft
+   name="ZAGI_ENERGY"
+   ac_id="21"
+   airframe="airframes/ENAC/fixed-wing/zagi.energy.xml"
+   radio="radios/R617FS_5ch_enac.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/basic.xml"
+   settings=" settings/fixedwing_basic.xml settings/control/ctl_energyadaptive.xml settings/estimation/ins_neutrals.xml"
+   gui_color="blue"
+  />
+</conf>
