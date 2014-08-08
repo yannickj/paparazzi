@@ -16,6 +16,7 @@
         <strip_button name="Look Down" icon="lookdown.png" value="-6434" group="cam_look"/>
       </dl_setting>
       <dl_setting var="rotorcraft_cam_pan" MIN="0" STEP="1" MAX="360" shortname="pan" unit="1/2^12r" alt_unit="deg" alt_unit_coef="0.0139882"/>
+      <dl_setting MAX="20" MIN="-20" STEP="5" VAR="nav_shift" module="cam_control/rotorcraft_cam" handler="IncreaseHeadingShift" shortname="heading shift"/>
     </dl_settings>
 
   </dl_settings>

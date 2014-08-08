@@ -42,7 +42,6 @@
 
 #include "std.h"
 #include "generated/airframe.h"
-#include "generated/flight_plan.h"
 #include "math/pprz_algebra_int.h"
 #include "mcu_periph/gpio.h"
 
@@ -80,15 +79,6 @@
 #define ROTORCRAFT_CAM_USE_PAN 1
 #endif
 
-/** WP control.
- * By default use WP_CAM waypoint if defined
- */
-#ifndef ROTORCRAFT_CAM_TRACK_WP
-#ifdef WP_CAM
-#define ROTORCRAFT_CAM_TRACK_WP WP_CAM
-#endif
-#endif
-
 extern uint8_t rotorcraft_cam_mode;
 
 extern int16_t rotorcraft_cam_tilt;
@@ -104,6 +94,16 @@ extern void rotorcraft_cam_set_mode(uint8_t mode);
  */
 #define rotorcraft_cam_SetCamMode(_v) { \
     rotorcraft_cam_set_mode(_v);        \
+}
+
+/** Increase nav_heading
+ *  Mapped to nav_shift to use GCS shortcut buttons
+ */
+extern int32_t nav_shift;
+#define rotorcraft_cam_IncreaseHeadingShift(x) { \
+  nav_shift = x; \
+  nav_heading += ANGLE_BFP_OF_REAL(RadOfDeg(nav_shift)); \
+  INT32_COURSE_NORMALIZE(nav_heading); \
 }
 
 /** Cam control from datalink message.

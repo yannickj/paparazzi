@@ -44,6 +44,7 @@
 #include "state.h"
 #include "firmwares/rotorcraft/navigation.h"
 #include "std.h"
+#include "generated/flight_plan.h"
 
 #include "subsystems/datalink/telemetry.h"
 
@@ -64,6 +65,15 @@
  */
 #ifndef ROTORCRAFT_CAM_OFF
 #define ROTORCRAFT_CAM_OFF gpio_clear
+#endif
+
+/** WP control.
+ * By default use WP_CAM waypoint if defined
+ */
+#ifndef ROTORCRAFT_CAM_TRACK_WP
+#ifdef WP_CAM
+#define ROTORCRAFT_CAM_TRACK_WP WP_CAM
+#endif
 #endif
 
 uint8_t rotorcraft_cam_mode;
@@ -87,6 +97,9 @@ int16_t rotorcraft_cam_tilt_pwm;
 int16_t rotorcraft_cam_pan;
 #define ROTORCRAFT_CAM_PAN_MIN 0
 #define ROTORCRAFT_CAM_PAN_MAX INT32_ANGLE_2_PI
+
+// Heading shift
+int32_t nav_shift;
 
 static void send_cam(void) {
   DOWNLINK_SEND_ROTORCRAFT_CAM(DefaultChannel, DefaultDevice,
