@@ -1,0 +1,15 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="ground_alt" dir="sonar">
+  <doc>
+    <description>Get sonar values from ABI and store last and filtered values</description>
+  </doc>
+  <header>
+    <file name="ground_alt.h"/>
+  </header>
+  <init fun="agl_dist_init()"/>
+  <makefile>
+    <file name="ground_alt.c"/>
+  </makefile>
+</module>
+
