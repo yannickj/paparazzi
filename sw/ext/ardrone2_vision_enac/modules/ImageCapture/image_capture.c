@@ -44,7 +44,7 @@
 #endif
 
 #ifndef IMAGE_FPS
-#define IMAGE_FPS 0.5
+#define IMAGE_FPS (1./6.)
 #endif
 
 // Save images by default
@@ -103,6 +103,9 @@ void *computervision_thread_main(void* data)
   // Commpressed image buffer
   uint8_t* jpegbuf = (uint8_t*)malloc(vid.h*vid.w*2);
 
+  // file index (search from 0)
+  int file_index = 0;
+
   int microsleep = (int)(1000000. / IMAGE_FPS);
 
   while (computer_vision_thread_command > 0)
@@ -110,12 +113,15 @@ void *computervision_thread_main(void* data)
     usleep(microsleep);
     video_grab_image(&vid, img_new);
 
-    uint8_t* end;
-    uint32_t size;
+    // Resize
+    resize_uyuv(img_new, &small, IMAGE_DOWNSIZE_FACTOR);
+
+    // JPEG encode the image:
+    uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
+    uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
+    uint32_t size = end-(jpegbuf);
 
 #if IMAGE_CAPTURE_SAVE
-    end = encode_image (img_new->buf, jpegbuf, 99, FOUR_TWO_TWO, vid.w, vid.h, 1);
-    size = end-(jpegbuf);
     FILE* save;
     char save_name[128];
     if (system("mkdir -p /data/video/images") == 0) {
@@ -142,17 +148,9 @@ void *computervision_thread_main(void* data)
     }
 #endif
 
-    // Resize
-    resize_uyuv(img_new, &small, IMAGE_DOWNSIZE_FACTOR);
-
-    // JPEG encode the image:
-    uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
-    uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
-    uint32_t size = end-(jpegbuf);
-
     // Fork process
     int status;
-    pid_t pid = vfork();
+    pid_t pid = fork();
 
     if (pid == 0) {
       // Open process to send using netcat in child process
