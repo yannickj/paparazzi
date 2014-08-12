@@ -22,3 +22,6 @@
 *.out
 *.app
 *.x
+
+images_tmp
+sdp_tmp
