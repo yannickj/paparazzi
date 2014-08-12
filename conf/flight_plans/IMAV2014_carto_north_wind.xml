@@ -12,8 +12,8 @@ static inline float wp_dist(float wp1_x, float wp1_y, float wp2_x, float wp2_y) 
   <waypoints>
     <waypoint name="HOME" lat="52.142983" lon="5.842166"/>
     <waypoint name="STDBY" lat="52.143239" lon="5.840320"/>
-    <waypoint height="30.0" name="AF" x="73.3" y="-66.7"/>
-    <waypoint height="0.0" name="TD" x="0" y="0"/>
+    <waypoint height="30.0" name="AF" lat="52.142662" lon="5.841138"/>
+    <waypoint height="0.0" name="TD" lat="52.143185" lon="5.840102"/>
     <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
     <waypoint name="CLIMB" x="12.0" y="136.8"/>
     <waypoint name="N1" lat="52.143245" lon="5.840738"/>

@@ -1,6 +1,6 @@
 <!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
 
-<flight_plan alt="66" ground_alt="46" home_mode_height="10" lat0="52.142596" lon0="5.840263" max_dist_from_home="250" name="IMAV2014 Digit" security_height="5">
+<flight_plan alt="61" ground_alt="46" home_mode_height="10" lat0="52.142596" lon0="5.840263" max_dist_from_home="250" name="IMAV2014 Digit" security_height="5">
   <header>
 #include "subsystems/datalink/datalink.h"
 static inline float wp_dist(float wp1_x, float wp1_y, float wp2_x, float wp2_y) {
@@ -13,11 +13,11 @@ static inline float wp_dist(float wp1_x, float wp1_y, float wp2_x, float wp2_y) 
   <waypoints>
     <waypoint lat="52.142983" lon="5.842166" name="HOME"/>
     <waypoint name="STDBY" x="10.6" y="-6.7"/>
-    <waypoint name="TD" x="-2.6" y="-5.6"/>
+    <waypoint name="TD" lat="52.143185" lon="5.840102"/>
     <waypoint name="CLIMB" x="0.5" y="6.6"/>
-    <waypoint name="OBS1" x="153.5" y="1.9"/>
-    <waypoint name="OBS2" x="150.5" y="8.8"/>
-    <waypoint name="CAM" x="182.5" y="28.0"/>
+    <waypoint name="OBS1" x="172.0" y="24.5"/>
+    <waypoint name="OBS2" x="172.5" y="29.2"/>
+    <waypoint name="CAM" x="183.1" y="25.3"/>
     <waypoint name="ROOF" x="157.7" y="31.1"/>
     <waypoint name="HERE" x="8.1" y="-13.9"/>
   </waypoints>
@@ -57,7 +57,7 @@ static inline float wp_dist(float wp1_x, float wp1_y, float wp2_x, float wp2_y) 
     <block name="Observe 1" strip_button="Obs1" pre_call="nav_set_heading_towards_waypoint(WP_CAM)" group="obs1">
       <go from="STDBY" hmode="route" wp="OBS1"/>
       <set value="MODULES_START" var="ImageCapture_image_capture_run_status"/>
-      <stay wp="OBS1" height="8.0" until="stage_time>(8*60)"/>
+      <stay wp="OBS1" height="5.0" until="stage_time>(5*60)"/>
       <set value="MODULES_STOP" var="ImageCapture_image_capture_run_status"/>
       <deroute block="Back from Obs1"/>
     </block>
@@ -70,7 +70,7 @@ static inline float wp_dist(float wp1_x, float wp1_y, float wp2_x, float wp2_y) 
     <block name="Observe 2" strip_button="Obs2" pre_call="nav_set_heading_towards_waypoint(WP_CAM)" group="obs2">
       <go from="STDBY" hmode="route" wp="OBS2"/>
       <set value="MODULES_START" var="ImageCapture_image_capture_run_status"/>
-      <stay wp="OBS2" height="8.0" until="stage_time>(7*60)"/>
+      <stay wp="OBS2" height="5.0" until="stage_time>(5*60)"/>
       <set value="MODULES_STOP" var="ImageCapture_image_capture_run_status"/>
       <deroute block="Back from Obs2"/>
     </block>
