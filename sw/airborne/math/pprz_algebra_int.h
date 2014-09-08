@@ -91,7 +91,7 @@ struct Int32Vect3 {
 #define INT32_QUAT_FRAC 15
 /**
  * @brief Rotation quaternion
- * @details Units: INT32_QUAT_FRAC */
+ * @details Units: BFP with #INT32_QUAT_FRAC */
 struct Int32Quat {
   int32_t qi;
   int32_t qx;
@@ -101,10 +101,10 @@ struct Int32Quat {
 
 
 struct Int64Quat {
-  int32_t qi;
-  int32_t qx;
-  int32_t qy;
-  int32_t qz;
+  int64_t qi;
+  int64_t qx;
+  int64_t qy;
+  int64_t qz;
 };
 
 
@@ -138,11 +138,11 @@ struct Int16Eulers {
 
 /**
  * @brief euler angles
- * @details Units: rad with INT32_ANGLE_FRAC */
+ * @details Units: rad in BFP with #INT32_ANGLE_FRAC */
 struct Int32Eulers {
-  int32_t phi; ///< in rad with INT32_ANGLE_FRAC
-  int32_t theta; ///< in rad with INT32_ANGLE_FRAC
-  int32_t psi; ///< in rad with INT32_ANGLE_FRAC
+  int32_t phi;   ///< in rad with #INT32_ANGLE_FRAC
+  int32_t theta; ///< in rad with #INT32_ANGLE_FRAC
+  int32_t psi;   ///< in rad with #INT32_ANGLE_FRAC
 };
 
 
@@ -151,7 +151,7 @@ struct Int32Eulers {
 
 /**
  * @brief rotation matrix
- * @details Units: rad with INT32_TRIG_FRAC */
+ * @details Units: rad in BFP with #INT32_TRIG_FRAC */
 struct Int32RMat {
   int32_t m[3*3];
 };
@@ -171,17 +171,17 @@ struct Int16Rates {
 /* Rotational speed                              */
 /**
  * @brief angular rates
- * @details Units: rad/s^2 with INT32_RATE_FRAC */
+ * @details Units: rad/s in BFP with #INT32_RATE_FRAC */
 struct Int32Rates {
-  int32_t p; ///< in rad/s^2 with INT32_RATE_FRAC
-  int32_t q; ///< in rad/s^2 with INT32_RATE_FRAC
-  int32_t r; ///< in rad/s^2 with INT32_RATE_FRAC
+  int32_t p; ///< in rad/s with #INT32_RATE_FRAC
+  int32_t q; ///< in rad/s with #INT32_RATE_FRAC
+  int32_t r; ///< in rad/s with #INT32_RATE_FRAC
 };
 
 struct Int64Rates {
-  int64_t p; ///< in rad/s^2 with INT32_RATE_FRAC
-  int64_t q; ///< in rad/s^2 with INT32_RATE_FRAC
-  int64_t r; ///< in rad/s^2 with INT32_RATE_FRAC
+  int64_t p;
+  int64_t q;
+  int64_t r;
 };
 
 
@@ -200,6 +200,7 @@ struct Int64Vect3 {
 // Real (floating point) ->  Binary Fixed Point  (int)
 #define BFP_OF_REAL(_vr, _frac)    ((_vr)*(1<<(_frac)))
 #define FLOAT_OF_BFP(_vbfp, _frac) ((float)(_vbfp)/(1<<(_frac)))
+#define DOUBLE_OF_BFP(_vbfp, _frac) ((double)(_vbfp)/(1<<(_frac)))
 #define RATE_BFP_OF_REAL(_af)   BFP_OF_REAL((_af), INT32_RATE_FRAC)
 #define RATE_FLOAT_OF_BFP(_ai)  FLOAT_OF_BFP((_ai), INT32_RATE_FRAC)
 #define ANGLE_BFP_OF_REAL(_af)  BFP_OF_REAL((_af), INT32_ANGLE_FRAC)
@@ -605,25 +606,25 @@ struct Int64Vect3 {
 
 /** in place quaternion first order integration with constant rotational velocity. */
 #define INT32_QUAT_INTEGRATE_FI(_q, _hr, _omega, _f) {              \
-    _hr.qi += -_omega.p*_q.qx - _omega.q*_q.qy - _omega.r*_q.qz;    \
-    _hr.qx +=  _omega.p*_q.qi + _omega.r*_q.qy - _omega.q*_q.qz;    \
-    _hr.qy +=  _omega.q*_q.qi - _omega.r*_q.qx + _omega.p*_q.qz;    \
-    _hr.qz +=  _omega.r*_q.qi + _omega.q*_q.qx - _omega.p*_q.qy;    \
+    _hr.qi += - ((int64_t) _omega.p)*_q.qx - ((int64_t) _omega.q)*_q.qy - ((int64_t) _omega.r)*_q.qz;    \
+    _hr.qx +=   ((int64_t) _omega.p)*_q.qi + ((int64_t) _omega.r)*_q.qy - ((int64_t) _omega.q)*_q.qz;    \
+    _hr.qy +=   ((int64_t) _omega.q)*_q.qi - ((int64_t) _omega.r)*_q.qx + ((int64_t) _omega.p)*_q.qz;    \
+    _hr.qz +=   ((int64_t) _omega.r)*_q.qi + ((int64_t) _omega.q)*_q.qx - ((int64_t) _omega.p)*_q.qy;    \
                                                                     \
-    ldiv_t _div = ldiv(_hr.qi, ((1<<INT32_RATE_FRAC)*_f*2));        \
-    _q.qi+= _div.quot;                                              \
+    lldiv_t _div = lldiv(_hr.qi, ((1<<INT32_RATE_FRAC)*_f*2));      \
+    _q.qi+= (int32_t) _div.quot;                                    \
     _hr.qi = _div.rem;                                              \
                                                                     \
-    _div = ldiv(_hr.qx, ((1<<INT32_RATE_FRAC)*_f*2));               \
-    _q.qx+= _div.quot;                                              \
+    _div = lldiv(_hr.qx, ((1<<INT32_RATE_FRAC)*_f*2));              \
+    _q.qx+= (int32_t) _div.quot;                                    \
     _hr.qx = _div.rem;                                              \
                                                                     \
-    _div = ldiv(_hr.qy, ((1<<INT32_RATE_FRAC)*_f*2));               \
-    _q.qy+= _div.quot;                                              \
+    _div = lldiv(_hr.qy, ((1<<INT32_RATE_FRAC)*_f*2));              \
+    _q.qy+= (int32_t) _div.quot;                                    \
     _hr.qy = _div.rem;                                              \
                                                                     \
-    _div = ldiv(_hr.qz, ((1<<INT32_RATE_FRAC)*_f*2));               \
-    _q.qz+= _div.quot;                                              \
+    _div = lldiv(_hr.qz, ((1<<INT32_RATE_FRAC)*_f*2));              \
+    _q.qz+= (int32_t) _div.quot;                                    \
     _hr.qz = _div.rem;                                              \
                                                                     \
   }

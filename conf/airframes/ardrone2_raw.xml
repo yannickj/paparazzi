@@ -4,7 +4,6 @@
 
   <firmware name="rotorcraft">
     <target name="ap" board="ardrone2_raw">
-      <define name="USE_SONAR"/>
       <define name="AUTOPILOT_DISABLE_AHRS_KILL"/>
       <subsystem name="telemetry" type="udp"/>
       <subsystem name="radio_control" type="datalink"/>
@@ -14,6 +13,8 @@
       <subsystem name="fdm" type="jsbsim"/>
       <subsystem name="radio_control" type="ppm"/>
     </target>
+
+    <define name="USE_SONAR" value="TRUE"/>
 
 	<!-- Subsystem section -->
     <subsystem name="motor_mixing"/>
@@ -28,6 +29,8 @@
   <modules main_freq="512">
     <load name="gps_ubx_ucenter.xml"/>
     <load name="send_imu_mag_current.xml"/>
+    <load name="file_logger.xml"/>
+    <!--  load name="../../sw/ext/ardrone2_vision/modules/Mjpeg/ViewVideo.xml"/-->
   </modules>
 
   <commands>
@@ -91,7 +94,7 @@
   </section>
 
   <!-- local magnetic field -->
-  <!-- http://paparazzi.enac.fr/wiki/Subsystem/ahrs#Local_Magnetic_Field -->
+  <!-- http://wiki.paparazziuav.org/wiki/Subsystem/ahrs#Local_Magnetic_Field -->
   <section name="AHRS" prefix="AHRS_">
     <!-- Toulouse -->
     <define name="H_X" value="0.513081"/>
@@ -104,10 +107,8 @@
   </section>
 
   <section name="INS" prefix="INS_">
-    <define name="SONAR_SENS" value="0.00034"/>
     <define name="SONAR_MAX_RANGE" value="2.2"/>
     <define name="SONAR_UPDATE_ON_AGL" value="TRUE"/>
-    <define name="SONAR_VARIANCE_THRESHOLD" VALUE="2.0"/>
   </section>
 
   <section name="STABILIZATION_RATE" prefix="STABILIZATION_RATE_">
@@ -145,19 +146,19 @@
     <define name="DEADBAND_R" value="250"/>
 
     <!-- reference -->
-    <define name="REF_OMEGA_P" value="900" unit="deg/s"/>
+    <define name="REF_OMEGA_P" value="450" unit="deg/s"/>
     <define name="REF_ZETA_P" value="0.9"/>
     <define name="REF_MAX_P" value="600." unit="deg/s"/>
     <define name="REF_MAX_PDOT" value="RadOfDeg(8000.)"/>
 
-    <define name="REF_OMEGA_Q" value="900" unit="deg/s"/>
+    <define name="REF_OMEGA_Q" value="450" unit="deg/s"/>
     <define name="REF_ZETA_Q" value="0.9"/>
     <define name="REF_MAX_Q" value="600." unit="deg/s"/>
     <define name="REF_MAX_QDOT" value="RadOfDeg(8000.)"/>
 
-    <define name="REF_OMEGA_R" value="600" unit="deg/s"/>
+    <define name="REF_OMEGA_R" value="200" unit="deg/s"/>
     <define name="REF_ZETA_R" value="0.9"/>
-    <define name="REF_MAX_R" value="400." unit="deg/s"/>
+    <define name="REF_MAX_R" value="300." unit="deg/s"/>
     <define name="REF_MAX_RDOT" value="RadOfDeg(4000.)"/>
 
     <!-- feedback -->
@@ -180,11 +181,6 @@
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
-    <define name="MIN_ERR_Z" value="POS_BFP_OF_REAL(-10.)"/>
-    <define name="MAX_ERR_Z" value="POS_BFP_OF_REAL( 10.)"/>
-    <define name="MIN_ERR_ZD" value="SPEED_BFP_OF_REAL(-10.)"/>
-    <define name="MAX_ERR_ZD" value="SPEED_BFP_OF_REAL( 10.)"/>
-    <define name="MAX_SUM_ERR" value="2000000"/>
     <define name="HOVER_KP" value="283"/>
     <define name="HOVER_KD" value="82"/>
     <define name="HOVER_KI" value="13"/>
@@ -199,14 +195,14 @@
     <!-- define name="MAX_BANK" value="32" unit="deg"/ -->
     <define name="PGAIN" value="79"/>
     <define name="DGAIN" value="100"/>
-    <define name="IGAIN" value="60"/>
+    <define name="IGAIN" value="30"/>
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">
     <define name="ACTUATOR_NAMES" value="{&quot;nw_motor&quot;, &quot;ne_motor&quot;, &quot;se_motor&quot;, &quot;sw_motor&quot;}"/>
     <define name="JSBSIM_MODEL" value="&quot;simple_ardrone2&quot;"/>
     <define name="JSBSIM_INIT" value="&quot;reset00&quot;"/>
-    <define name="SENSORS_PARAMS" value="&quot;nps_sensors_params_default.h&quot;"/>
+    <define name="SENSORS_PARAMS" value="&quot;nps_sensors_params_ardrone2.h&quot;"/>
   </section>
 
   <section name="AUTOPILOT">

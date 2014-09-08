@@ -5,7 +5,7 @@
     Use telemetry/default_fixedwing_imu.xml
 
      Reely Condor
-     TWOG v1.0 Board (http://paparazzi.enac.fr/wiki/TWOG)
+     TWOG v1.0 Board (http://wiki.paparazziuav.org/wiki/TWOG)
      Sparkfun Razor IMU with Premerlani Code
      wi.232 Radiomodems
 -->
@@ -210,5 +210,9 @@
     <subsystem name="navigation"/>
     <subsystem name="ins" type="alt_float"/>
   </firmware>
+
+  <modules>
+    <load name="nav_line.xml"/>
+  </modules>
 
 </airframe>

@@ -26,7 +26,6 @@ twog_1.0 + aspirin + ETS baro + ETS speed
     </target>
 
     <define name="USE_AIRSPEED"/>
-    <define name="USE_BAROMETER"/>
     <define name="AGR_CLIMB"/>
     <define name="STRONG_WIND"/>
     <define name="WIND_INFO"/>
@@ -39,9 +38,11 @@ twog_1.0 + aspirin + ETS baro + ETS speed
       <configure name="ASPIRIN_I2C_DEV" value="i2c0"/>
     </subsystem>
     <subsystem name="ahrs"      type="int_cmpl_quat"/>
-    <subsystem name="ins"	type="alt_float"/>
+    <subsystem name="ins"	type="alt_float">
+      <define name="USE_BAROMETER"/>
+    </subsystem>
     <subsystem name="control" type="energyadaptive"/>
-    <subsystem name="navigation" type="extra"/>
+    <subsystem name="navigation"/>
 </firmware>
 
   <modules>
@@ -60,6 +61,7 @@ twog_1.0 + aspirin + ETS baro + ETS speed
     <load name="digital_cam.xml">
       <define name="DC_SHUTTER_GPIO" value="GPIOB,GPIO22"/><!-- 18:aux 22:camsw-->
     </load>
+    <load name="nav_survey_polygon.xml"/>
   </modules>
 
 <!-- ################################################## -->
@@ -118,11 +120,6 @@ twog_1.0 + aspirin + ETS baro + ETS speed
 <!--
 ######################################################################################
 -->
-  <section name="AHRS" prefix="AHRS_">
-    <define name="H_X" value=" 0.376689168"/>		<!-- magnatic field -->
-    <define name="H_Y" value="0.008242371595"/>
-    <define name="H_Z" value=" 0.92630171"/>
-  </section>
 
    <section name="INS" prefix="INS_">
     <define name="ROLL_NEUTRAL_DEFAULT" value="0" unit="deg"/>
@@ -164,7 +161,6 @@ twog_1.0 + aspirin + ETS baro + ETS speed
     <define name="NO_XBEE_API_INIT" value="TRUE"/>
     <define name="TRIGGER_DELAY" value="1."/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="70."/>
-    <define name="MIN_CIRCLE_RADIUS" value="35.0"/>
   </section>
 
   <section name="GLS_APPROACH" prefix="APP_">

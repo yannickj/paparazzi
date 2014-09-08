@@ -147,7 +147,7 @@ struct State {
 
   /**
    * Position in Latitude, Longitude and Altitude.
-   * Units lat,lon: radians*1e7
+   * Units lat,lon: degrees*1e7
    * Units alt: milimeters above reference ellipsoid
    */
   struct LlaCoor_i lla_pos_i;
@@ -487,7 +487,7 @@ extern void stateCalcPositionLla_f(void);
 
 /// Test if local coordinates are valid.
 static inline bool_t stateIsLocalCoordinateValid(void) {
-  return ((state.ned_initialized_i || state.utm_initialized_f) && (state.pos_status & (POS_LOCAL_COORD)));
+  return ((state.ned_initialized_i || state.ned_initialized_f || state.utm_initialized_f) && (state.pos_status & (POS_LOCAL_COORD)));
 }
 
 /// Test if global coordinates are valid.

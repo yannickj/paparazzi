@@ -322,7 +322,7 @@ let mark = fun (geomap:G.widget) ac_id track plugin_frame ->
 
 (** Light display of attributes in the flight plan. *)
 let attributes_pretty_printer = fun attribs ->
-  (* Remove the optional attributes *)
+  (* Remove the optional attributesÂ *)
   let valid = fun a ->
     let a = String.lowercase a in
     a <> "no" && a <> "strip_icon" && a <> "strip_button" && a <> "pre_call"
@@ -390,9 +390,8 @@ let get_icon_and_track_size = fun af_xml ->
   try
     (* search AC_ICON in GCS section *)
     let gcs_section = ExtXml.child af_xml ~select:(fun x -> Xml.attrib x "name" = "GCS") "section" in
-    let fvalue = fun name default ->
-      try ExtXml.attrib (ExtXml.child gcs_section ~select:(fun x -> ExtXml.attrib x "name" = name) "define") "value" with _ -> default in
-    match fvalue "AC_ICON" "fixedwing" with
+    let ac_icon = ExtXml.child gcs_section ~select:(fun x -> ExtXml.attrib x "name" = "AC_ICON") "define" in
+    match ExtXml.attrib ac_icon "value" with
     | "home" -> ("home", 1) (* no track for home icon *)
     | x -> (x, !track_size)
   with _ -> (firmware_name, !track_size)
@@ -725,10 +724,12 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
                 fprintf stderr "Warning: %s not setable from GCS strip (i.e. not listed in the xml settings file)\n" setting_name in
 
           connect "flight_altitude" (fun f -> ac.strip#connect_shift_alt (fun x -> f (ac.target_alt+.x)));
-          connect "launch" ac.strip#connect_launch;
+          connect "launch" ~warning:false ac.strip#connect_launch;
           connect "kill_throttle" ac.strip#connect_kill;
-          connect "nav_shift" ac.strip#connect_shift_lateral;
-          connect "pprz_mode" ac.strip#connect_mode;
+          (* try to connect either pprz_mode (fixedwing) or autopilot_mode (rotorcraft) *)
+          connect "pprz_mode" ~warning:false (ac.strip#connect_mode 2.);
+          connect "autopilot_mode" ~warning:false (ac.strip#connect_mode 13.);
+          connect "nav_shift" ~warning:false  ac.strip#connect_shift_lateral;
           connect "autopilot_flight_time" ac.strip#connect_flight_time;
           let get_ac_unix_time = fun () -> ac.last_unix_time in
           connect ~warning:false "snav_desired_tow" (ac.strip#connect_apt get_ac_unix_time);
@@ -753,8 +754,7 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
               let gps_reset_id = settings_tab#assoc "gps.reset" in
               gps_page#connect_reset
                 (fun x -> dl_setting_callback gps_reset_id (float x))
-            with Not_found ->
-              prerr_endline "Warning: GPS reset not setable from GCS (i.e. 'gps.reset' not listed in the xml settings file)"
+            with Not_found -> ()
           end
       | None -> ()
   end;
@@ -1048,13 +1048,24 @@ module GCS_icon = struct
   let timeout = 10000 (* ms : time before changing to outdated color *)
 
   let display = fun (geomap:G.widget) vs ->
+    let lat = Pprz.float_assoc "lat" vs
+    and lon = Pprz.float_assoc "long" vs in
+    let wgs84 = LL.make_geo_deg lat lon in
+
     let item =
       match !status with
           None -> (* First call, create the graphical object *)
-            GnoCanvas.ellipse ~fill_color ~props:[`WIDTH_PIXELS 2]
+            let item = GnoCanvas.ellipse ~fill_color ~props:[`WIDTH_PIXELS 2]
               ~x1: ~-.radius ~y1:  ~-.radius ~x2:radius ~y2:radius
-              geomap#canvas#root
-        | Some (item, timeout_handle) -> (* Remove the timeouted color modification *)
+              geomap#canvas#root in
+            (* connect callback on zoom change *)
+            ignore(geomap#zoom_adj#connect#value_changed (fun () ->
+              match !status with
+              | None -> ()
+              | Some (item, _, wgs84) -> geomap#move_item ~z:geomap#current_zoom item wgs84
+            ));
+            item
+        | Some (item, timeout_handle, _) -> (* Remove the timeouted color modification *)
           Glib.Timeout.remove timeout_handle;
           item in
 
@@ -1062,14 +1073,10 @@ module GCS_icon = struct
     let change_color_if_not_updated =
       Glib.Timeout.add 10000 (fun ()  -> item#set [`OUTLINE_COLOR outdated_color]; false) in
 
-    (* Store the object and the timeout to change its color *)
-    status := Some (item, change_color_if_not_updated);
+    (* Store the object, the position and the timeout to change its color *)
+    status := Some (item, change_color_if_not_updated, wgs84);
 
-    let lat = Pprz.float_assoc "lat" vs
-    and lon = Pprz.float_assoc "long" vs in
-    let wgs84 = LL.make_geo_deg lat lon in
-
-    geomap#move_item item wgs84
+    geomap#move_item ~z:geomap#current_zoom item wgs84
 end (* module GCS_icon *)
 
 
@@ -1149,8 +1156,8 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
       ac.last_block_name <- b;
       ac.strip#set_label "block_name" b
     end;
-    let block_time = Int32.to_int (Pprz.int32_assoc "block_time" vs)
-    and stage_time = Int32.to_int (Pprz.int32_assoc "stage_time" vs) in
+    let block_time = Int64.to_int (Pprz.uint32_assoc "block_time" vs)
+    and stage_time = Int64.to_int (Pprz.uint32_assoc "stage_time" vs) in
     let bt = sprintf "%02d:%02d" (block_time / 60) (block_time mod 60) in
     ac.strip#set_label "block_time" bt;
     let st = sprintf "%02d:%02d" (stage_time / 60) (stage_time mod 60) in
@@ -1159,7 +1166,7 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
     (* Estimated Time Arrival to next waypoint *)
     let d = Pprz.float_assoc "dist_to_wp" vs in
     let label =
-      if d = 0. || ac.speed = 0. then
+      if d < 0.5 || ac.speed < 0.5 then
         "N/A"
       else
         sprintf "%.0fs" (d /. ac.speed) in
@@ -1231,7 +1238,7 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
 
   let get_ap_status = fun _sender vs ->
     let ac = get_ac vs in
-    let flight_time = Int32.to_int (Pprz.int32_assoc "flight_time" vs) in
+    let flight_time = Int64.to_int (Pprz.uint32_assoc "flight_time" vs) in
     ac.track#update_ap_status (float_of_int flight_time);
     ac.flight_time <- flight_time;
     let ap_mode = Pprz.string_assoc "ap_mode" vs in
@@ -1244,7 +1251,7 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
         match ap_mode with
             "AUTO2" | "NAV" -> ok_color
           | "AUTO1" | "R_RCC" | "A_RCC" | "ATT_C" | "R_ZH" | "A_ZH" | "HOVER" | "HOV_C" | "H_ZH" -> "#10F0E0"
-          | "MANUAL" | "RATE" | "ATT" | "RC_D" -> warning_color
+          | "MANUAL" | "RATE" | "ATT" | "RC_D" | "CF" | "FWD" -> warning_color
           | _ -> alert_color in
       ac.strip#set_color "AP" color;
     end;
@@ -1280,10 +1287,12 @@ let listen_waypoint_moved = fun () ->
     let wp_id = Pprz.int_assoc "wp_id" vs in
     let a = fun s -> Pprz.float_assoc s vs in
     let geo = { posn_lat = (Deg>>Rad)(a "lat"); posn_long = (Deg>>Rad)(a "long") }
-    and altitude = a "alt" in
+    and altitude = a "alt"
+    and ground_alt = a "ground_alt" in
 
     try
       let w = ac.fp_group#get_wp wp_id in
+      w#set_ground_alt ground_alt;
       w#set ~altitude ~update:true geo
     with
         Not_found -> () (* Silently ignore unknown waypoints *)
@@ -1429,6 +1438,6 @@ let listen_acs_and_msgs = fun geomap ac_notebook my_alert auto_center_new_ac alt
       center geomap ac.track () in
   let key_press = fun ev ->
     match GdkEvent.Key.keyval ev with
-      | k when k = GdkKeysyms._c -> center_active () ; true
+      | k when (k = GdkKeysyms._c) || (k = GdkKeysyms._C) -> center_active () ; true
       | _ -> false in
   ignore (geomap#canvas#event#connect#after#key_press key_press)

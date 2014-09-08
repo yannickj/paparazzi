@@ -86,8 +86,8 @@ void ins_init(void) {
 
 #if USE_INS_NAV_INIT
   struct LlaCoor_i llh_nav0; /* Height above the ellipsoid */
-  llh_nav0.lat = INT32_RAD_OF_DEG(NAV_LAT0);
-  llh_nav0.lon = INT32_RAD_OF_DEG(NAV_LON0);
+  llh_nav0.lat = NAV_LAT0;
+  llh_nav0.lon = NAV_LON0;
   /* NAV_ALT0 = ground alt above msl, NAV_MSL0 = geoid-height (msl) over ellipsoid */
   llh_nav0.alt = NAV_ALT0 + NAV_MSL0;
 
@@ -129,7 +129,12 @@ void ins_reset_local_origin(void) {
 }
 
 void ins_reset_altitude_ref(void) {
-  ins_impl.ltp_def.lla.alt = gps.lla_pos.alt;
+  struct LlaCoor_i lla = {
+    state.ned_origin_i.lla.lon,
+    state.ned_origin_i.lla.lat,
+    gps.lla_pos.alt
+  };
+  ltp_def_from_lla_i(&ins_impl.ltp_def, &lla),
   ins_impl.ltp_def.hmsl = gps.hmsl;
   stateSetLocalOrigin_i(&ins_impl.ltp_def);
 }

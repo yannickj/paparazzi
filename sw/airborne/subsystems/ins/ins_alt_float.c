@@ -33,7 +33,7 @@
 
 #include "state.h"
 #include "subsystems/gps.h"
-#include "subsystems/nav.h"
+#include "firmwares/fixedwing/nav.h"
 
 #include "generated/airframe.h"
 #include "generated/modules.h"
@@ -58,8 +58,13 @@ PRINT_CONFIG_MSG("USE_BAROMETER is TRUE: Using baro for altitude estimation.")
 
 // Baro event on ABI
 #ifndef INS_BARO_ID
+#if USE_BARO_BOARD
 #define INS_BARO_ID BARO_BOARD_SENDER_ID
+#else
+#define INS_BARO_ID ABI_BROADCAST
 #endif
+#endif
+PRINT_CONFIG_VAR(INS_BARO_ID)
 abi_event baro_ev;
 static void baro_cb(uint8_t sender_id, const float *pressure);
 #endif /* USE_BAROMETER */
@@ -98,9 +103,8 @@ void ins_reset_local_origin(void) {
 #ifdef GPS_USE_LATLONG
   /* Recompute UTM coordinates in this zone */
   struct LlaCoor_f lla;
-  lla.lat = gps.lla_pos.lat / 1e7;
-  lla.lon = gps.lla_pos.lon / 1e7;
-  utm.zone = (DegOfRad(gps.lla_pos.lon/1e7)+180) / 6 + 1;
+  LLA_FLOAT_OF_BFP(lla, gps.lla_pos);
+  utm.zone = (gps.lla_pos.lon/1e7 + 180) / 6 + 1;
   utm_of_lla_f(&utm, &lla);
 #else
   utm.zone = gps.utm_pos.zone;
@@ -168,8 +172,16 @@ void ins_update_gps(void) {
 
 #if !USE_BAROMETER
   float falt = gps.hmsl / 1000.0f;
-  alt_kalman(falt);
-  ins_impl.alt_dot = -gps.ned_vel.z / 100.0f;
+  if (ins_impl.reset_alt_ref) {
+    ins_impl.reset_alt_ref = FALSE;
+    ins_impl.alt = falt;
+    ins_impl.alt_dot = 0.0f;
+    alt_kalman_reset();
+  }
+  else {
+    alt_kalman(falt);
+    ins_impl.alt_dot = -gps.ned_vel.z / 100.0f;
+  }
 #endif
   utm.alt = ins_impl.alt;
   // set position
@@ -213,6 +225,10 @@ static void alt_kalman(float z_meas) {
 
 #if USE_BAROMETER
 #ifdef SITL
+  // stupid hack for nps, we need to get rid of all these DTs
+#ifndef BARO_SIM_DT
+#define BARO_SIM_DT (1./50.)
+#endif
   DT = BARO_SIM_DT;
   R = 0.5;
   SIGMA2 = 0.1;

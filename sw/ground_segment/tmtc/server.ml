@@ -294,7 +294,8 @@ let send_moved_waypoints = fun a ->
          "wp_id", Pprz.Int wp_id;
          "long", Pprz.Float ((Rad>>Deg)geo.posn_long);
          "lat", Pprz.Float ((Rad>>Deg)geo.posn_lat);
-         "alt", Pprz.Float wp.altitude] in
+         "alt", Pprz.Float wp.altitude;
+         "ground_alt", Pprz.Float (try float (Srtm.of_wgs84 geo) with _ -> a.ground_alt)] in
       Ground_Pprz.message_send my_id "WAYPOINT_MOVED" vs)
     a.waypoints
 
@@ -469,7 +470,7 @@ let new_aircraft = fun get_alive_md5sum real_id ->
   let is_replayed, id, root_dir, conf_xml = replayed real_id in
   let conf = get_conf real_id id conf_xml in
   let ac_name = ExtXml.attrib conf "name" in
-  let var_aircraft_dir = Env.paparazzi_home // root_dir // "var" // ac_name in
+  let var_aircraft_dir = Env.paparazzi_home // root_dir // "var" // "aircrafts" // ac_name in
 
   if not (Sys.file_exists var_aircraft_dir) then begin
   (* Let's look for a backup configuration with the md5 signature *)
@@ -510,7 +511,8 @@ let check_alerts = fun a ->
                "level", Pprz.String level;
                "value", Pprz.Float a.bat] in
     Alerts_Pprz.message_send my_id "BAT_LOW" vs in
-  if a.bat < catastrophic_level then send "CATASTROPHIC"
+  if a.bat < 1. then send "INVALID"
+  else if a.bat < catastrophic_level then send "CATASTROPHIC"
   else if a.bat < critic_level then send "CRITIC"
   else if a.bat < warning_level then send "WARNING"
 
@@ -607,10 +609,10 @@ let send_config = fun http _asker args ->
     let prefix = fun s -> sprintf "%s/%s%s" protocol root_dir s in
 
     (** Expanded flight plan and settings have been compiled in var/ *)
-    let fp = prefix ("var" // ac_name // "flight_plan.xml")
+    let fp = prefix ("var" // "aircrafts" // ac_name // "flight_plan.xml")
     and af = prefix ("conf" // ExtXml.attrib conf "airframe")
     and rc = prefix ("conf" // ExtXml.attrib conf "radio")
-    and settings = if not _is_replayed then prefix ("var" // ac_name //
+    and settings = if not _is_replayed then prefix ("var" // "aircrafts" // ac_name //
                                                        "settings.xml") else "file://replay" in
     let col = try Xml.attrib conf "gui_color" with _ -> new_color () in
     let ac_name = try Xml.attrib conf "name" with _ -> "" in
@@ -630,7 +632,7 @@ let ivy_server = fun http ->
   ignore (Ground_Pprz.message_answerer my_id "CONFIG" (send_config http))
 
 
-let cm_of_m = fun f -> Pprz.Int (truncate (100. *. f))
+let cm_of_m = fun f -> Pprz.Int (truncate ((100. *. f) +. 0.5)) (* Convert to cm, with rounding *)
 let dl_id = "ground_dl" (* Hack, should be [my_id] *)
 
 (** Got a ground.MOVE_WAYPOINT and send a datalink.MOVE_WP *)

@@ -2,7 +2,6 @@
 
 <flight_plan alt="75" ground_alt="0" lat0="43.46223" lon0="1.27289" max_dist_from_home="1500" name="Basic" security_height="25">
   <header>
-#include "subsystems/navigation/nav_line.h"
 #include "subsystems/datalink/datalink.h"
 </header>
   <waypoints>
@@ -19,7 +18,7 @@
       <call fun="NavSetGroundReferenceHere()"/>
     </block>
     <block name="Takeoff">
-      <exception cond="GetPosAlt() > ground_alt+25" deroute="HSIF"/>
+      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="HSIF"/>
       <set value="0" var="kill_throttle"/>
       <set value="0" var="autopilot_flight_time"/>
       <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>

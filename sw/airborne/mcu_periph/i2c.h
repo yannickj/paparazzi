@@ -146,6 +146,7 @@ struct i2c_periph {
   void* reg_addr;
   void *init_struct;
   struct i2c_errors *errors;
+  volatile int16_t watchdog;
 };
 
 /** I2C errors counter.
@@ -190,7 +191,7 @@ struct i2c_errors {
   }
 
 
-#ifdef USE_I2C0
+#if USE_I2C0
 
 extern struct i2c_periph i2c0;
 extern void i2c0_init(void);
@@ -198,7 +199,7 @@ extern void i2c0_init(void);
 #endif /* USE_I2C0 */
 
 
-#ifdef USE_I2C1
+#if USE_I2C1
 
 extern struct i2c_periph i2c1;
 extern void i2c1_init(void);
@@ -206,7 +207,7 @@ extern void i2c1_init(void);
 #endif /* USE_I2C1 */
 
 
-#ifdef USE_I2C2
+#if USE_I2C2
 
 extern struct i2c_periph i2c2;
 extern void i2c2_init(void);
@@ -214,7 +215,7 @@ extern void i2c2_init(void);
 #endif /* USE_I2C2 */
 
 
-#ifdef USE_I2C3
+#if USE_I2C3
 
 extern struct i2c_periph i2c3;
 extern void i2c3_init(void);

@@ -47,7 +47,7 @@ let store_conf = fun conf acs ->
       if ExtXml.tag_is x "aircraft" then
 	if List.mem (ExtXml.attrib x "ac_id") acs then
 	  let ac_name = ExtXml.attrib x "name" in
-	  let ac_dir = replay_dir // "var" // ac_name in
+	  let ac_dir = replay_dir // "var" // "aircrafts" // ac_name in
 
 	  let w = fun s ->
 	    (* Histotical: still useful ? *)
@@ -150,6 +150,7 @@ let run = fun serial_port log adj i0 speed no_gui ->
   let rec loop = fun i ->
     let (t, ac, m) = log.(i) in
     Ivy.send (Printf.sprintf "replay%s %s" ac m);
+    Ivy.send (Printf.sprintf "time%s %f" ac t);
     begin
       match serial_port with
 	None -> ()

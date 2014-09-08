@@ -27,6 +27,7 @@ CFG_ROTORCRAFT=$(PAPARAZZI_SRC)/conf/firmwares/subsystems/rotorcraft
 SRC_BOARD=boards/$(BOARD)
 SRC_FIRMWARE=firmwares/rotorcraft
 SRC_SUBSYSTEMS=subsystems
+SRC_MODULES=modules
 
 SRC_ARCH=arch/$(ARCH)
 
@@ -46,9 +47,6 @@ ap.srcs   += $(SRC_ARCH)/mcu_arch.c
 #
 ap.srcs += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c math/pprz_orientation_conversion.c
 
-ifeq ($(ARCH), stm32)
-ap.srcs += lisa/plug_sys.c
-endif
 #
 # Interrupts
 #

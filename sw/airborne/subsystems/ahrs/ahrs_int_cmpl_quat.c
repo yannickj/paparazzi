@@ -56,7 +56,7 @@ PRINT_CONFIG_MSG("LOW PASS FILTER ON GYRO RATES")
 #endif
 
 #if !USE_MAGNETOMETER && !AHRS_USE_GPS_HEADING
-#error "Please use either USE_MAGNETOMETER or AHRS_USE_GPS_HEADING."
+#warning "Please use either USE_MAGNETOMETER or AHRS_USE_GPS_HEADING."
 #endif
 
 #if AHRS_USE_GPS_HEADING && !USE_GPS
@@ -82,7 +82,9 @@ PRINT_CONFIG_VAR(AHRS_CORRECT_FREQUENCY)
 #ifndef AHRS_MAG_CORRECT_FREQUENCY
 #define AHRS_MAG_CORRECT_FREQUENCY 50
 #endif
+#if USE_MAGNETOMETER
 PRINT_CONFIG_VAR(AHRS_MAG_CORRECT_FREQUENCY)
+#endif
 
 /*
  * default gains for correcting attitude and bias from accel/mag
@@ -103,14 +105,27 @@ PRINT_CONFIG_VAR(AHRS_ACCEL_ZETA)
 #ifndef AHRS_MAG_ZETA
 #define AHRS_MAG_ZETA 0.9
 #endif
+#if USE_MAGNETOMETER
 PRINT_CONFIG_VAR(AHRS_MAG_OMEGA)
 PRINT_CONFIG_VAR(AHRS_MAG_ZETA)
+#endif
 
 /** by default use the gravity heuristic to reduce gain */
 #ifndef AHRS_GRAVITY_HEURISTIC_FACTOR
 #define AHRS_GRAVITY_HEURISTIC_FACTOR 30
 #endif
 
+/** don't update gyro bias if heading deviation is above this threshold in degrees */
+#ifndef AHRS_BIAS_UPDATE_HEADING_THRESHOLD
+#define AHRS_BIAS_UPDATE_HEADING_THRESHOLD 5.0
+#endif
+
+/** Minimum speed in m/s for heading update via GPS.
+ * Don't update heading from GPS course if GPS ground speed is below is this threshold
+ */
+#ifndef AHRS_HEADING_UPDATE_GPS_MIN_SPEED
+#define AHRS_HEADING_UPDATE_GPS_MIN_SPEED 5.0
+#endif
 
 #ifdef AHRS_UPDATE_FW_ESTIMATOR
 // remotely settable
@@ -127,7 +142,7 @@ float ins_pitch_neutral = INS_PITCH_NEUTRAL_DEFAULT;
 struct AhrsIntCmplQuat ahrs_impl;
 
 static inline void set_body_state_from_quat(void);
-static inline void ahrs_update_mag_full(void);
+static inline void UNUSED ahrs_update_mag_full(void);
 static inline void ahrs_update_mag_2d(void);
 
 #if PERIODIC_TELEMETRY
@@ -164,6 +179,15 @@ static void send_bias(void) {
   DOWNLINK_SEND_AHRS_GYRO_BIAS_INT(DefaultChannel, DefaultDevice,
       &ahrs_impl.gyro_bias.p, &ahrs_impl.gyro_bias.q, &ahrs_impl.gyro_bias.r);
 }
+
+static void send_geo_mag(void) {
+  struct FloatVect3 h_float;
+  h_float.x = MAG_FLOAT_OF_BFP(ahrs_impl.mag_h.x);
+  h_float.y = MAG_FLOAT_OF_BFP(ahrs_impl.mag_h.y);
+  h_float.z = MAG_FLOAT_OF_BFP(ahrs_impl.mag_h.z);
+  DOWNLINK_SEND_GEO_MAG(DefaultChannel, DefaultDevice,
+                        &h_float.x, &h_float.y, &h_float.z);
+}
 #endif
 
 void ahrs_init(void) {
@@ -173,7 +197,8 @@ void ahrs_init(void) {
   ahrs_impl.heading_aligned = FALSE;
 
   /* set ltp_to_imu so that body is zero */
-  QUAT_COPY(ahrs_impl.ltp_to_imu_quat, imu.body_to_imu_quat);
+  memcpy(&ahrs_impl.ltp_to_imu_quat, orientationGetQuat_i(&imu.body_to_imu),
+         sizeof(struct Int32Quat));
   INT_RATES_ZERO(ahrs_impl.imu_rate);
 
   INT_RATES_ZERO(ahrs_impl.gyro_bias);
@@ -204,6 +229,7 @@ void ahrs_init(void) {
   register_periodic_telemetry(DefaultPeriodic, "AHRS_QUAT_INT", send_quat);
   register_periodic_telemetry(DefaultPeriodic, "AHRS_EULER_INT", send_euler);
   register_periodic_telemetry(DefaultPeriodic, "AHRS_GYRO_BIAS_INT", send_bias);
+  register_periodic_telemetry(DefaultPeriodic, "GEO_MAG", send_geo_mag);
 #endif
 
 }
@@ -318,7 +344,8 @@ void ahrs_update_accel(void) {
 
     /* convert centrifucal acceleration from body to imu frame */
     struct Int32Vect3 acc_c_imu;
-    INT32_RMAT_VMULT(acc_c_imu, imu.body_to_imu_rmat, acc_c_body);
+    struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&imu.body_to_imu);
+    INT32_RMAT_VMULT(acc_c_imu, *body_to_imu_rmat, acc_c_body);
 
     /* and subtract it from imu measurement to get a corrected measurement
      * of the gravity vector */
@@ -547,10 +574,11 @@ void ahrs_update_gps(void) {
 #endif
 
 #if AHRS_USE_GPS_HEADING && USE_GPS
-  //got a 3d fix, ground speed > 5.0 m/s and course accuracy is better than 10deg
+  // got a 3d fix, ground speed > AHRS_HEADING_UPDATE_GPS_MIN_SPEED (default 5.0 m/s)
+  // and course accuracy is better than 10deg
   if (gps.fix == GPS_FIX_3D &&
-     gps.gspeed >= 500 &&
-     gps.cacc <= RadOfDeg(10*1e7)) {
+      gps.gspeed >= (AHRS_HEADING_UPDATE_GPS_MIN_SPEED * 100) &&
+      gps.cacc <= RadOfDeg(10*1e7)) {
 
     // gps.course is in rad * 1e7, we need it in rad * 2^INT32_ANGLE_FRAC
     int32_t course = gps.course * ((1<<INT32_ANGLE_FRAC) / 1e7);
@@ -611,7 +639,7 @@ void ahrs_update_heading(int32_t heading) {
    * Otherwise the bias will be falsely "corrected".
    */
   int32_t sin_max_angle_deviation;
-  PPRZ_ITRIG_SIN(sin_max_angle_deviation, TRIG_BFP_OF_REAL(RadOfDeg(5.)));
+  PPRZ_ITRIG_SIN(sin_max_angle_deviation, TRIG_BFP_OF_REAL(RadOfDeg(AHRS_BIAS_UPDATE_HEADING_THRESHOLD)));
   if (ABS(residual_ltp.z) < sin_max_angle_deviation)
   {
     // residual_ltp FRAC = 2 * TRIG_FRAC = 28
@@ -653,7 +681,8 @@ void ahrs_realign_heading(int32_t heading) {
   QUAT_COPY(ltp_to_body_quat, q);
 
   /* compute ltp to imu rotations */
-  INT32_QUAT_COMP(ahrs_impl.ltp_to_imu_quat, ltp_to_body_quat, imu.body_to_imu_quat);
+  struct Int32Quat *body_to_imu_quat = orientationGetQuat_i(&imu.body_to_imu);
+  INT32_QUAT_COMP(ahrs_impl.ltp_to_imu_quat, ltp_to_body_quat, *body_to_imu_quat);
 
   /* Set state */
   stateSetNedToBodyQuat_i(&ltp_to_body_quat);
@@ -666,7 +695,8 @@ void ahrs_realign_heading(int32_t heading) {
 static inline void set_body_state_from_quat(void) {
   /* Compute LTP to BODY quaternion */
   struct Int32Quat ltp_to_body_quat;
-  INT32_QUAT_COMP_INV(ltp_to_body_quat, ahrs_impl.ltp_to_imu_quat, imu.body_to_imu_quat);
+  struct Int32Quat *body_to_imu_quat = orientationGetQuat_i(&imu.body_to_imu);
+  INT32_QUAT_COMP_INV(ltp_to_body_quat, ahrs_impl.ltp_to_imu_quat, *body_to_imu_quat);
   /* Set state */
 #ifdef AHRS_UPDATE_FW_ESTIMATOR
   struct Int32Eulers neutrals_to_body_eulers = {
@@ -684,7 +714,8 @@ static inline void set_body_state_from_quat(void) {
 
   /* compute body rates */
   struct Int32Rates body_rate;
-  INT32_RMAT_TRANSP_RATEMULT(body_rate, imu.body_to_imu_rmat, ahrs_impl.imu_rate);
+  struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&imu.body_to_imu);
+  INT32_RMAT_TRANSP_RATEMULT(body_rate, *body_to_imu_rmat, ahrs_impl.imu_rate);
   /* Set state */
   stateSetBodyRates_i(&body_rate);
 }

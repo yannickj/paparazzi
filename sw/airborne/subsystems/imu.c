@@ -24,7 +24,17 @@
  * Inertial Measurement Unit interface.
  */
 
+#include BOARD_CONFIG
 #include "subsystems/imu.h"
+#include "state.h"
+
+#ifdef IMU_POWER_GPIO
+#include "mcu_periph/gpio.h"
+
+#ifndef IMU_POWER_GPIO_ON
+#define IMU_POWER_GPIO_ON gpio_set
+#endif
+#endif
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -102,6 +112,11 @@ struct ImuFloat imuf;
 
 void imu_init(void) {
 
+#ifdef IMU_POWER_GPIO
+  gpio_setup_output(IMU_POWER_GPIO);
+  IMU_POWER_GPIO_ON(IMU_POWER_GPIO);
+#endif
+
   /* initialises neutrals */
   RATES_ASSIGN(imu.gyro_neutral,  IMU_GYRO_P_NEUTRAL,  IMU_GYRO_Q_NEUTRAL,  IMU_GYRO_R_NEUTRAL);
 
@@ -116,23 +131,14 @@ INFO("Magnetometer neutrals are set to zero, you should calibrate!")
   INT_VECT3_ZERO(imu.mag_neutral);
 #endif
 
-  /*
-    Compute quaternion and rotation matrix
-    for conversions between body and imu frame
-  */
-  struct Int32Eulers body_to_imu_eulers =
-    { ANGLE_BFP_OF_REAL(IMU_BODY_TO_IMU_PHI),
-      ANGLE_BFP_OF_REAL(IMU_BODY_TO_IMU_THETA),
-      ANGLE_BFP_OF_REAL(IMU_BODY_TO_IMU_PSI) };
-  INT32_QUAT_OF_EULERS(imu.body_to_imu_quat, body_to_imu_eulers);
-  INT32_QUAT_NORMALIZE(imu.body_to_imu_quat);
-  INT32_RMAT_OF_EULERS(imu.body_to_imu_rmat, body_to_imu_eulers);
+  struct FloatEulers body_to_imu_eulers =
+    {IMU_BODY_TO_IMU_PHI, IMU_BODY_TO_IMU_THETA, IMU_BODY_TO_IMU_PSI};
+  orientationSetEulers_f(&imu.body_to_imu, &body_to_imu_eulers);
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, "IMU_ACCEL", send_accel);
   register_periodic_telemetry(DefaultPeriodic, "IMU_GYRO", send_gyro);
-#if USE_IMU_FLOAT
-#else // !USE_IMU_FLOAT
+#if !USE_IMU_FLOAT
   register_periodic_telemetry(DefaultPeriodic, "IMU_ACCEL_RAW", send_accel_raw);
   register_periodic_telemetry(DefaultPeriodic, "IMU_ACCEL_SCALED", send_accel_scaled);
   register_periodic_telemetry(DefaultPeriodic, "IMU_ACCEL", send_accel);
@@ -150,13 +156,55 @@ INFO("Magnetometer neutrals are set to zero, you should calibrate!")
 
 
 void imu_float_init(void) {
-  /*
-    Compute quaternion and rotation matrix
-    for conversions between body and imu frame
-  */
-  EULERS_ASSIGN(imuf.body_to_imu_eulers,
-    IMU_BODY_TO_IMU_PHI, IMU_BODY_TO_IMU_THETA, IMU_BODY_TO_IMU_PSI);
-  FLOAT_QUAT_OF_EULERS(imuf.body_to_imu_quat, imuf.body_to_imu_eulers);
-  FLOAT_QUAT_NORMALIZE(imuf.body_to_imu_quat);
-  FLOAT_RMAT_OF_EULERS(imuf.body_to_imu_rmat, imuf.body_to_imu_eulers);
+  struct FloatEulers body_to_imu_eulers =
+    {IMU_BODY_TO_IMU_PHI, IMU_BODY_TO_IMU_THETA, IMU_BODY_TO_IMU_PSI};
+  orientationSetEulers_f(&imuf.body_to_imu, &body_to_imu_eulers);
 }
+
+void imu_SetBodyToImuPhi(float phi) {
+  struct FloatEulers imu_to_body_eulers;
+  memcpy(&imu_to_body_eulers, orientationGetEulers_f(&imu.body_to_imu), sizeof(struct FloatEulers));
+  imu_to_body_eulers.phi = phi;
+  orientationSetEulers_f(&imu.body_to_imu, &imu_to_body_eulers);
+}
+
+void imu_SetBodyToImuTheta(float theta) {
+  struct FloatEulers imu_to_body_eulers;
+  memcpy(&imu_to_body_eulers, orientationGetEulers_f(&imu.body_to_imu), sizeof(struct FloatEulers));
+  imu_to_body_eulers.theta = theta;
+  orientationSetEulers_f(&imu.body_to_imu, &imu_to_body_eulers);
+}
+
+void imu_SetBodyToImuPsi(float psi) {
+  struct FloatEulers imu_to_body_eulers;
+  memcpy(&imu_to_body_eulers, orientationGetEulers_f(&imu.body_to_imu), sizeof(struct FloatEulers));
+  imu_to_body_eulers.psi = psi;
+  orientationSetEulers_f(&imu.body_to_imu, &imu_to_body_eulers);
+}
+
+void imu_SetBodyToImuCurrent(float set) {
+  imu.b2i_set_current = set;
+
+  if (imu.b2i_set_current) {
+    // adjust imu_to_body roll and pitch by current NedToBody roll and pitch
+    struct FloatEulers imu_to_body_eulers;
+    memcpy(&imu_to_body_eulers, orientationGetEulers_f(&imu.body_to_imu), sizeof(struct FloatEulers));
+    if (stateIsAttitudeValid()) {
+      // adjust imu_to_body roll and pitch by current NedToBody roll and pitch
+      imu_to_body_eulers.phi += stateGetNedToBodyEulers_f()->phi;
+      imu_to_body_eulers.theta += stateGetNedToBodyEulers_f()->theta;
+      orientationSetEulers_f(&imu.body_to_imu, &imu_to_body_eulers);
+    }
+    else {
+      // indicate that we couldn't set to current roll/pitch
+      imu.b2i_set_current = FALSE;
+    }
+  }
+  else {
+    // reset to BODY_TO_IMU as defined in airframe file
+    struct FloatEulers imu_to_body_eulers =
+      {IMU_BODY_TO_IMU_PHI, IMU_BODY_TO_IMU_THETA, IMU_BODY_TO_IMU_PSI};
+    orientationSetEulers_f(&imu.body_to_imu, &imu_to_body_eulers);
+  }
+}
+

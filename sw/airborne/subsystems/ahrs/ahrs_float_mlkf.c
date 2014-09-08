@@ -64,22 +64,22 @@ static inline void set_body_state_from_quat(void);
 
 struct AhrsMlkf ahrs_impl;
 
+#if PERIODIC_TELEMETRY
+#include "subsystems/datalink/telemetry.h"
+
+static void send_geo_mag(void) {
+  DOWNLINK_SEND_GEO_MAG(DefaultChannel, DefaultDevice,
+                        &ahrs_impl.mag_h.x, &ahrs_impl.mag_h.y, &ahrs_impl.mag_h.z);
+}
+#endif
 
 void ahrs_init(void) {
 
   ahrs.status = AHRS_UNINIT;
 
-  /*
-   * Initialises our IMU alignement variables
-   * This should probably done in the IMU code instead
-   */
-  struct FloatEulers body_to_imu_euler =
-    {IMU_BODY_TO_IMU_PHI, IMU_BODY_TO_IMU_THETA, IMU_BODY_TO_IMU_PSI};
-  FLOAT_QUAT_OF_EULERS(ahrs_impl.body_to_imu_quat, body_to_imu_euler);
-  FLOAT_RMAT_OF_EULERS(ahrs_impl.body_to_imu_rmat, body_to_imu_euler);
-
   /* Set ltp_to_imu so that body is zero */
-  QUAT_COPY(ahrs_impl.ltp_to_imu_quat, ahrs_impl.body_to_imu_quat);
+  memcpy(&ahrs_impl.ltp_to_imu_quat, orientationGetQuat_f(&imu.body_to_imu),
+         sizeof(struct FloatQuat));
 
   FLOAT_RATES_ZERO(ahrs_impl.imu_rate);
 
@@ -101,6 +101,9 @@ void ahrs_init(void) {
 
   VECT3_ASSIGN(ahrs_impl.mag_noise, AHRS_MAG_NOISE_X, AHRS_MAG_NOISE_Y, AHRS_MAG_NOISE_Z);
 
+#if PERIODIC_TELEMETRY
+  register_periodic_telemetry(DefaultPeriodic, "GEO_MAG", send_geo_mag);
+#endif
 }
 
 void ahrs_align(void) {
@@ -278,16 +281,18 @@ static inline void reset_state(void) {
  * Compute body orientation and rates from imu orientation and rates
  */
 static inline void set_body_state_from_quat(void) {
+  struct FloatQuat *body_to_imu_quat = orientationGetQuat_f(&imu.body_to_imu);
+  struct FloatRMat *body_to_imu_rmat = orientationGetRMat_f(&imu.body_to_imu);
 
   /* Compute LTP to BODY quaternion */
   struct FloatQuat ltp_to_body_quat;
-  FLOAT_QUAT_COMP_INV(ltp_to_body_quat, ahrs_impl.ltp_to_imu_quat, ahrs_impl.body_to_imu_quat);
+  FLOAT_QUAT_COMP_INV(ltp_to_body_quat, ahrs_impl.ltp_to_imu_quat, *body_to_imu_quat);
   /* Set in state interface */
   stateSetNedToBodyQuat_f(&ltp_to_body_quat);
 
   /* compute body rates */
   struct FloatRates body_rate;
-  FLOAT_RMAT_TRANSP_RATEMULT(body_rate, ahrs_impl.body_to_imu_rmat, ahrs_impl.imu_rate);
+  FLOAT_RMAT_TRANSP_RATEMULT(body_rate, *body_to_imu_rmat, ahrs_impl.imu_rate);
   /* Set state */
   stateSetBodyRates_f(&body_rate);
 

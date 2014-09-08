@@ -76,19 +76,24 @@ static void sonar_cb(uint8_t sender_id, const float *distance);
 #ifndef INS_SONAR_OFFSET
 #define INS_SONAR_OFFSET 0.
 #endif
+#ifndef INS_SONAR_MIN_RANGE
+#define INS_SONAR_MIN_RANGE 0.001
+#endif
 #define VFF_R_SONAR_0 0.1
+#ifndef VFF_R_SONAR_OF_M
 #define VFF_R_SONAR_OF_M 0.2
+#endif
 
 #ifndef INS_SONAR_UPDATE_ON_AGL
 #define INS_SONAR_UPDATE_ON_AGL FALSE
 PRINT_CONFIG_MSG("INS_SONAR_UPDATE_ON_AGL defaulting to FALSE")
 #endif
 
+#endif // USE_SONAR
+
 #ifndef INS_VFF_R_GPS
 #define INS_VFF_R_GPS 2.0
 #endif
-
-#endif // USE_SONAR
 
 #ifndef USE_INS_NAV_INIT
 #define USE_INS_NAV_INIT TRUE
@@ -101,8 +106,13 @@ PRINT_CONFIG_MSG("USE_INS_NAV_INIT defaulting to TRUE")
 
 /** default barometer to use in INS */
 #ifndef INS_BARO_ID
+#if USE_BARO_BOARD
 #define INS_BARO_ID BARO_BOARD_SENDER_ID
+#else
+#define INS_BARO_ID ABI_BROADCAST
 #endif
+#endif
+PRINT_CONFIG_VAR(INS_BARO_ID)
 abi_event baro_ev;
 static void baro_cb(uint8_t sender_id, const float *pressure);
 
@@ -195,7 +205,12 @@ void ins_reset_local_origin(void) {
 
 void ins_reset_altitude_ref(void) {
 #if USE_GPS
-  ins_impl.ltp_def.lla.alt = gps.lla_pos.alt;
+  struct LlaCoor_i lla = {
+    state.ned_origin_i.lla.lon,
+    state.ned_origin_i.lla.lat,
+    gps.lla_pos.alt
+  };
+  ltp_def_from_lla_i(&ins_impl.ltp_def, &lla),
   ins_impl.ltp_def.hmsl = gps.hmsl;
   stateSetLocalOrigin_i(&ins_impl.ltp_def);
 #endif
@@ -205,7 +220,8 @@ void ins_reset_altitude_ref(void) {
 void ins_propagate(void) {
   /* untilt accels */
   struct Int32Vect3 accel_meas_body;
-  INT32_RMAT_TRANSP_VMULT(accel_meas_body, imu.body_to_imu_rmat, imu.accel);
+  struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&imu.body_to_imu);
+  INT32_RMAT_TRANSP_VMULT(accel_meas_body, *body_to_imu_rmat, imu.accel);
   struct Int32Vect3 accel_meas_ltp;
   INT32_RMAT_TRANSP_VMULT(accel_meas_ltp, (*stateGetNedToBodyRMat_i()), accel_meas_body);
 
@@ -314,47 +330,17 @@ void ins_update_gps(void) {
 #endif /* USE_GPS */
 
 
-//#define INS_SONAR_VARIANCE_THRESHOLD 0.01
-
-#ifdef INS_SONAR_VARIANCE_THRESHOLD
-
-#include "messages.h"
-#include "mcu_periph/uart.h"
-#include "subsystems/datalink/downlink.h"
-
-#include "math/pprz_stat.h"
-#define VAR_ERR_MAX 10
-float var_err[VAR_ERR_MAX];
-uint8_t var_idx = 0;
-#endif
-
-
 #if USE_SONAR
 static void sonar_cb(uint8_t __attribute__((unused)) sender_id, const float *distance) {
   static float last_offset = 0.;
 
-#ifdef INS_SONAR_VARIANCE_THRESHOLD
-  /* compute variance of error between sonar and baro alt */
-  float err = *distance + ins_impl.baro_z; // sonar positive up, baro positive down !!!!
-  var_err[var_idx] = err;
-  var_idx = (var_idx + 1) % VAR_ERR_MAX;
-  float var = variance_float(var_err, VAR_ERR_MAX);
-  DOWNLINK_SEND_INS_SONAR(DefaultChannel,DefaultDevice, distance, &var);
-#endif
-
   /* update filter assuming a flat ground */
-  if (*distance < INS_SONAR_MAX_RANGE
-#ifdef INS_SONAR_MIN_RANGE
-      && *distance > INS_SONAR_MIN_RANGE
-#endif
+  if (*distance < INS_SONAR_MAX_RANGE && *distance > INS_SONAR_MIN_RANGE
 #ifdef INS_SONAR_THROTTLE_THRESHOLD
       && stabilization_cmd[COMMAND_THRUST] < INS_SONAR_THROTTLE_THRESHOLD
 #endif
 #ifdef INS_SONAR_BARO_THRESHOLD
       && ins_impl.baro_z > -INS_SONAR_BARO_THRESHOLD /* z down */
-#endif
-#ifdef INS_SONAR_VARIANCE_THRESHOLD
-      && var < INS_SONAR_VARIANCE_THRESHOLD
 #endif
       && ins_impl.update_on_agl
       && ins_impl.baro_initialized) {
@@ -373,8 +359,8 @@ static void sonar_cb(uint8_t __attribute__((unused)) sender_id, const float *dis
 static void ins_init_origin_from_flightplan(void) {
 
   struct LlaCoor_i llh_nav0; /* Height above the ellipsoid */
-  llh_nav0.lat = INT32_RAD_OF_DEG(NAV_LAT0);
-  llh_nav0.lon = INT32_RAD_OF_DEG(NAV_LON0);
+  llh_nav0.lat = NAV_LAT0;
+  llh_nav0.lon = NAV_LON0;
   /* NAV_ALT0 = ground alt above msl, NAV_MSL0 = geoid-height (msl) over ellipsoid */
   llh_nav0.alt = NAV_ALT0 + NAV_MSL0;
 

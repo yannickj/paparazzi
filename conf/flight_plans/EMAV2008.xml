@@ -3,7 +3,6 @@
 <flight_plan alt="140" ground_alt="55" lat0="52.523886" lon0="10.463764" max_dist_from_home="2500" name="Gifhorn-Wilsche EMAV08" qfu="-90" security_height="81">
   <header>
 #include "datalink.h"
-#include "subsystems/navigation/nav_line.h"
 </header>
   <waypoints>
     <waypoint name="HOME" x="16.9" y="-0.4"/>
@@ -48,7 +47,7 @@
       <attitude roll="0" throttle="0" vmode="throttle"/>
     </block>
     <block name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
-      <exception cond="GetPosAlt() > ground_alt+40" deroute="Standby"/>
+      <exception cond="GetPosAlt() > GetAltRef()+40" deroute="Standby"/>
       <set value="0" var="kill_throttle"/>
       <go wp="CLIMB"/>
     </block>
@@ -68,8 +67,8 @@
     </block>
     <block name="Line 1-2" strip_button="Line (wp 1-2)" strip_icon="line.png">
       <exception cond="datalink_time > 22" deroute="Standby"/>
-      <call fun="nav_line_init()"/>
-      <call fun="nav_line(WP_1, WP_2, nav_radius)"/>
+      <call fun="nav_line_setup()"/>
+      <call fun="nav_line_run(WP_1, WP_2, nav_radius)"/>
     </block>
     <block name="Survey S1-S2" strip_button="Survey (wp S1-S2)" strip_icon="survey.png">
       <survey_rectangle grid="150" wp1="S1" wp2="S2"/>
@@ -87,11 +86,11 @@
       <circle radius="nav_radius" until="NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10) && 15 > fabs(GetPosAlt() - WaypointAlt(WP_BASELEG))" wp="BASELEG"/>
     </block>
     <block name="final">
-<!--      <exception cond="ground_alt + 6 > GetPosAlt()" deroute="flare"/> -->
+<!--      <exception cond="GetAltRef() + 6 > GetPosAlt()" deroute="flare"/> -->
       <go approaching_time="0" from="AF" hmode="route" wp="SF"/>
     </block>
     <block name="shortfinal">
-<!--      <exception cond="ground_alt + 6 > GetPosAlt()" deroute="flare"/> -->
+<!--      <exception cond="GetAltRef() + 6 > GetPosAlt()" deroute="flare"/> -->
       <go approaching_time="0" from="SF" hmode="route" wp="TD"/>
     </block>
     <block name="flare">
