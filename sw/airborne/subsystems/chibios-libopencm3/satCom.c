@@ -104,7 +104,7 @@ static __attribute__((noreturn)) msg_t thdSatcom (void *arg)
   while (TRUE) {
     /*
       TODO (13/03/2014)
-      here, the test sould be smarter, and use a switch on status value instead of
+      here, the test should be smarter, and use a switch on status value instead of
       a dumb status != IRIDIUM_SUCCESS test
      */
 
