@@ -38,13 +38,8 @@
 
 
 #define IRIDIUM_SATCOM_DEBUG 1
-//#undef IRIDIUM_SATCOM_DEBUG // 0
+#undef IRIDIUM_SATCOM_DEBUG // 0
 //#undef USE_IRIDIUM_SATCOM
-
-#ifdef USE_IRIDIUM_SATCOM
-#include "satCom.h"
-#endif
-
 
 #ifdef  IRIDIUM_SATCOM_DEBUG
 #include "chibios_sdlog.h"
@@ -97,11 +92,6 @@ bool_t chibios_init(void) {
       NORMALPRIO, thd_heartbeat, NULL);
 
   usbStorageStartPolling ();
-
-#if USE_IRIDIUM_SATCOM
-  satcomInit ();
-  satcomSetPollingInterval (60); // Not sleeping between attempts : more electrical consumption, less data consumption
-#endif
 
 #ifdef  IRIDIUM_SATCOM_DEBUG
   chThdCreateStatic(waThdSatcomReceive, sizeof(waThdSatcomReceive),

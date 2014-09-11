@@ -1,0 +1,19 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="iridium" dir="com">
+  <doc>
+    <description>
+      Sends data other an Iridium Satcom modem
+    </description>
+  </doc>
+  <header>
+    <file name="iridium_com.h"/>
+  </header>
+  <init fun="iridium_com_init()"/>
+  <periodic fun="iridium_com_periodic()" period="180" autorun="TRUE"/>
+  <event fun="iridium_com_event()"/>
+  <makefile>
+    <file name="iridium_com.c"/>
+  </makefile>
+</module>
+
