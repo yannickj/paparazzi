@@ -12,22 +12,19 @@
 # a --imei option. ALL 15 digits of imei should be given as is is used for uplink communication
 
 # TODO :
-# * utiliser l'adresse mail d'emission reelle
-# * testIridium sur maquette stm32 :
-#   ° reception => depaqueter les 3 types de messages et afficher les messages dans ttyConsole
-#   ° envoi => envoyer le message descendant de 23 octets
-# * faire la même chose dans pprz dans la section TEST
+# ° par default prendre les messages vieux de moins de 10mn, option pour tous les prendre
 
 
 use strict;
 use warnings;
 use feature ':5.12';
 
+
 use Mail::IMAPClient;
 use IO::Socket::SSL;
 use MIME::Parser;
 use Net::SMTP;
-use MIME::Lite;
+use Email::Send::SMTP::Gmail;
 use File::Path; 
 use Getopt::Long;
 use Ivy;
@@ -37,6 +34,8 @@ use constant M_PI => 3.141592654 ;
 use constant ALIVE_TIMEOUT_PERIOD => 5000;
 use constant FETCHMAIL_PERIOD => 15000; # 15 seconds
 use constant DATAGRAM_LENGTH => 23;
+use constant PROXY_SMTP_MAIL => 'localhost';
+use constant GMAIL_SMTP_MAIL => 'smtp.gmail.com';
 
 my @md5 = (0207 ,0151 ,0313 ,0256 ,0355 ,0252 ,0016 ,0273 ,0072 ,0126 ,0273 ,0222 ,0017 ,0372 ,0320 ,0200);
 
@@ -66,6 +65,7 @@ my $gmailSmtp;
 my $mimeParser = MIME::Parser->new;
 my %options;
 
+
 # TODO
 # renseigner neededApp
 
@@ -81,9 +81,11 @@ END {
     imapDisconnectGmail ();
 } 
 
+my $smtpHost;
 
 #OPTIONS
-GetOptions (\%options, "bus=s", "imei=s", "acid=i", "gmuser=s", "gmpasswd=s", "lan");
+GetOptions (\%options, "bus=s", "imei=s", "acid=i", "gmuser=s", "gmpasswd=s", "lan", 
+	    "proxy", "uplink=s", "fetchall");
 defaultOption ("bus", $ENV{IVYBUS});
 usage ("aircraft id is mandatory") unless exists $options{'acid'};
 usage ("gmail user is mandatory") unless exists $options{'gmuser'};
@@ -94,9 +96,22 @@ usage ("imei should be 15 digits long\n") unless  $options{'imei'} =~ /^\d{15}$/
 imapConnectGmail ($options{'gmuser'}, $options{'gmpasswd'});
 
 if (exists($options{'lan'})) {
-    warn "use local, *NO* authenticated, smtp server\n";
+    warn "use local, *NO* authenticated, smtp server\n"; 
+    $smtpHost = PROXY_SMTP_MAIL;
+} elsif  (exists($options{'proxy'})) {
+    warn "use PROXY to gmail, authenticated, smtp server\n";
+    $smtpHost = PROXY_SMTP_MAIL;
 } else {
     warn "use gmail, authenticated, smtp server\n";
+    $smtpHost = GMAIL_SMTP_MAIL;
+}
+
+my $relayUplink = exists $options{'uplink'} && $options{'uplink'} =~ /^[yo]/i ;
+
+if ($relayUplink) {
+    say "RELAY uplink messages";
+} else {
+    say "IGNORE uplink messages";
 }
 
 # TEST SEND
@@ -172,6 +187,7 @@ sub getLastReceivedMessage() # return undef when no more unseen message
 {
     state %allSeen;
     my $mn;
+    my $filter = $options{fetchall} ? "ALL" : "UNSEEN";
 
     unless ($gmailImap->IsConnected) {
 	say "Warn: reconnect after beeing deconnected";
@@ -179,10 +195,10 @@ sub getLastReceivedMessage() # return undef when no more unseen message
     }
     
     $gmailImap->select("INBOX");
-    my @mailno = $gmailImap->search("ALL");
+    my @mailno = $gmailImap->search($filter);
     push  @mailno, $gmailImap->unseen();
 
-    @mailno = grep (!exists $allSeen{$_}, $gmailImap->search("ALL"));
+    @mailno = grep (!exists $allSeen{$_}, $gmailImap->search($filter));
     foreach $mn (@mailno) {
 	$allSeen{$mn} =1;
     }
@@ -370,29 +386,61 @@ sub receiveBlockCb(@)
 
 
 
+# sub smtpSend ($)
+# {
+#     my $binaryBuffer = shift;
+    
+#     my $msg = MIME::Lite->new(
+#         From     => $options{'gmuser'},
+# #        To       => 'alexandre.bustico@free.fr',
+# 	To       => 'Data@SBD.Iridium.com',
+#         Subject  => $options{'imei'},
+#         Type     => 'application/octet-stream',
+#         Encoding => 'base64',
+#         Filename => 'msg.sbd',
+#         Data     => $binaryBuffer
+#     );
+
+#     if (exists($options{'lan'})) {
+# 	$msg->send (smtp => 'smtp');
+#     } else {
+# 	$msg->send (smtp => 'smtp.gmail.com:587',
+# 		    AuthUser =>  $options{'gmuser'},
+# 		    AuthPass => $options{'gmpasswd'});
+#     }
+# }
+
+
 sub smtpSend ($)
 {
+    return unless $relayUplink;
     my $binaryBuffer = shift;
-    
-    my $msg = MIME::Lite->new(
-        From     => $options{'gmuser'},
-#        To       => 'alexandre.bustico@free.fr',
-	To       => 'Data@SBD.Iridium.com',
-        Subject  => $options{'imei'},
-        Type     => 'application/octet-stream',
-        Encoding => 'base64',
-        Filename => 'msg.sbd',
-        Data     => $binaryBuffer
-    );
 
-    if (exists($options{'lan'})) {
-	$msg->send (smtp => 'smtp');
-    } else {
-	$msg->send (smtp => 'smtp.gmail.com:587',
-		    AuthUser =>  $options{'gmuser'},
-		    AuthPass => $options{'gmpasswd'});
-    }
+    open (my $attachHandler, '>', '/tmp/msg.sbd');
+    syswrite ($attachHandler, $binaryBuffer);
+    close ($attachHandler);
+
+    my ($mail,$error)=Email::Send::SMTP::Gmail->new(-smtp  => $smtpHost,
+						    -port => 587,
+						    -login =>'satcom.drones.enac@gmail.com',
+						    -pass  =>'paparazzi_118',
+						    -debug => 0);
+    
+    print "session error: $error" unless ($mail!=-1);
+    
+    $mail->send(-to => 'Data@SBD.Iridium.com', 
+#		-to => 'alexandre.bustico@enac.fr', 
+		-subject => $options{'imei'}, 
+		-body => '' ,
+		-attachments => '/tmp/msg.sbd');
+    
+    $mail->bye;
 }
+
+
+
+
+
 
 sub usage (;$)
 {
@@ -403,7 +451,10 @@ sub usage (;$)
 	"(mandatory) --acid 'aircraft_id'\n".
 	"(mandatory) --gmuser 'gmail user'\n".
 	"(mandatory) --gmpasswd 'gmail password'\n".
-	"[(optional) --imei 'filtering pattern on imei']";
+	"[(optional) --lan : use local smtp agent]\n" .
+	"[(optional) --proxy : use local ssh proxy to gmail smtp\n" .
+	"[(optional) --uplink '[yes|no]' : relay uplink messages\n" .
+	"[(optional) --fetchall : fetch all mails\n\n" ;
     exit;
 }
 
