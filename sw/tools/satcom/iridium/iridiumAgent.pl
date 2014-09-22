@@ -12,8 +12,7 @@
 # a --imei option. ALL 15 digits of imei should be given as is is used for uplink communication
 
 # TODO :
-# ° par default prendre les messages vieux de moins de 10mn, option pour tous les prendre
-
+#
 
 use strict;
 use warnings;
@@ -24,7 +23,7 @@ use Mail::IMAPClient;
 use IO::Socket::SSL;
 use MIME::Parser;
 use Net::SMTP;
-use Email::Send::SMTP::Gmail;
+use Email::Send::SMTP::Gmail; # should be installed from cpan
 use File::Path; 
 use Getopt::Long;
 use Ivy;
