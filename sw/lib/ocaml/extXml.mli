@@ -65,6 +65,18 @@ val remove_child :
     ?select:(Xml.xml -> bool) -> string -> Xml.xml -> Xml.xml
 (** [delete_child ?select child_tag xml] Returns [xml] if not found *)
 
+val iter_tag : string -> (Xml.xml -> unit) -> Xml.xml -> unit
+(** [iter_tag f tag xml] applies function [f] to every child of [xml] with
+    tag [tag]  *)
+
+val filter_tag : string -> Xml.xml -> Xml.xml list
+(** [filter_tag tag xml] returns all children of [xml]
+    which are [tag] elements *)
+
+val partition_tag : string -> Xml.xml list -> Xml.xml list * Xml.xml list
+(** [partion_tag tag xmls] returns two lists [l1] and [l2], with [l1] containing
+    all of [xmls] which are [tag] elements, and [l2] all other elements *)
+
 val parse_file : ?noprovedtd:bool -> string -> Xml.xml
 (** Identical to Xml.parse_file with Failure exceptions. [nodtdprove] default is false. *)
 

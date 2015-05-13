@@ -724,24 +724,39 @@ let print_inside_polygon = fun pts ->
   f 0 (Array.length layers - 1);;
 
 
+let rec last = function
+  | [] -> invalid_arg "last"
+  | [x] -> x
+  | _ :: xs -> last xs
 
+let print_inside_sector = fun (s, pts) ->
+  lprintf "static inline bool_t %s(float _x, float _y) { \\\n" (inside_function s);
+  right ();
+  let (ifirst, _) = List.hd pts
+  and (ilast, _) = last pts in
+  lprintf "return (NavCheckPositionInside(_x, _y, %s, %s));" ifirst ilast;
+  left ();
+  lprintf "}\n"
+
+(*
 let print_inside_sector = fun (s, pts) ->
   lprintf "static inline bool_t %s(float _x, float _y) { \\\n" (inside_function s);
   right ();
   print_inside_polygon pts;
   left ();
   lprintf "}\n"
+*)
 
-
-let parse_wpt_sector = fun waypoints xml ->
+let parse_wpt_sector = fun indexes waypoints xml ->
   let sector_name = ExtXml.attrib xml "name" in
   let p2D_of = fun x ->
     let name = name_of x in
     try
       let wp = List.find (fun wp -> name_of wp = name) waypoints in
+      let i = get_index_waypoint name indexes in
       let x = float_attrib wp "x"
       and y = float_attrib wp "y" in
-      {G2D.x2D = x; G2D.y2D = y }
+      (i, {G2D.x2D = x; G2D.y2D = y })
     with
         Not_found -> failwith (sprintf "Error: corner '%s' of sector '%s' not found" name sector_name)
   in
@@ -876,7 +891,7 @@ let () =
 
       let sectors_element = try ExtXml.child xml "sectors" with Not_found -> Xml.Element ("", [], []) in
       let sectors = List.filter (fun x -> String.lowercase (Xml.tag x) = "sector") (Xml.children sectors_element) in
-      let sectors =  List.map (parse_wpt_sector waypoints) sectors in
+      let sectors =  List.map (parse_wpt_sector index_of_waypoints waypoints) sectors in
       List.iter print_inside_sector sectors;
 
       lprintf "#ifdef NAV_C\n";
