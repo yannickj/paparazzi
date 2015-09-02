@@ -15,6 +15,10 @@ IMU_APOGEE_CFLAGS += -DUSE_I2C -DUSE_I2C1
 IMU_APOGEE_CFLAGS += -DIMU_APOGEE_I2C_DEV=$(IMU_APOGEE_I2C_DEV)
 IMU_APOGEE_SRCS += peripherals/mpu60x0.c
 IMU_APOGEE_SRCS += peripherals/mpu60x0_i2c.c
+IMU_APOGEE_SRCS += peripherals/mpu9150_i2c.c
+IMU_APOGEE_SRCS += peripherals/ak8975.c
+IMU_APOGEE_SRCS += peripherals/mpl3115.c
+
 
 # with default APOGEE_SMPLRT_DIV (gyro output 100Hz)
 # the AHRS_PROPAGATE_FREQUENCY needs to be adjusted accordingly
@@ -25,9 +29,6 @@ ap.CFLAGS += -DAHRS_CORRECT_FREQUENCY=$(AHRS_CORRECT_FREQUENCY)
 
 ap.CFLAGS += $(IMU_APOGEE_CFLAGS)
 ap.srcs   += $(IMU_APOGEE_SRCS)
-
-test_imu.CFLAGS += $(IMU_APOGEE_CFLAGS)
-test_imu.srcs   += $(IMU_APOGEE_SRCS)
 
 #
 # Simulator

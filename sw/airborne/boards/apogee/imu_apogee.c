@@ -58,11 +58,18 @@ PRINT_CONFIG_VAR(APOGEE_ACCEL_RANGE)
 
 struct ImuApogee imu_apogee;
 
-// baro config will be done later in bypass mode
-bool_t configure_baro_slave(Mpu60x0ConfigSet mpu_set, void *mpu);
+#ifdef MPU9150_SLV_MAG
+struct Ak8975 ak;
+#endif
 
-bool_t configure_baro_slave(Mpu60x0ConfigSet mpu_set __attribute__((unused)), void *mpu __attribute__((unused)))
-{
+#ifdef MPU9150_SLV_BARO
+struct Mpl3115 mpl;
+#endif
+
+// baro config will be done later in bypass mode
+bool_t configure_baro_slave(Mpu60x0ConfigSet mpu_set, void* mpu);
+
+bool_t configure_baro_slave(Mpu60x0ConfigSet mpu_set __attribute__ ((unused)), void* mpu __attribute__ ((unused))) {
   return TRUE;
 }
 
@@ -83,9 +90,46 @@ void imu_impl_init(void)
 
   imu_apogee.gyr_valid = FALSE;
   imu_apogee.acc_valid = FALSE;
+  
+#ifdef MPU9150_SLV_MAG
+
+  // Status byte, Accel (3x2 bytes), blank byte, Gyros (3x2 bytes) => 14 bytes
+  imu_apogee.mpu.config.nb_bytes = 15;
+
+  // Extended sens bytes :
+  //   Mag: status byte + 3x2 bytes + status byte => 8 bytes
+  imu_apogee.mpu.config.nb_bytes += 8;
+  imu_apogee.mpu.config.nb_slaves = 1; 
+
+  imu_apogee.mpu.config.slaves[MPU_MAG_SLV_NB].configure = &mpu9150_i2c_configure_mag_slave;
+  imu_apogee.mpu.config.slaves[MPU_MAG_SLV_NB].mpu_slave_init_status = 0;
+  imu_apogee.mpu.config.slaves[MPU_MAG_SLV_NB].mpu_slave_privateData = &ak;
+
+  ak8975_init(&ak, &(IMU_APOGEE_I2C_DEV), (AK8975_I2C_SLV_ADDR<<1));
+
+  imu_apogee.mpu.config.i2c_bypass = FALSE;
+
+  imu_apogee.mag_valid = FALSE;
+
+#endif
+
+#ifdef MPU9150_SLV_BARO
+
+  // Extended sens bytes :
+  //  Baro (3 bytes)
+  imu_apogee.mpu.config.nb_bytes += 3;
+  imu_apogee.mpu.config.nb_slaves += 1;
+
+  imu_apogee.mpu.config.slaves[MPU_BARO_SLV_NB].configure = &mpu9150_i2c_configure_baro_slave;
+  imu_apogee.mpu.config.slaves[MPU_BARO_SLV_NB].mpu_slave_init_status = 0;
+  imu_apogee.mpu.config.slaves[MPU_BARO_SLV_NB].mpu_slave_privateData = &mpl;
+
+  mpl3115_init(&mpl, &(IMU_APOGEE_I2C_DEV), MPL3115_I2C_ADDR);
+
+#endif
 }
 
-void imu_periodic(void)
+void imu_periodic( void )
 {
   // Start reading the latest gyroscope data
   mpu60x0_i2c_periodic(&imu_apogee.mpu);
@@ -93,27 +137,54 @@ void imu_periodic(void)
   //RunOnceEvery(10,imu_apogee_downlink_raw());
 }
 
-void imu_apogee_downlink_raw(void)
+void imu_apogee_downlink_raw( void )
 {
-  DOWNLINK_SEND_IMU_GYRO_RAW(DefaultChannel, DefaultDevice, &imu.gyro_unscaled.p, &imu.gyro_unscaled.q,
-                             &imu.gyro_unscaled.r);
-  DOWNLINK_SEND_IMU_ACCEL_RAW(DefaultChannel, DefaultDevice, &imu.accel_unscaled.x, &imu.accel_unscaled.y,
-                              &imu.accel_unscaled.z);
+  DOWNLINK_SEND_IMU_GYRO_RAW(DefaultChannel, DefaultDevice,&imu.gyro_unscaled.p,&imu.gyro_unscaled.q,&imu.gyro_unscaled.r);
+  DOWNLINK_SEND_IMU_ACCEL_RAW(DefaultChannel, DefaultDevice,&imu.accel_unscaled.x,&imu.accel_unscaled.y,&imu.accel_unscaled.z);
 }
 
 
-void imu_apogee_event(void)
+void imu_apogee_event( void )
 {
+#ifdef MPU9150_SLV_MAG
+   struct Int32Vect3 mag={0,0,0};
+#endif
+#ifdef MPU9150_SLV_BARO
+   uint32_t int_pressure = 0;
+   float pressure = 0;
+#endif
+
+
   // If the itg3200 I2C transaction has succeeded: convert the data
   mpu60x0_i2c_event(&imu_apogee.mpu);
+
   if (imu_apogee.mpu.data_available) {
-    RATES_ASSIGN(imu.gyro_unscaled, imu_apogee.mpu.data_rates.rates.p, -imu_apogee.mpu.data_rates.rates.q,
-                 -imu_apogee.mpu.data_rates.rates.r);
-    VECT3_ASSIGN(imu.accel_unscaled, imu_apogee.mpu.data_accel.vect.x, -imu_apogee.mpu.data_accel.vect.y,
-                 -imu_apogee.mpu.data_accel.vect.z);
+    RATES_ASSIGN(imu.gyro_unscaled, imu_apogee.mpu.data_rates.rates.p, imu_apogee.mpu.data_rates.rates.q, imu_apogee.mpu.data_rates.rates.r);
+//    VECT3_ASSIGN(imu.accel_unscaled, imu_apogee.mpu.data_accel.vect.x, -imu_apogee.mpu.data_accel.vect.y, -imu_apogee.mpu.data_accel.vect.z);
+    VECT3_ASSIGN(imu.accel_unscaled, imu_apogee.mpu.data_accel.vect.x, imu_apogee.mpu.data_accel.vect.y, imu_apogee.mpu.data_accel.vect.z);
     imu_apogee.mpu.data_available = FALSE;
     imu_apogee.gyr_valid = TRUE;
     imu_apogee.acc_valid = TRUE;
+
+#ifdef MPU9150_SLV_MAG
+    imu_apogee.mag_valid = mpu9150_i2c_mag_event(&imu_apogee.mpu, &mag);
+//    if(imu_apogee.mag_valid) VECT3_COPY(imu.mag_unscaled, mag);
+    if(imu_apogee.mag_valid) {
+      imu.mag_unscaled.x = mag.y;
+      imu.mag_unscaled.y = mag.x;
+      imu.mag_unscaled.z = -mag.z;
+    }
+#endif
+
+#ifdef MPU9150_SLV_BARO
+    mpu9150_i2c_baro_event(&imu_apogee.mpu, &pressure, &int_pressure);
+    AbiSendMsgBARO_ABS(BARO_BOARD_SENDER_ID, &pressure);
+#ifdef SENSOR_SYNC_SEND
+    DOWNLINK_SEND_MPL3115_BARO(DefaultChannel, DefaultDevice, &int_pressure, 0, 0);
+#endif
+
+#endif
+
   }
 }
 
