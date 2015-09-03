@@ -135,11 +135,17 @@
 
   </section>
 
-  <!-- Magnitude deviation 
-      Aaechen : Lat 50.788812°N,Lon 6.046862°E
-      http://www.ngdc.noaa.gov/geomag-web
+  <!-- Magnetic Field Calculator
+      http://www.ngdc.noaa.gov/geomag-web/#igrfwmm
       http://www.wolframalpha.com
-      Normalize[{19701.3,445.6 , 44569.6}]
+
+      Aaechen : Lat 50.788812°N,Lon 6.046862°E
+      Normalize[{19701.3, 445.6, 44569.6}]
+      Result(0.40428, 0.00914, 0.91459)
+
+      Enac : Lat 43.564080°N, Lon 1.481289°E
+      Normalize[{23759.6, 138.7, 39666.4}]
+      Result(0.51385, 0.00299, 0.85787)
   -->
 
   <!-- Option 1) Baro -->
