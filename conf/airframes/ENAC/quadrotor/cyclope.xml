@@ -108,9 +108,9 @@
     <define name="ACCEL_Y_SIGN" value="1"/>
     <define name="ACCEL_Z_SIGN" value="1"/>
 
-    <define name="MAG_X_SIGN" value="-1"/>
-    <define name="MAG_Y_SIGN" value="-1"/>
-    <define name="MAG_Z_SIGN" value="1"/>
+    <define name="MAG_X_SIGN" value="1"/>
+    <define name="MAG_Y_SIGN" value="1"/>
+    <define name="MAG_Z_SIGN" value="-1"/>
 
     <!-- From calibration tool -->
     <define name="ACCEL_X_NEUTRAL" value="95"/>
@@ -121,13 +121,12 @@
     <define name="ACCEL_Z_SENS" value="2.44542215596" integer="16"/>
 
     <!-- From calibration tool -->
-    <define name="MAG_X_NEUTRAL" value="33"/>
-    <define name="MAG_Y_NEUTRAL" value="39"/>
-    <define name="MAG_Z_NEUTRAL" value="-20"/>
-    <define name="MAG_X_SENS" value="14.0500062063" integer="16"/>
-    <define name="MAG_Y_SENS" value="13.0541253055" integer="16"/>
-    <define name="MAG_Z_SENS" value="14.2210077719" integer="16"/>
-
+    <define name="MAG_X_NEUTRAL" value="45"/>
+    <define name="MAG_Y_NEUTRAL" value="51"/>
+    <define name="MAG_Z_NEUTRAL" value="-5"/>
+    <define name="MAG_X_SENS" value="10.7875790958" integer="16"/>
+    <define name="MAG_Y_SENS" value="17.0143266799" integer="16"/>
+    <define name="MAG_Z_SENS" value="18.5886466779" integer="16"/>
 
     <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
@@ -148,15 +147,23 @@
       Result(0.51385, 0.00299, 0.85787)
   -->
 
-  <!-- Option 1) Baro -->
+  <!-- Firmware Option (1) > 
   <section name="INS" prefix="INS_"/>
   <section name="AHRS" prefix="AHRS_">
     <define name="H_X" value="0.40428"/>
     <define name="H_Y" value="0.00914"/>
     <define name="H_Z" value="0.91459"/>
+  </section-->   
+
+  <!-- Firmware Option (1) -->
+  <section name="INS" prefix="INS_"/>
+  <section name="AHRS" prefix="AHRS_">
+    <define name="H_X" value="0.51385"/>
+    <define name="H_Y" value="0.00299"/>
+    <define name="H_Z" value="0.85787"/>
   </section>   
 
-  <!-- Option 2) Do not need AHRS >
+  <!-- Firmware Option (2) >
   <section name="INS" prefix="INS_">
     <define name="H_X" value="0.40428"/>
     <define name="H_Y" value="0.00914"/>
