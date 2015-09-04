@@ -1,0 +1,96 @@
+<!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
+<flight_plan alt="190" ground_alt="185" lat0="43.564015" lon0="1.481357" max_dist_from_home="150" name="rotorcraft_enac_hypodrome" security_height="1">
+  <header>
+#include "autopilot.h"
+  </header>
+  <waypoints>
+    <waypoint name="HOME" lon="1.481357" lat="43.564015"/>
+    <waypoint name="CLIMB" lon="1.481385" lat="43.563987"/>
+    <waypoint name="STDBY" lon="1.481412" lat="43.56397"/>
+    <waypoint name="TD" lon="1.4814216" lat="43.5639653"/>
+    <waypoint name="_FLY1" lon="1.4812680000000003" lat="43.56402200000001"/>
+    <waypoint name="_FLY2" lon="1.4812630000000002" lat="43.563988"/>
+    <waypoint name="_FLY3" lon="1.481215" lat="43.563963"/>
+    <waypoint name="_FLY4" lon="1.4818160000000002" lat="43.563366"/>
+    <waypoint name="_FLY5" lon="1.4820550000000001" lat="43.563500000000005"/>
+    <waypoint name="_FLY6" lon="1.481403" lat="43.564174"/>
+    <waypoint name="_FLY7" lon="1.4812359999999998" lat="43.564083"/>
+    <waypoint name="_KILL1" lon="1.4812020000000001" lat="43.564096"/>
+    <waypoint name="_KILL2" lon="1.4812199999999998" lat="43.564063999999995"/>
+    <waypoint name="_KILL3" lon="1.481244" lat="43.564021"/>
+    <waypoint name="_KILL4" lon="1.4812309999999997" lat="43.563998999999995"/>
+    <waypoint name="_KILL5" lon="1.481177" lat="43.563971"/>
+    <waypoint name="_KILL6" lon="1.4818389999999997" lat="43.563306"/>
+    <waypoint name="_KILL7" lon="1.4821299999999997" lat="43.56346599999999"/>
+    <waypoint name="_KILL8" lon="1.4813930000000002" lat="43.564212000000005"/>
+    <waypoint name="p0" lon="1.481443" lat="43.5639381"/>
+    <waypoint name="p1" lon="1.481491" lat="43.563878"/>
+    <waypoint name="p2" lon="1.4818" lat="43.563548"/>
+  </waypoints>
+  <sectors>
+    <sector color="lime" name="Flight_Area">
+      <corner name="_FLY1"/>
+      <corner name="_FLY2"/>
+      <corner name="_FLY3"/>
+      <corner name="_FLY4"/>
+      <corner name="_FLY5"/>
+      <corner name="_FLY6"/>
+      <corner name="_FLY7"/>
+    </sector>
+    <sector color="red" name="Kill">
+      <corner name="_KILL1"/>
+      <corner name="_KILL2"/>
+      <corner name="_KILL3"/>
+      <corner name="_KILL4"/>
+      <corner name="_KILL5"/>
+      <corner name="_KILL6"/>
+      <corner name="_KILL7"/>
+      <corner name="_KILL8"/>
+    </sector>
+  </sectors>
+
+  <exceptions>
+    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 50) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('landed')) && !(nav_block == IndexOfBlock('Standby'))" deroute="Standby"/>
+  </exceptions>
+  <blocks>
+    <block name="Wait GPS">
+      <call fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+      <call fun="NavSetAltitudeReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <call fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Start Engine">
+      <call fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+      <exception cond="stateGetPositionEnu_f()->z > 1.5" deroute="Standby"/>
+      <call fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay climb="0.5" vmode="climb" wp="CLIMB"/>
+    </block>
+    <block name="Standby" pre_call="if(!InsideKill(GetPosX(), GetPosY())) NavKillThrottle();" strip_button="Standby" strip_icon="home.png">
+      <stay wp="STDBY"/>
+    </block>
+    <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
+      <call fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land">
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <exception cond="NavDetectGround()" deroute="Holding point"/>
+      <exception cond="!nav_is_in_flight()" deroute="landed"/>
+      <call fun="NavStartDetectGround()"/>
+      <stay climb="-0.8" vmode="climb" wp="TD"/>
+    </block>
+    <block name="landed">
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
