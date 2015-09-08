@@ -1907,6 +1907,17 @@
   </message>
 
   <!--216 is free -->
+  <message name="HACKHD_SHOT" id="216">
+    <field name="photo_nr" type="int16"/>
+    <field name="time" type="uint32"/>
+    <field name="x" type="int32"/>
+    <field name="y" type="int32"/>
+    <field name="z" type="int32"/>
+    <field name="roll" type="int16"/>
+    <field name="pitch" type="int16"/>
+    <field name="yaw" type="int16"/>
+  </message>
+
   <!--217 is free -->
 
   <message name="BEBOP_ACTUATORS" id="218">
@@ -2160,7 +2171,13 @@
   </message>
 
   <!-- 251 is free -->
-  <!-- 252 is free -->
+  <message name="OSD" id="252">
+    <field name="cpt"     type="uint32"/>
+    <field name="lat"     type="int32" unit="1e7deg" alt_unit="deg" alt_unit_coef="0.0000001"/>
+    <field name="lon"     type="int32" unit="1e7deg" alt_unit="deg" alt_unit_coef="0.0000001"/>
+    <field name="alt"     type="int32" unit="mm"   alt_unit="m">altitude above WGS84 reference ellipsoid</field>
+  </message>
+
 
   <message name="I2C_ERRORS" id="253">
     <field name="queue_full_cnt"              type="uint16"/>
