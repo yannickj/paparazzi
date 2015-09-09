@@ -17,6 +17,7 @@
 #define _OsdLink(dev, _x)  __OsdLink(dev, _x)
 #define OsdLink(_x) _OsdLink(OSD_LINK, _x)
 
+uint8_t osd_cmd;
 
 struct datatypeOut {
   int32_t  lat;   ///< in degrees*1e7
@@ -29,6 +30,7 @@ struct datatypeOut {
   int16_t  phi;   ///< in decideg
   int16_t  theta; ///< in decideg
   int16_t  psi;   ///< in decideg
+  uint8_t  cmd;   ///< command
 };
 
 struct datatypeIn {
@@ -45,6 +47,8 @@ struct datatypeIn dataIn;
 void osdlink_init(void)
 {
   memset(&dataIn, 0, sizeof(dataIn));
+
+  osd_cmd = OSD_CMD_CAPTURE_STOP;
 }
 
 
@@ -70,6 +74,8 @@ void osdlink_periodic(void)
   data.phi   = DegOfRad(stateGetNedToBodyEulers_f()->phi * 10.0f);
   data.theta = DegOfRad(stateGetNedToBodyEulers_f()->theta * 10.0f);
   data.psi   = DegOfRad(stateGetNedToBodyEulers_f()->psi * 10.0f);
+
+  data.cmd = osd_cmd;
 
   const uint8_t lg=2+sizeof(data)+1;
   uint8_t buff[lg];

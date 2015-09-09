@@ -1,9 +1,20 @@
 <!DOCTYPE module SYSTEM "module.dtd">
 
-<module name="datalink">
+<module name="osdlink" dir="datalink">
   <doc>
     <description>Basic OSDLink implementation</description>
   </doc>
+  <settings>
+    <dl_settings name="control">
+      <dl_settings name="osdlink">
+
+        <dl_setting max="2" min="0" step="1" module="datalink/osdlink" var="osd_cmd" values="CAPTURE_STOP|CAPTURE_START|MAPPING_END">
+          <strip_button name="OSD Capture Start" icon="digital-camera.png" value="1" group="osd"/>
+          <strip_button name="OSD Capture Stop" icon="off.png" value="0" group="osd"/>
+        </dl_setting>
+      </dl_settings>
+    </dl_settings>
+  </settings>
   <header>
     <file name="osdlink.h"/>
   </header>
