@@ -1,0 +1,25 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="datalink">
+  <doc>
+    <description>Basic OSDLink implementation</description>
+  </doc>
+  <header>
+    <file name="osdlink.h"/>
+  </header>
+
+  <init fun="osdlink_init()"/>
+  <periodic fun="osdlink_periodic()" freq="10" autorun="TRUE"/>
+  <event fun="osdlink_event()"/>
+
+  <makefile>
+    <file name="osdlink.c"/>
+    <raw>
+$(TARGET).CFLAGS += -DOSD_LINK=$(OSD_PORT)
+$(TARGET).CFLAGS += -DUSE_$(OSD_PORT)
+$(TARGET).CFLAGS += -D$(OSD_PORT)_BAUD=B115200
+    </raw>
+
+  </makefile>
+
+</module>
