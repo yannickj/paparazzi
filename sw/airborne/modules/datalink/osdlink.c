@@ -41,6 +41,7 @@ struct datatypeIn {
 };
 
 bool_t moveWptOnce = TRUE;
+int16_t sendShotCpt = 0;
 
 struct datatypeIn dataIn;
 
@@ -54,7 +55,6 @@ void osdlink_init(void)
 
 void osdlink_periodic(void)
 {
-  struct LlaCoor_i lla;
   struct EnuCoor_f enu;
   struct datatypeOut data;
 
@@ -64,7 +64,7 @@ void osdlink_periodic(void)
   data.lon = gps.lla_pos.lon;
   data.alt = gps.lla_pos.alt;
 
-  data. pacc = gps.pacc;
+  data.pacc = gps.pacc;
 
   enu = *stateGetPositionEnu_f();
   data.x = enu.x;
@@ -98,17 +98,41 @@ void osdlink_periodic(void)
 
   // Send OSD message to ground
 
-  pprz_msg_send_OSD(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID, &dataIn.cpt, &dataIn.lat, &dataIn.lon, &dataIn.alt);
+  //pprz_msg_send_OSD(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID, &dataIn.cpt, &dataIn.lat, &dataIn.lon, &dataIn.alt);
 
+  // Send DC_SHOT message to ground if needed
+  if (sendShotCpt != (int16_t)dataIn.cpt) {
+    sendShotCpt = (int16_t)dataIn.cpt;
+
+    // course in decideg
+    int16_t course = DegOfRad(*stateGetHorizontalSpeedDir_f()) * 10;
+    // ground speed in cm/s
+    uint16_t speed = (*stateGetHorizontalSpeedNorm_f()) * 10;
+
+    DOWNLINK_SEND_DC_SHOT(DefaultChannel, DefaultDevice,
+        &sendShotCpt,
+        &dataIn.lat,
+        &dataIn.lon,
+        &dataIn.alt,
+        &gps.hmsl,
+        &data.phi,
+        &data.theta,
+        &data.psi,
+        &course,
+        &speed,
+        &gps.tow);
+  }
 
   // Move waypoint (onboard updated and requested message to ground)
-
+#ifdef OSD_WP_IDX
   if((moveWptOnce) && (dataIn.cpt==1)) {
+    struct LlaCoor_i lla;
     lla.lat = dataIn.lat;
     lla.lon = dataIn.lon;
-    nav_move_waypoint_lla(20, &lla); // WP_p1
+    nav_move_waypoint_lla(OSD_WP_IDX, &lla);
     moveWptOnce = FALSE;
   }
+#endif
 
 }
 
