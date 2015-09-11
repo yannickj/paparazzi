@@ -243,9 +243,9 @@
    <define name="REF_MAX_ZDD" value=" 0.5*9.81"/>
    <define name="REF_MIN_ZD" value="-1.5"/>
    <define name="REF_MAX_ZD" value=" 1.5"/>
-   <define name="HOVER_KP" value="73"/>
-   <define name="HOVER_KD" value="35"/>
-   <define name="HOVER_KI" value="13"/>
+   <define name="HOVER_KP" value="48"/>
+   <define name="HOVER_KD" value="46"/>
+   <define name="HOVER_KI" value="11"/>
   </section>
 
 

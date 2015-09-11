@@ -14,7 +14,7 @@
   </header>
   <init fun="mag_hmc58xx_module_init()"/>
   <periodic fun="mag_hmc58xx_module_periodic()" freq="60"/>
-  <periodic fun="mag_hmc58xx_report()" freq="10" autorun="TRUE"/>
+  <periodic fun="mag_hmc58xx_report()" freq="10" autorun="FALSE"/>
   <event fun="mag_hmc58xx_module_event()"/>
   <makefile target="ap">
     <file name="mag_hmc58xx.c"/>
