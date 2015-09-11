@@ -79,6 +79,7 @@
       <go from="STDBY" hmode="route" wp="p1"/>
     </block>
     <block name="Mapping" strip_button="Carto" strip_icon="survey.png">
+      <set var="nav_heading" value="ANGLE_BFP_OF_REAL(RadOfDeg(310))"/>
       <set value="OSD_CMD_CAPTURE_RUN" var="osd_cmd"/>
       <path wpts="p1,p2,p3,p4,p5,p6,p7,p8"/>
       <set value="OSD_CMD_CAPTURE_STOP" var="osd_cmd"/>
