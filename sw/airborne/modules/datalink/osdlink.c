@@ -90,13 +90,14 @@ void osdlink_periodic(void)
 
   buff[cpt]=0xFE;  cpt=cpt+1;       // End
 
+#ifndef SITL
   // Send OSD data to daughter board
-
   int i=0;
   while (i<cpt) {
     OsdLink(Transmit(buff[i]));
     i++;
   }
+#endif
 
   // Send OSD message to ground
 
@@ -186,6 +187,7 @@ static void parse_osd(uint8_t c)
 
 void osdlink_event(void)
 {
+#ifndef SITL
   while (OsdLink(ChAvailable())) {
     parse_osd(OsdLink(Getch()));
     if (osd_payload_valid) {
@@ -193,4 +195,5 @@ void osdlink_event(void)
       break;
     }
   }
+#endif
 }

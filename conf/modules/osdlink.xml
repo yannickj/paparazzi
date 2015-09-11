@@ -26,9 +26,9 @@
   <makefile>
     <file name="osdlink.c"/>
     <raw>
-$(TARGET).CFLAGS += -DOSD_LINK=$(OSD_PORT)
-$(TARGET).CFLAGS += -DUSE_$(OSD_PORT)
-$(TARGET).CFLAGS += -D$(OSD_PORT)_BAUD=B115200
+ap.CFLAGS += -DOSD_LINK=$(OSD_PORT)
+ap.CFLAGS += -DUSE_$(OSD_PORT)
+ap.CFLAGS += -D$(OSD_PORT)_BAUD=B115200
     </raw>
 
   </makefile>
