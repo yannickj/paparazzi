@@ -13,6 +13,8 @@
 
 #include "navigation.h"
 
+#include "generated/flight_plan.h"
+
 #define __OsdLink(dev, _x) dev##_x
 #define _OsdLink(dev, _x)  __OsdLink(dev, _x)
 #define OsdLink(_x) _OsdLink(OSD_LINK, _x)
@@ -124,12 +126,12 @@ void osdlink_periodic(void)
   }
 
   // Move waypoint (onboard updated and requested message to ground)
-#ifdef OSD_WP_IDX
+#ifdef WP_DELIVERY
   if((moveWptOnce) && (dataIn.cpt==1)) {
     struct LlaCoor_i lla;
     lla.lat = dataIn.lat;
     lla.lon = dataIn.lon;
-    nav_move_waypoint_lla(OSD_WP_IDX, &lla);
+    nav_move_waypoint_lla(WP_DELIVERY, &lla);
     moveWptOnce = FALSE;
   }
 #endif
