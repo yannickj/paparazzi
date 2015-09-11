@@ -20,7 +20,15 @@
 
   <firmware name="rotorcraft">
 
-    <target name="ap" board="apogee_1.0"/>
+    <target name="ap" board="apogee_1.0">
+      <subsystem name="radio_control" type="sbus"/>
+      <define name="RADIO_KILL_SWITCH" value="RADIO_KILL"/>
+    </target>
+
+    <target name="nps" board="pc">
+      <subsystem name="fdm" type="jsbsim"/>
+      <subsystem name="radio_control" type="ppm"/>
+    </target>
 
     <!-- MPU9150 Master request slaves MAG  -->
     <!--define name="MPU9150_SLV_MAG"/-->
@@ -30,9 +38,6 @@
     <!-- USE_BARO_BOARD Should be FALSE to request data as a mpu9150 slave -->
 
     <configure name="USE_BARO_BOARD" value="TRUE"/>
-
-    <subsystem name="radio_control" type="sbus"/>
-    <define name="RADIO_KILL_SWITCH" value="RADIO_KILL"/>
 
     <subsystem name="telemetry" type="xbee_api"/>
 
@@ -261,6 +266,12 @@
     <define name="SERVO_SWITCH_OFF_VALUE" value="SERVO_DROP_MAX"/>
     <define name="DropOpen()" value="ServoSwitchOn()"/>
     <define name="DropClose()" value="ServoSwitchOff()"/>
+  </section>
+
+  <section name="SIMULATOR" prefix="NPS_">
+    <define name="ACTUATOR_NAMES" value="{&quot;nw_motor&quot;, &quot;ne_motor&quot;, &quot;se_motor&quot;, &quot;sw_motor&quot;}"/>
+    <define name="JSBSIM_MODEL" value="&quot;simple_x_quad_ccw&quot;"/>
+    <define name="SENSORS_PARAMS" value="&quot;nps_sensors_params_invariant.h&quot;"/>
   </section>
 
 </airframe>
