@@ -239,24 +239,33 @@
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
-   <define name="REF_MIN_ZDD" value="-0.5*9.81"/>
-   <define name="REF_MAX_ZDD" value=" 0.5*9.81"/>
-   <define name="REF_MIN_ZD" value="-1.5"/>
-   <define name="REF_MAX_ZD" value=" 1.5"/>
+   <define name="REF_MIN_ZDD" value="-0.4*9.81"/>
+   <define name="REF_MAX_ZDD" value=" 0.4*9.81"/>
+   <define name="REF_MIN_ZD" value="-1."/>
+   <define name="REF_MAX_ZD" value=" 1."/>
    <define name="HOVER_KP" value="48"/>
    <define name="HOVER_KD" value="46"/>
    <define name="HOVER_KI" value="11"/>
+   <define name="NOMINAL_HOVER_THROTTLE" value="0.63"/>
+   <define name="ADAPT_NOISE_FACTOR" value="2.0"/>
+   <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.4"/>
   </section>
 
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
-   <define name="MAX_BANK" value="30" unit="deg"/>
+   <define name="MAX_BANK" value="20" unit="deg"/>
    <define name="PGAIN" value="50"/>
    <define name="DGAIN" value="80"/>
    <define name="IGAIN" value="20"/>
    <define name="NGAIN" value="0"/>
    <!-- feedforward -->
    <define name="AGAIN" value="0"/>
+   <define name="REF_MAX_SPEED" value="2.0"/>
+   <define name="REF_MAX_ACCEL" value="2.5"/>
+  </section>
+
+  <section name="NAV">
+    <define name="ARRIVED_AT_WAYPOINT" value="2.0"/>
   </section>
 
   <section name="BAT">

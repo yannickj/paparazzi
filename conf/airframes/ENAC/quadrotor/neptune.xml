@@ -175,8 +175,8 @@
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
 
     <!-- setpoints -->
-    <define name="SP_MAX_PHI" value="40." unit="deg"/>
-    <define name="SP_MAX_THETA" value="40." unit="deg"/>
+    <define name="SP_MAX_PHI" value="30." unit="deg"/>
+    <define name="SP_MAX_THETA" value="30." unit="deg"/>
     <define name="SP_MAX_R" value="90." unit="deg/s"/>
     <define name="DEADBAND_R" value="250"/>
 
@@ -220,10 +220,10 @@
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
-   <define name="REF_MIN_ZDD" value="-0.5*9.81"/>
-   <define name="REF_MAX_ZDD" value=" 0.5*9.81"/>
-   <define name="REF_MIN_ZD" value="-1.5"/>
-   <define name="REF_MAX_ZD" value=" 1.5"/>
+   <define name="REF_MIN_ZDD" value="-0.4*9.81"/>
+   <define name="REF_MAX_ZDD" value=" 0.4*9.81"/>
+   <define name="REF_MIN_ZD" value="-1."/>
+   <define name="REF_MAX_ZD" value=" 1."/>
    <define name="HOVER_KP" value="30"/>
    <define name="HOVER_KD" value="61"/>
    <define name="HOVER_KI" value="0"/>
@@ -234,13 +234,15 @@
 
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
-   <define name="MAX_BANK" value="30" unit="deg"/>
+   <define name="MAX_BANK" value="20" unit="deg"/>
    <define name="PGAIN" value="35"/>
    <define name="DGAIN" value="51"/>
    <define name="IGAIN" value="13"/>
    <define name="NGAIN" value="0"/>
    <!-- feedforward -->
    <define name="AGAIN" value="0"/>
+   <define name="REF_MAX_SPEED" value="2.0"/>
+   <define name="REF_MAX_ACCEL" value="2.5"/>
   </section>
 
   <section name="BAT">
