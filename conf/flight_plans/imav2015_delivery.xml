@@ -1,13 +1,13 @@
 <!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
 
-<flight_plan alt="212" ground_alt="207" lat0="50.788812" lon0="6.046862" max_dist_from_home="170" name="Imav2015 Water" security_height="2">
+<flight_plan alt="222" ground_alt="207" lat0="50.788812" lon0="6.046862" max_dist_from_home="170" name="Imav2015 Delivery" security_height="2">
   <header>
 #include "autopilot.h"
 #include "navigation.h"
 #define DeltaX(_wp) (GetPosX() - WaypointX(_wp))
 #define DeltaY(_wp) (GetPosY() - WaypointY(_wp))
 static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*DeltaX(_wp) + DeltaY(_wp)*DeltaY(_wp)),1.)) return TRUE; else return FALSE; }
-  </header>
+</header>
   <waypoints>
     <waypoint name="HOME" x="0.0" y="0.0"/>
     <waypoint name="CLIMB" x="13.2" y="-11.8"/>
@@ -24,7 +24,10 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
     <waypoint name="_KILL3" x="90.0" y="100.0"/>
     <waypoint name="_KILL4" x="12.6" y="159.9"/>
     <waypoint name="_KILL5" x="-109.7" y="29.8"/>
-    <waypoint name="WATER" x="1.4" y="8.5"/>
+    <waypoint name="DELIVERY" x="-8.6" y="-10.0"/>
+    <waypoint name="H1" x="-21.8" y="-6.8"/>
+    <waypoint name="H2" x="-28.5" y="8.2"/>
+    <waypoint name="H3" x="-27.1" y="14.3"/>
   </waypoints>
   <sectors>
     <sector color="lime" name="Flight_Area">
@@ -71,16 +74,16 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
     <block group="home" name="Standby" strip_button="Standby" strip_icon="home.png">
       <stay wp="STDBY"/>
     </block>
-    <block name="Start Mission" strip_button="Start Drop Water">
-      <path wpts="CLIMB,STDBY,WATER"/>
+    <block name="Start Mission" strip_button="Start Delivery">
+      <path wpts="CLIMB,STDBY,DELIVERY"/>
+      <stay climb="-1.0" until="4.0 > stateGetPositionEnu_f()->z" vmode="climb" wp="DELIVERY"/>
     </block>
-    <block name="Drop Water">
-      <stay until="CloseFrom(WP_WATER)" wp="WATER"/>
+    <block name="Drop Delivery">
       <call fun="DropOpen()"/>
-      <stay until="stage_time>1" wp="WATER"/>
+      <stay until="stateGetPositionEnu_f()->z >10." wp="DELIVERY" alt="WaypointAlt(WP_DELIVERY)"/>
     </block>
-    <block name="Land from WATER">
-      <path wpts="WATER,STDBY,TD"/>
+    <block name="Land from Delivery">
+      <path wpts="DELIVERY,STDBY,TD"/>
       <deroute block="land"/>
     </block>
     <block name="land here">

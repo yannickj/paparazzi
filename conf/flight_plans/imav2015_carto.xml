@@ -47,7 +47,7 @@
     </sector>
   </sectors>
   <exceptions>
-    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('landed')) && !(nav_block == IndexOfBlock('Home Safety'))" deroute="Home Safety"/>
+    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety'))" deroute="Home Safety"/>
   </exceptions>
   <blocks>
     <block name="Wait GPS">
@@ -94,11 +94,11 @@
     </block>
     <block name="flare">
       <exception cond="NavDetectGround()" deroute="Holding point"/>
-      <exception cond="!nav_is_in_flight()" deroute="landed"/>
+      <exception cond="!nav_is_in_flight()" deroute="Motor Idle"/>
       <call fun="NavStartDetectGround()"/>
       <stay climb="-0.8" vmode="climb" wp="TD"/>
     </block>
-    <block name="landed">
+    <block name="Motor Idle">
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block name="Home Safety">
