@@ -102,11 +102,10 @@
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block name="Home Safety">
-      <exception cond="!InsideKill(GetPosX(), GetPosY())" deroute="Land Safety"/>
-      <stay wp="HOME"/>
+      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 45)" deroute="Land Safety"/>
+      <stay wp="HOME" height="10"/>
     </block>
     <block name="Land Safety">
-      <stay wp="HOME"/>
       <attitude pitch="0" roll="0" throttle="0.1" until="FALSE" vmode="throttle"/>
     </block>
   </blocks>

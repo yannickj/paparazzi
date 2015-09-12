@@ -1,0 +1,120 @@
+<!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
+
+<flight_plan alt="222" ground_alt="205" lat0="50.7902312" lon0="6.047558" max_dist_from_home="320" name="rotorcraft_aaechen_endurance" security_height="1">
+  <header>
+#include "autopilot.h"
+</header>
+  <waypoints>
+    <waypoint lat="50.7902312" lon="6.047558" name="HOME"/>
+    <waypoint lat="50.7902709" lon="6.0476497" name="CLIMB"/>
+    <waypoint lat="50.7903228" lon="6.0477294" name="STDBY"/>
+    <waypoint lat="50.790365" lon="6.0477738" name="TD"/>
+    <waypoint lat="50.789061000000004" lon="6.045719000000002" name="_FLY1"/>
+    <waypoint lat="50.788486" lon="6.046827000000001" name="_FLY2"/>
+    <waypoint lat="50.788578" lon="6.046929" name="_FLY3"/>
+    <waypoint lat="50.788663" lon="6.047040999999999" name="_FLY4"/>
+    <waypoint lat="50.78884200000001" lon="6.047248999999999" name="_FLY5"/>
+    <waypoint lat="50.788952" lon="6.047019" name="_FLY6"/>
+    <waypoint lat="50.78967" lon="6.047882" name="_FLY7"/>
+    <waypoint lat="50.78994099999999" lon="6.047317999999999" name="_FLY8"/>
+    <waypoint lat="50.791897" lon="6.050693" name="_FLY9"/>
+    <waypoint lat="50.792064" lon="6.0504050000000005" name="_FLY10"/>
+    <waypoint lat="50.790103" lon="6.047032000000001" name="_FLY11"/>
+    <waypoint lat="50.789057" lon="6.045676" name="_KILL1"/>
+    <waypoint lat="50.788465" lon="6.046834999999999" name="_KILL2"/>
+    <waypoint lat="50.78884200000001" lon="6.047275000000001" name="_KILL3"/>
+    <waypoint lat="50.78968900000001" lon="6.048038" name="_KILL4"/>
+    <waypoint lat="50.78995900000001" lon="6.047504" name="_KILL5"/>
+    <waypoint lat="50.791911000000006" lon="6.050845" name="_KILL6"/>
+    <waypoint lat="50.792156" lon="6.050428999999999" name="_KILL7"/>
+    <waypoint lat="50.790090000000006" lon="6.046905000000001" name="_KILL8"/>
+    <waypoint lat="50.7903671" lon="6.0478827" name="p1"/>
+    <waypoint lat="50.791869" lon="6.0505164" name="p2"/>
+    <waypoint lat="50.7919368" lon="6.0503877" name="p3"/>
+    <waypoint lat="50.7904193" lon="6.047786" name="p4"/>
+  </waypoints>
+  <sectors>
+    <sector color="lime" name="Flight_Area">
+      <corner name="_FLY1"/>
+      <corner name="_FLY2"/>
+      <corner name="_FLY3"/>
+      <corner name="_FLY4"/>
+      <corner name="_FLY5"/>
+      <corner name="_FLY6"/>
+      <corner name="_FLY7"/>
+      <corner name="_FLY8"/>
+      <corner name="_FLY9"/>
+      <corner name="_FLY10"/>
+      <corner name="_FLY11"/>
+    </sector>
+    <sector color="red" name="Kill">
+      <corner name="_KILL1"/>
+      <corner name="_KILL2"/>
+      <corner name="_KILL3"/>
+      <corner name="_KILL4"/>
+      <corner name="_KILL5"/>
+      <corner name="_KILL6"/>
+      <corner name="_KILL7"/>
+      <corner name="_KILL8"/>
+    </sector>
+  </sectors>
+  <exceptions>
+    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety'))" deroute="Home Safety"/>
+  </exceptions>
+  <blocks>
+    <block name="Wait GPS">
+      <call fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid() && gps.pacc > 1500"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+      <call fun="NavSetAltitudeReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <call fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="home" name="Start Engine" strip_button="Start Engine" strip_icon="on.png">
+      <call fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="home" name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+      <exception cond="stateGetPositionEnu_f()->z > 1.5" deroute="Standby"/>
+      <call fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay climb="0.5" vmode="climb" wp="CLIMB"/>
+    </block>
+    <block group="home" name="Standby" pre_call="if(!InsideKill(GetPosX(), GetPosY())) NavKillThrottle();" strip_button="Standby" strip_icon="home.png">
+      <stay wp="STDBY"/>
+    </block>
+    <block name="Start Mission" strip_button="Start Endurance">
+      <for var="i" from="0" to="22">
+        <go from="p1" hmode="route" wp="p2"/>
+        <go from="p2" hmode="route" wp="p3"/>
+        <go from="p3" hmode="route" wp="p4"/>
+        <go from="p4" hmode="route" wp="p1"/>
+      </for>
+    </block>
+    <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
+      <call fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land">
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <exception cond="NavDetectGround()" deroute="Holding point"/>
+      <exception cond="!nav_is_in_flight()" deroute="Motor Idle"/>
+      <call fun="NavStartDetectGround()"/>
+      <stay climb="-0.8" vmode="climb" wp="TD"/>
+    </block>
+    <block name="Motor Idle">
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Home Safety">
+      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 45)" deroute="Land Safety"/>
+      <stay wp="HOME" height="10"/>
+    </block>
+    <block name="Land Safety">
+      <attitude pitch="0" roll="0" throttle="0.1" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
