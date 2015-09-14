@@ -47,7 +47,7 @@
     </sector>
   </sectors>
   <exceptions>
-    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety'))" deroute="Home Safety"/>
+    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 38) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety') && !(nav_block == IndexOfBlock('Land Safety')))" deroute="Home Safety"/>
   </exceptions>
   <blocks>
     <block name="Wait GPS">
@@ -102,7 +102,7 @@
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block name="Home Safety">
-      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 45)" deroute="Land Safety"/>
+      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40)" deroute="Land Safety"/>
       <stay wp="HOME" height="10"/>
     </block>
     <block name="Land Safety">

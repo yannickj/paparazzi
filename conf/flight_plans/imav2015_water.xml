@@ -1,17 +1,18 @@
 <!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
 
-<flight_plan alt="212" ground_alt="207" lat0="50.788812" lon0="6.046862" max_dist_from_home="170" name="Imav2015 Water" security_height="2">
+<flight_plan alt="227" ground_alt="207" lat0="50.788812" lon0="6.046862" max_dist_from_home="170" name="Imav2015 Water" security_height="2">
   <header>
 #include "autopilot.h"
 #include "navigation.h"
+#include "guidance/guidance_v.h"
 #define DeltaX(_wp) (GetPosX() - WaypointX(_wp))
 #define DeltaY(_wp) (GetPosY() - WaypointY(_wp))
 static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*DeltaX(_wp) + DeltaY(_wp)*DeltaY(_wp)),1.)) return TRUE; else return FALSE; }
-  </header>
+</header>
   <waypoints>
     <waypoint name="HOME" x="0.0" y="0.0"/>
-    <waypoint name="CLIMB" x="13.2" y="-11.8"/>
-    <waypoint name="STDBY" x="3.0" y="-10.0"/>
+    <waypoint name="CLIMB" x="43.6" y="104.8"/>
+    <waypoint name="STDBY" x="40.4" y="107.6"/>
     <waypoint name="TD" x="11.0" y="-15.0"/>
     <waypoint name="_FLY1" x="1.6" y="-37.0"/>
     <waypoint name="_FLY2" x="32.6" y="0.6"/>
@@ -25,6 +26,7 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
     <waypoint name="_KILL4" x="12.6" y="159.9"/>
     <waypoint name="_KILL5" x="-109.7" y="29.8"/>
     <waypoint name="WATER" x="1.4" y="8.5"/>
+    <waypoint name="p1" x="1.5" y="35.2"/>
   </waypoints>
   <sectors>
     <sector color="lime" name="Flight_Area">
@@ -44,7 +46,7 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
     </sector>
   </sectors>
   <exceptions>
-    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety'))" deroute="Home Safety"/>
+    <exception cond="Or(!InsideFlight_Area(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 38) && !(nav_block == IndexOfBlock('Wait GPS')) && !(nav_block == IndexOfBlock('Geo init')) && !(nav_block == IndexOfBlock('Holding point')) && !(nav_block == IndexOfBlock('Motor Idle')) && !(nav_block == IndexOfBlock('Home Safety')) && !(nav_block == IndexOfBlock('Land Safety'))" deroute="Home Safety"/>
   </exceptions>
   <blocks>
     <block name="Wait GPS">
@@ -60,11 +62,12 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block group="home" name="Start Engine" strip_button="Start Engine" strip_icon="on.png">
+      <set value="0.7" var="guidance_v_nominal_throttle"/>
       <call fun="NavResurrect()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block group="home" name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
-      <exception cond="stateGetPositionEnu_f()->z > 2.0" deroute="Start Mission"/>
+      <exception cond="stateGetPositionEnu_f()->z > 10.0" deroute="Start Mission"/>
       <call fun="NavSetWaypointHere(WP_CLIMB)"/>
       <stay climb="0.5" vmode="climb" wp="CLIMB"/>
     </block>
@@ -72,16 +75,17 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
       <stay wp="STDBY"/>
     </block>
     <block name="Start Mission" strip_button="Start Drop Water">
-      <path wpts="CLIMB,STDBY,WATER"/>
+      <path wpts="CLIMB,STDBY,p1,WATER"/>
     </block>
     <block name="Drop Water">
-      <stay until="CloseFrom(WP_WATER)" wp="WATER"/>
+      <stay climb="-1.0" until="5.0 > stateGetPositionEnu_f()->z" vmode="climb" wp="WATER"/>
+      <stay until="CloseFrom(WP_WATER)" wp="WATER" alt="222."/>
       <call fun="DropOpen()"/>
-      <set var="guidance_v_nominal_throttle" value="0.46"/>
-      <stay until="stage_time>1" wp="WATER"/>
+      <set value="0.46" var="guidance_v_nominal_throttle"/>
+      <stay until="stage_time>1" wp="WATER" alt="217."/>
     </block>
     <block name="Land from WATER">
-      <path wpts="WATER,STDBY,TD"/>
+      <path wpts="WATER,TD" alt="217."/>
       <deroute block="land"/>
     </block>
     <block name="land here">
@@ -100,8 +104,8 @@ static inline bool_t CloseFrom(uint8_t _wp) { if (LessThan(sqrtf(DeltaX(_wp)*Del
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
     <block name="Home Safety">
-      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 45)" deroute="Land Safety"/>
-      <stay wp="HOME" height="10"/>
+      <exception cond="Or(!InsideKill(GetPosX(), GetPosY()), GetPosAlt() > GetAltRef() + 40)" deroute="Land Safety"/>
+      <stay height="10" wp="HOME"/>
     </block>
     <block name="Land Safety">
       <attitude pitch="0" roll="0" throttle="0.1" until="FALSE" vmode="throttle"/>
