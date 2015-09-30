@@ -1,0 +1,46 @@
+<conf>
+  <aircraft
+   name="cyclope"
+   ac_id="1"
+   airframe="airframes/ENAC/quadrotor/cyclope.xml"
+   radio="radios/FrSkyTaranis.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/imav2015_endurance.xml"
+   settings="settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int_quat.xml settings/rotorcraft_basic.xml"
+   settings_modules=""
+   gui_color="#ffff00000000"
+  />
+  <aircraft
+   name="neptune"
+   ac_id="2"
+   airframe="airframes/ENAC/quadrotor/neptune.xml"
+   radio="radios/T9CH_SBUS.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/imav2015_water.xml"
+   settings="settings/estimation/ins_float_invariant.xml settings/control/stabilization_att_int.xml settings/control/rotorcraft_guidance.xml settings/rotorcraft_basic.xml"
+   settings_modules="modules/servo_switch.xml"
+   gui_color="#56fae2d3e2d3"
+  />
+  <aircraft
+   name="ulysse_deliver"
+   ac_id="3"
+   airframe="airframes/ENAC/quadrotor/ulysse.xml"
+   radio="radios/T9CH_SBUS.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/imav2015_endurance.xml"
+   settings="settings/estimation/ins_float_invariant.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int_quat.xml settings/rotorcraft_basic.xml"
+   settings_modules="modules/osdlink.xml modules/servo_switch.xml modules/air_data.xml"
+   gui_color="#ffffefd80599"
+  />
+  <aircraft
+   name="ulysse_map"
+   ac_id="4"
+   airframe="airframes/ENAC/quadrotor/ulysse.xml"
+   radio="radios/T9CH_SBUS.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/imav2015_carto.xml"
+   settings="settings/estimation/ins_float_invariant.xml settings/control/rotorcraft_guidance.xml settings/control/stabilization_att_int_quat.xml settings/rotorcraft_basic.xml"
+   settings_modules="modules/osdlink.xml modules/servo_switch.xml modules/air_data.xml"
+   gui_color="#32f4d8f73653"
+  />
+</conf>
