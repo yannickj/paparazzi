@@ -37,6 +37,7 @@ let mkdir = fun d ->
 
 (** Raises a Failure if an ID or a NAME appears twice in the conf *)
 let check_unique_id_and_name = fun conf conf_xml ->
+  let ids = Hashtbl.create 5 and names = Hashtbl.create 5 in
   ExtXml.iter_tag "aircraft"
     (fun x ->
       let id = ExtXml.attrib x "ac_id"

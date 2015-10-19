@@ -172,3 +172,44 @@ let get_modules_dir = fun modules ->
   let dir = List.map (fun m -> try Xml.attrib m.xml "dir" with _ -> ExtXml.attrib m.xml "name") modules in
   singletonize (List.sort compare dir)
 
+(** [is_element_unselected target file]
+ * Returns True if [target] is supported the element [file],
+ * [file] being the file name of an Xml file (module or setting) *)
+let is_element_unselected = fun ?(verbose=false) target name ->
+  let test_targets = fun targets ->
+    List.exists (fun t ->
+      let l = String.length t in
+      (* test for inverted selection *)
+      if l > 0 && t.[0] = '!' then
+        not ((String.sub t 1 (l-1)) = target)
+      else
+        t = target
+    ) targets
+  in
+  try
+    let name = (Env.paparazzi_home // "conf" // name) in
+    let xml = Xml.parse_file name in
+    match Xml.tag xml with
+    | "settings" ->
+        let targets = Xml.attrib xml "target" in
+        let target_list = Str.split (Str.regexp "|") targets in
+        let unselected = not (test_targets target_list) in
+        if unselected && verbose then
+          begin Printf.printf "Info: settings '%s' unloaded for target '%s'\n" name target; flush stdout end;
+        unselected
+    | "module" ->
+        let targets = List.map (fun x ->
+          match String.lowercase (Xml.tag x) with
+          | "makefile" -> targets_of_field x Env.default_module_targets
+          | _ -> []
+          ) (Xml.children xml) in
+        let targets = (List.flatten targets) in
+        (* singletonized list *)
+        let targets = singletonize (List.sort compare targets) in
+        let unselected = not (test_targets targets) in
+        if unselected && verbose then
+          begin Printf.printf "Info: module '%s' unloaded for target '%s'\n" name target; flush stdout end;
+        unselected
+    | _ -> false
+  with _ -> false
+
