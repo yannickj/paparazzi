@@ -32,26 +32,18 @@
 #ifndef GPS_PIKSI_H
 #define GPS_PIKSI_H
 
-extern bool_t gps_piksi_available;
+#define GPS_NB_CHANNELS 10
 
-void gps_piksi_event(void);
+extern void gps_piksi_event(void);
+
+/*
+ * Reset base station position
+ */
+extern void gps_piksi_set_base_pos(void);
 
 /*
  * The GPS event
  */
-#define GpsEvent(_sol_available_callback) {         \
-    gps_piksi_event();                              \
-    if (gps_piksi_available) {                      \
-      gps.last_msg_ticks = sys_time.nb_sec_rem;     \
-      gps.last_msg_time = sys_time.nb_sec;          \
-      if (gps.fix == GPS_FIX_3D) {                  \
-        gps.last_3dfix_ticks = sys_time.nb_sec_rem; \
-        gps.last_3dfix_time = sys_time.nb_sec;      \
-      }                                             \
-      _sol_available_callback();                    \
-      gps_piksi_available = FALSE;                  \
-    }                                               \
-  }
+#define GpsEvent gps_piksi_event
 
 #endif /* GPS_PIKSI_H */
-

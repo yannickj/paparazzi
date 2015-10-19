@@ -31,7 +31,7 @@
 
 /** Set the default File logger path to the USB drive */
 #ifndef VIDEO_USB_LOGGER_PATH
-#define VIDEO_USB_LOGGER_PATH "/data/video/usb/"
+#define VIDEO_USB_LOGGER_PATH /data/video/usb
 #endif
 
 /** The file pointer */
@@ -44,12 +44,12 @@ void video_usb_logger_start(void)
   char filename[512];
 
   // Check for available files
-  sprintf(filename, "%s%05d.csv", VIDEO_USB_LOGGER_PATH, counter);
+  sprintf(filename, "%s/%05d.csv", STRINGIFY(VIDEO_USB_LOGGER_PATH), counter);
   while ((video_usb_logger = fopen(filename, "r"))) {
     fclose(video_usb_logger);
 
     counter++;
-    sprintf(filename, "%s%05d.csv", VIDEO_USB_LOGGER_PATH, counter);
+    sprintf(filename, "%s/%05d.csv", STRINGIFY(VIDEO_USB_LOGGER_PATH), counter);
   }
 
   video_usb_logger = fopen(filename, "w");
@@ -79,10 +79,12 @@ void video_usb_logger_periodic(void)
   struct Int32Eulers *euler = stateGetNedToBodyEulers_i();
   static uint32_t sonar = 0;
 
+  // Take a new shot
+  viewvideo_take_shot(TRUE);
+
+  // Save to the file
   fprintf(video_usb_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", counter,
-          viewvideo_save_shot_number, euler->phi, euler->theta, euler->psi, ned->x,
+          viewvideo.shot_number, euler->phi, euler->theta, euler->psi, ned->x,
           ned->y, ned->z, sonar);
   counter++;
-  // Save a new shot
-  viewvideo_SaveShot(0);
 }

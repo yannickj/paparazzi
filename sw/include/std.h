@@ -33,6 +33,10 @@
 /* some convenience macros to print debug/config messages at compile time */
 #include "message_pragmas.h"
 
+/* stringify a define, e.g. one that was not quoted */
+#define _STRINGIFY(s) #s
+#define STRINGIFY(s) _STRINGIFY(s)
+
 #ifndef FALSE
 #define FALSE 0
 #endif
@@ -100,6 +104,9 @@ typedef uint8_t unit_t;
 #ifndef ABS
 #define ABS(val) ((val) < 0 ? -(val) : (val))
 #endif
+
+#define BoundUpper(_x, _max) { if (_x > (_max)) _x = (_max);}
+
 
 #define Bound(_x, _min, _max) { if (_x > (_max)) _x = (_max); else if (_x < (_min)) _x = (_min); }
 #define BoundInverted(_x, _min, _max) {           \

@@ -31,6 +31,7 @@ open Printf
 open Latlong
 open Server_globals
 open Aircraft
+(*open Intruder*)
 module U = Unix
 module LL = Latlong
 
@@ -185,7 +186,7 @@ let ac_msg = fun messages_xml logging ac_name ac ->
 let cam_max_angle = (Deg>>Rad) 89.
 
 let send_cam_status = fun a ->
-  if a.gps_mode = gps_mode_3D then
+  if a.gps_mode >= gps_mode_3D then
     match a.nav_ref with
         None -> () (* No geo ref for camera target *)
       | Some nav_ref ->
@@ -311,11 +312,11 @@ let send_telemetry_status = fun a ->
     [ "ac_id", Pprz.String id;
       "link_id", Pprz.String link_id;
       "time_since_last_msg", Pprz.Float (U.gettimeofday () -. a.last_msg_date); (* don't use rx_lost_time from LINK_REPORT so it also works in simulation *)
-      "rx_bytes", Pprz.Int link_status.rx_bytes;
-      "rx_msgs", Pprz.Int link_status.rx_msgs;
+      "rx_bytes", Pprz.Int64 (Int64.of_int link_status.rx_bytes);
+      "rx_msgs", Pprz.Int64 (Int64.of_int link_status.rx_msgs);
       "rx_bytes_rate", Pprz.Float link_status.rx_bytes_rate;
-      "tx_msgs", Pprz.Int link_status.tx_msgs;
-      "uplink_lost_time", Pprz.Int datalink_status.uplink_lost_time;
+      "tx_msgs", Pprz.Int64 (Int64.of_int link_status.tx_msgs);
+      "uplink_lost_time", Pprz.Int64 (Int64.of_int datalink_status.uplink_lost_time);
       "uplink_msgs", Pprz.Int datalink_status.uplink_msgs;
       "downlink_msgs", Pprz.Int datalink_status.downlink_msgs;
       "downlink_rate", Pprz.Int datalink_status.downlink_rate;
@@ -367,7 +368,7 @@ let send_aircraft_msg = fun ac ->
                   "lat", f ((Rad>>Deg)wgs84.posn_lat);
                   "long", f ((Rad>>Deg) wgs84.posn_long);
                   "unix_time", f a.unix_time;
-                  "itow", Pprz.Int32 a.itow;
+                  "itow", Pprz.Int64 a.itow;
                   "speed", f a.gspeed;
                   "airspeed", f a.airspeed; (* negative value is sent if no airspeed available *)
                   "course", f (Geometry_2d.rad2deg a.course);
@@ -379,16 +380,17 @@ let send_aircraft_msg = fun ac ->
     (** send ACINFO messages if more than one A/C registered *)
     if Hashtbl.length aircrafts > 1 then
       begin
+        let cm_of_m_32 = fun f -> Pprz.Int32 (Int32.of_int (truncate (100. *. f))) in
         let cm_of_m = fun f -> Pprz.Int (truncate (100. *. f)) in
         let pos = LL.utm_of WGS84 a.pos in
         let ac_info = ["ac_id", Pprz.String ac;
-                       "utm_east", cm_of_m pos.utm_x;
-                       "utm_north", cm_of_m pos.utm_y;
+                       "utm_east", cm_of_m_32 pos.utm_x;
+                       "utm_north", cm_of_m_32 pos.utm_y;
                        "course", Pprz.Int (truncate (10. *. (Geometry_2d.rad2deg a.course)));
-                       "alt", cm_of_m a.alt;
+                       "alt", cm_of_m_32 a.alt;
                        "speed", cm_of_m a.gspeed;
                        "climb", cm_of_m a.climb;
-                       "itow", Pprz.Int32 a.itow] in
+                       "itow", Pprz.Int64 a.itow] in
         Dl_Pprz.message_send my_id "ACINFO" ac_info;
       end;
 
@@ -401,8 +403,8 @@ let send_aircraft_msg = fun ac ->
             let values = ["ac_id", Pprz.String ac;
                           "cur_block", Pprz.Int a.cur_block;
                           "cur_stage", Pprz.Int a.cur_stage;
-                          "stage_time", Pprz.Int a.stage_time;
-                          "block_time", Pprz.Int a.block_time;
+                          "stage_time", Pprz.Int64 (Int64.of_int a.stage_time);
+                          "block_time", Pprz.Int64 (Int64.of_int a.block_time);
                           "target_lat", f ((Rad>>Deg)a.desired_pos.posn_lat);
                           "target_long", f ((Rad>>Deg)a.desired_pos.posn_long);
                           "target_alt", Pprz.Float a.desired_altitude;
@@ -432,7 +434,7 @@ let send_aircraft_msg = fun ac ->
     let state_filter_mode = get_indexed_value state_filter_modes a.state_filter_mode
     and kill_mode = if a.kill_mode then "ON" else "OFF" in
     let values = ["ac_id", Pprz.String ac;
-                  "flight_time", Pprz.Int a.flight_time;
+                  "flight_time", Pprz.Int64 (Int64.of_int a.flight_time);
                   "ap_mode", Pprz.String ap_mode;
                   "gaz_mode", Pprz.String gaz_mode;
                   "lat_mode", Pprz.String lat_mode;
@@ -473,6 +475,9 @@ let replayed = fun ac_id ->
 
 (* Store of unknown received A/C ids. To be able to report an error only once *)
 let unknown_aircrafts = Hashtbl.create 5
+
+(* Intruders (external aircrafts), e.g. received via ADS-B *)
+let intruders = Hashtbl.create 3
 
 let get_conf = fun real_id id conf_xml ->
   try
@@ -648,6 +653,60 @@ let listen_acs = fun log timestamp ->
   if !replay_old_log then
     ignore (Tm_Pprz.message_bind "PPRZ_MODE" (ident_msg log timestamp))
 
+let send_intruder_acinfo = fun id intruder ->
+  let cm_of_m_32 = fun f -> Pprz.Int32 (Int32.of_int (truncate (100. *. f))) in
+  let cm_of_m = fun f -> Pprz.Int (truncate (100. *. f)) in
+  let pos = LL.utm_of WGS84 intruder.Intruder.pos in
+  (* TODO: find a better way to map intruders to AC_IDs *)
+  let ac_id = 200 + ((int_of_string id) mod 50) in
+  let ac_info = ["ac_id", Pprz.Int ac_id;
+                 "utm_east", cm_of_m_32 pos.utm_x;
+                 "utm_north", cm_of_m_32 pos.utm_y;
+                 "course", Pprz.Int (truncate (10. *. (Geometry_2d.rad2deg intruder.Intruder.course)));
+                 "alt", cm_of_m_32 intruder.Intruder.alt;
+                 "speed", cm_of_m intruder.Intruder.gspeed;
+                 "climb", cm_of_m intruder.Intruder.climb;
+                 "itow", Pprz.Int64 intruder.Intruder.itow] in
+  Dl_Pprz.message_send my_id "ACINFO" ac_info
+
+let periodic_handle_intruders = fun () ->
+  (* remove old intruders after 10s *)
+  Hashtbl.iter
+    (fun id i ->
+      if (U.gettimeofday () -. i.Intruder.unix_time) > 10.0 then begin
+        (*prerr_endline (sprintf "remove intruder %s" id);*)
+        Hashtbl.remove intruders id
+      end;
+    ) intruders;
+  (* send ACINFO for each active intruder *)
+  Hashtbl.iter (send_intruder_acinfo) intruders
+
+let add_intruder = fun vs ->
+  let id = Pprz.string_assoc "id" vs in
+  let name = Pprz.string_assoc "name" vs in
+  let intruder = Intruder.new_intruder id name in
+  Hashtbl.add intruders id intruder
+
+let update_intruder = fun logging _sender vs ->
+  let id = Pprz.string_assoc "id" vs in
+  (*prerr_endline (sprintf "update_intruder %s" id);*)
+  if not (Hashtbl.mem intruders id) then
+    add_intruder vs;
+  let i = Hashtbl.find intruders id in
+  let lat = Pprz.int_assoc "lat" vs
+  and lon = Pprz.int_assoc "lon" vs in
+  let geo = make_geo_deg (float lat /. 1e7) (float lon /. 1e7) in
+  i.Intruder.pos <- geo;
+  i.Intruder.alt <- float (Pprz.int_assoc "alt" vs) /. 1000.;
+  i.Intruder.course <- Pprz.float_assoc "course" vs;
+  i.Intruder.gspeed <- Pprz.float_assoc "speed" vs;
+  i.Intruder.climb <- Pprz.float_assoc "climb" vs;
+  i.Intruder.unix_time <- U.gettimeofday ();
+  log logging "ground" "INTRUDER" vs
+
+(* listen for intruders and log them *)
+let listen_intruders = fun log ->
+  ignore(Ground_Pprz.message_bind "INTRUDER" (update_intruder log))
 
 let send_config = fun http _asker args ->
   let ac_id' = Pprz.string_assoc "ac_id" args in
@@ -658,7 +717,7 @@ let send_config = fun http _asker args ->
     let ac_name = ExtXml.attrib conf "name" in
     let protocol =
       if http then
-        sprintf "http://%s:8889" (Unix.gethostname ())
+        sprintf "http://%s:%d" !hostname !port
       else
         sprintf "file://%s" Env.paparazzi_home in
     let prefix = fun s -> sprintf "%s/%s%s" protocol root_dir s in
@@ -690,7 +749,7 @@ let ivy_server = fun http ->
 let cm_of_m = fun f -> Pprz.Int (truncate ((100. *. f) +. 0.5))
 
 (** Convert to mm, with rounding *)
-let mm_of_m = fun f -> Pprz.Int (truncate ((1000. *. f) +. 0.5))
+let mm_of_m_32 = fun f -> Pprz.Int32 (Int32.of_int (truncate ((1000. *. f) +. 0.5)))
 
 let dl_id = "ground_dl" (* Hack, should be [my_id] *)
 
@@ -703,7 +762,7 @@ let move_wp = fun logging _sender vs ->
              "ac_id", Pprz.String ac_id;
              "lat", deg7 "lat";
              "lon", deg7 "long";
-             "alt", mm_of_m (Pprz.float_assoc "alt" vs) ] in
+             "alt", mm_of_m_32 (Pprz.float_assoc "alt" vs) ] in
   Dl_Pprz.message_send dl_id "MOVE_WP" vs;
   log logging ac_id "MOVE_WP" vs
 
@@ -756,7 +815,7 @@ let raw_datalink = fun logging _sender vs ->
 (** Got a LINK_REPORT, update state but don't send (done asynchronously) *)
 let link_report = fun logging _sender vs ->
   let ac_id = Pprz.string_assoc "ac_id" vs
-  and link_id = Pprz.int_assoc "link_id" vs in
+  and link_id = int_of_string (Pprz.string_assoc "link_id" vs) in
   try
     let ac = Hashtbl.find aircrafts ac_id in
     let link_status = {
@@ -793,11 +852,11 @@ let () =
 
   let options =
     [ "-b", Arg.String (fun x -> ivy_bus := x), (sprintf "Bus\tDefault is %s" !ivy_bus);
-      "-hostname", Arg.Set_string hostname, "<hostname> Set the address for the http server";
       "-http", Arg.Set http, "Send http: URLs (default is file:)";
+      "-hostname", Arg.Set_string hostname, "<hostname> Set the address for the http server";
+      "-port", Arg.Set_int port, (sprintf "<port> Set http port for serving XML and KML files (default is %d)" !port);
       "-kml", Arg.Set Kml.enabled, "Enable KML file updating";
       "-kml_no_http", Arg.Set Kml.no_http, "KML without web server (local files only)";
-      "-kml_port", Arg.Set_int Kml.port, (sprintf "Port for KML files (default is %d)" !Kml.port);
       "-n", Arg.Clear logging, "Disable log";
       "-timestamp", Arg.Set timestamp, "Bind on timestampped messages";
       "-no_md5_check", Arg.Set no_md5_check, "Disable safety matching of live and current configurations";
@@ -823,8 +882,14 @@ let () =
   (* Waits for new aircrafts *)
   listen_acs logging !timestamp;
 
+  (* wait for new external vehicles/intruders *)
+  listen_intruders logging;
+
   (* Forward messages from ground agents to vehicles *)
   ground_to_uplink logging;
+
+  (* call periodic_handle_intruders every second *)
+  ignore (Glib.Timeout.add 1000 (fun () -> periodic_handle_intruders (); true));
 
   (* Waits for client configurations requests on the Ivy bus *)
   ivy_server !http;

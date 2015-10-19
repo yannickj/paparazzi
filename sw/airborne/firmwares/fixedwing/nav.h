@@ -133,7 +133,7 @@ extern void nav_circle_XY(float x, float y, float radius);
 /** True if x (in degrees) is close to the current QDR (less than 10 degrees)*/
 #define NavQdrCloseTo(x) CloseDegAngles(x, NavCircleQdr())
 
-#define NavCourseCloseTo(x) CloseDegAngles(x, DegOfRad(*stateGetHorizontalSpeedDir_f()))
+#define NavCourseCloseTo(x) CloseDegAngles(x, DegOfRad(stateGetHorizontalSpeedDir_f()))
 
 /*********** Navigation along a line *************************************/
 extern void nav_route_xy(float last_wp_x, float last_wp_y, float wp_x, float wp_y);
@@ -201,6 +201,7 @@ bool_t nav_approaching_xy(float x, float y, float from_x, float from_y, float ap
 #define GetPosAlt() (stateGetPositionUtm_f()->alt)
 #define GetAltRef() (ground_alt)
 
+#if DOWNLINK
 #define SEND_NAVIGATION(_trans, _dev) { \
     uint8_t _circle_count = NavCircleCount(); \
     struct EnuCoor_f* pos = stateGetPositionEnu_f(); \
@@ -216,5 +217,6 @@ extern bool_t DownlinkSendWpNr(uint8_t _wp);
     float y = nav_utm_north0 + waypoints[i].y; \
     pprz_msg_send_WP_MOVED(_trans, _dev, AC_ID, &i, &x, &y, &(waypoints[i].a),&nav_utm_zone0); \
   }
+#endif /* DOWNLINK */
 
 #endif /* NAV_H */

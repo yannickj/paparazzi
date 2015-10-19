@@ -41,6 +41,9 @@ let track_size = ref 500
 
 let _auto_hide_fp = ref false
 
+(* request AIRCRAFTS list until got first answer from server *)
+let _req_aircrafts = ref true
+
 let min_height = 200
 let lines_height = 30
 
@@ -67,6 +70,8 @@ let rec list_iter3 = fun f l1 l2 l3 ->
 
 
 type color = string
+type gps_acc_level = GPS_ACC_HIGH | GPS_ACC_LOW | GPS_ACC_VERY_LOW | GPS_NO_ACC
+
 type aircraft = {
   ac_name : string;
   ac_speech_name : string;
@@ -106,7 +111,12 @@ type aircraft = {
   mutable last_unix_time : float;
   mutable airspeed : float;
   mutable version : string;
+  mutable last_gps_acc : gps_acc_level;
+  mutable last_bat_warn_time : float
 }
+
+let list_separator = Str.regexp ","
+let filter_acs = ref []
 
 let aircrafts = Hashtbl.create 3
 exception AC_not_found
@@ -168,7 +178,11 @@ let select_ac = fun acs_notebook ac_id ->
     (* Select and enlarge the label of the A/C notebook *)
     let n = acs_notebook#page_num ac.pages in
     acs_notebook#goto_page n;
-    ac.notebook_label#set_width_chars 20;
+    ac.notebook_label#set_width_chars 20
+
+let filter_ac_ids = fun acs ->
+  let acs = Str.split list_separator acs in
+  filter_acs := acs;
 
 module M = Map.Make (struct type t = string let compare = compare end)
 let log =
@@ -397,6 +411,14 @@ let get_icon_and_track_size = fun af_xml ->
     | x -> (x, !track_size)
   with _ -> (firmware_name, !track_size)
 
+let get_icons_theme = fun af_xml ->
+  try
+    let gcs_section = ExtXml.child af_xml ~select:(fun x -> Xml.attrib x "name" = "GCS") "section" in
+    let fvalue = fun name default ->
+      try ExtXml.attrib (ExtXml.child gcs_section ~select:(fun x -> ExtXml.attrib x "name" = name) "define") "value" with _ -> default in
+    fvalue "ICONS_THEME" Env.gcs_default_icons_theme
+  with _ -> Env.gcs_default_icons_theme
+
 let key_press_event = fun keys do_action ev ->
   try
     let (modifiers, action) = List.assoc (GdkEvent.Key.keyval ev) keys in
@@ -413,7 +435,7 @@ let key_press_event = fun keys do_action ev ->
 
 
 (*****************************************************************************)
-let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id:string) config ->
+let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (strips:GPack.box) (ac_id:string) config ->
   let color = Pprz.string_assoc "default_gui_color" config
   and name = Pprz.string_assoc "ac_name" config in
 
@@ -427,7 +449,9 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
   (** Get the airframe file *)
   let af_url = Pprz.string_assoc "airframe" config in
   let af_file =  Http.file_of_url af_url in
-  let af_xml = ExtXml.parse_file af_file in
+  (* do not check dtd if it is a http url *)
+  let via_http = Str.string_match (Str.regexp "http") af_url 0 in
+  let af_xml = ExtXml.parse_file ~noprovedtd:via_http af_file in
 
   (** Get an alternate speech name if available *)
   let speech_name = get_speech_name af_xml name in
@@ -486,12 +510,14 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
   (** Add a strip *)
   let min_bat, max_bat = get_bat_levels af_xml in
   let alt_shift_plus_plus, alt_shift_plus, alt_shift_minus = get_alt_shift af_xml in
+  let icons_theme = get_icons_theme af_xml in
   let param = { Strip.color = color; min_bat = min_bat; max_bat = max_bat;
                 alt_shift_plus_plus = alt_shift_plus_plus;
                 alt_shift_plus = alt_shift_plus;
-                alt_shift_minus = alt_shift_minus; } in
+                alt_shift_minus = alt_shift_minus;
+                icons_theme = icons_theme; } in
   (*let strip = Strip.add config color min_bat max_bat in*)
-  let strip = Strip.add config param in
+  let strip = Strip.add config param strips in
   strip#connect (fun () -> select_ac acs_notebook ac_id);
   strip#connect_mark (mark geomap ac_id track !Plugin.frame);
 
@@ -539,14 +565,14 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
         try (* Is it an icon ? *)
           let icon = Xml.attrib block "strip_icon" in
           let b = GButton.button () in
-          let pixbuf = GdkPixbuf.from_file (Env.gcs_icons_path // icon) in
+          let pixbuf = GdkPixbuf.from_file (Env.get_gcs_icon_path icons_theme icon) in
           ignore (GMisc.image ~pixbuf ~packing:b#add ());
 
       (* Drag for Drop *)
           let papget = Papget_common.xml "goto_block" "button"
             [ "block_name", block_name;
               "ac_id", ac_id;
-              "icon", icon] in
+              "icon", icons_theme // icon] in
           Papget_common.dnd_source b#coerce papget;
 
       (* Associates the label as a tooltip *)
@@ -622,7 +648,7 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
   let dl_settings_page =
     try
       let xml_settings = Xml.children (ExtXml.child settings_xml "dl_settings") in
-      let settings_tab = new Page_settings.settings ~visible xml_settings dl_setting_callback ac_id (fun group x -> strip#add_widget ~group x) in
+      let settings_tab = new Page_settings.settings ~visible xml_settings dl_setting_callback ac_id icons_theme (fun group x -> strip#add_widget ~group x) in
 
       (** Connect key shortcuts *)
       let key_press = fun ev ->
@@ -684,7 +710,9 @@ let create_ac = fun alert (geomap:G.widget) (acs_notebook:GPack.notebook) (ac_id
              got_track_status_timer = 1000;
              dl_values = [||]; last_unix_time = 0.;
              airspeed = 0.;
-             version = ""
+             version = "";
+             last_gps_acc = GPS_NO_ACC;
+             last_bat_warn_time = 0.
            } in
   Hashtbl.add aircrafts ac_id ac;
   select_ac acs_notebook ac_id;
@@ -797,18 +825,18 @@ let tele_bind = fun msg cb timestamp ->
       | x -> fprintf stderr "tele_bind (%s): %s\n%!" msg (Printexc.to_string x) in
   ignore (Tele_Pprz.message_bind ~timestamp msg safe_cb)
 
-let ask_config = fun alert geomap fp_notebook ac ->
+let ask_config = fun alert geomap fp_notebook strips ac ->
   let get_config = fun _sender values ->
     if not (Hashtbl.mem aircrafts ac) then
-      create_ac alert geomap fp_notebook ac values
+      create_ac alert geomap fp_notebook strips ac values
   in
   Ground_Pprz.message_req "gcs" "CONFIG" ["ac_id", Pprz.String ac] get_config
 
 
 
-let one_new_ac = fun alert (geomap:G.widget) fp_notebook ac ->
-  if not (Hashtbl.mem aircrafts ac) then
-    ask_config alert geomap fp_notebook ac
+let one_new_ac = fun alert (geomap:G.widget) fp_notebook strips ac ->
+  if (List.length !filter_acs = 0) || (List.mem ac !filter_acs) && not (Hashtbl.mem aircrafts ac) then
+    ask_config alert geomap fp_notebook strips ac
 
 
 let get_wind_msg = fun (geomap:G.widget) _sender vs ->
@@ -847,6 +875,7 @@ let get_fbw_msg = fun alarm _sender vs ->
 let get_telemetry_status = fun alarm _sender vs ->
   let ac = get_ac vs in
   let link_id = Pprz.string_assoc "link_id" vs in
+  let link_id = try if int_of_string link_id = -1 then "single" else link_id with _ -> link_id in
   (* Update color and lost time in the strip *)
   let time_lost = Pprz.float_assoc "time_since_last_msg" vs in
   let (links_up, total_links) = ac.link_page#links_ratio () in
@@ -861,7 +890,7 @@ let get_telemetry_status = fun alarm _sender vs ->
   let ping_time = Pprz.float_assoc "ping_time" vs in
   if (not (ac.link_page#link_exists link_id)) then begin
       ac.link_page#add_link link_id;
-      log_and_say alarm ac.ac_name (sprintf "%s, new link detected: %s" ac.ac_speech_name link_id)
+      log_and_say alarm ac.ac_name (sprintf "%s, link %s detected" ac.ac_speech_name link_id)
     end;
   let link_changed = ac.link_page#update_link link_id time_lost ping_time rx_msgs_rate downlink_bytes_rate uplink_lost_time in
   let (links_up, _) = ac.link_page#links_ratio () in
@@ -870,7 +899,7 @@ let get_telemetry_status = fun alarm _sender vs ->
   | (Pages.Linkup, _)-> log_and_say alarm ac.ac_name (sprintf "%s, link %s re-connected" ac.ac_speech_name link_id)
   | (Pages.Nochange, _) -> ()
   | (Pages.Linkdown, _) -> log_and_say alarm ac.ac_name (sprintf "%s, link %s lost" ac.ac_speech_name link_id)
-  
+
 let get_engine_status_msg = fun _sender vs ->
   let ac = get_ac vs in
   ac.strip#set_throttle ~kill:ac.in_kill_mode (Pprz.float_assoc "throttle" vs);
@@ -899,12 +928,10 @@ let listen_if_calib_msg = fun () ->
 let listen_telemetry_status = fun a ->
   safe_bind "TELEMETRY_STATUS" (get_telemetry_status a)
 
-let list_separator = Str.regexp ","
-
-let aircrafts_msg = fun alert (geomap:G.widget) fp_notebook acs ->
+let aircrafts_msg = fun alert (geomap:G.widget) fp_notebook strips acs ->
   let acs = Pprz.string_assoc "ac_list" acs in
   let acs = Str.split list_separator acs in
-  List.iter (one_new_ac alert geomap fp_notebook) acs
+  List.iter (one_new_ac alert geomap fp_notebook strips) acs
 
 
 let listen_dl_value = fun () ->
@@ -1267,7 +1294,7 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
         match ap_mode with
             "AUTO2" | "NAV" -> ok_color
           | "AUTO1" | "R_RCC" | "A_RCC" | "ATT_C" | "R_ZH" | "A_ZH" | "HOVER" | "HOV_C" | "H_ZH" | "MODULE" -> "#10F0E0"
-          | "MANUAL" | "RATE" | "ATT" | "RC_D" | "CF" | "FWD" -> warning_color
+          | "MANUAL" | "RATE" | "ATT" | "RC_D" | "CF" | "FWD" | "FLIP" -> warning_color
           | _ -> alert_color in
       ac.strip#set_color "AP" color;
     end;
@@ -1277,7 +1304,7 @@ let listen_flight_params = fun geomap auto_center_new_ac alert alt_graph ->
       then status_filter_mode
       else Pprz.string_assoc "gps_mode" vs in
     ac.strip#set_label "GPS" gps_mode;
-    ac.strip#set_color "GPS" (if gps_mode<>"3D" then alert_color else ok_color);
+    ac.strip#set_color "GPS" (if gps_mode<>"3D" && gps_mode<>"DGPS" && gps_mode<>"RTK" then alert_color else ok_color);
     let ft =
       sprintf "%02d:%02d:%02d" (flight_time / 3600) ((flight_time / 60) mod 60) (flight_time mod 60) in
     ac.strip#set_label "flight_time" ft;
@@ -1309,7 +1336,8 @@ let listen_waypoint_moved = fun () ->
     try
       let w = ac.fp_group#get_wp wp_id in
       w#set_ground_alt ground_alt;
-      w#set ~altitude ~update:true geo
+      w#set ~altitude ~update:true geo;
+      ac.fp_group#update_sectors w#name
     with
         Not_found -> () (* Silently ignore unknown waypoints *)
   in
@@ -1318,7 +1346,11 @@ let listen_waypoint_moved = fun () ->
 let get_alert_bat_low = fun a _sender vs ->
   let ac = get_ac vs in
   let level = Pprz.string_assoc "level" vs in
-  log_and_say a ac.ac_name (sprintf "%s, %s %s" ac.ac_speech_name "BAT LOW" level)
+  let unix_time = Unix.gettimeofday() in
+  if unix_time > (ac.last_bat_warn_time +. 10.) then begin
+    log_and_say a ac.ac_name (sprintf "%s, %s %s" ac.ac_speech_name "BAT LOW" level);
+    ac.last_bat_warn_time <- unix_time
+  end
 
 let listen_alert = fun a ->
   alert_bind "BAT_LOW" (get_alert_bat_low a)
@@ -1331,7 +1363,7 @@ let get_svsinfo = fun alarm _sender vs ->
   and flagss = Str.split list_separator (Pprz.string_assoc "flags" vs)
   and ages = Str.split list_separator (Pprz.string_assoc "msg_age" vs) in
 
-  let a = Array.create (List.length svids) (0,0,0,0) in
+  let a = Array.make (List.length svids) (0,0,0,0) in
   let rec loop = fun i s c f ages ->
     match (s, c, f, ages) with
         [], [], [], [] -> ()
@@ -1345,8 +1377,19 @@ let get_svsinfo = fun alarm _sender vs ->
 
   gps_page#svsinfo pacc a;
 
-  if pacc > 1500 && pacc < 9999 then
-    log_and_say alarm "gcs" (sprintf "GPS acc: %d m" (pacc / 100))
+  let new_acc =
+    if pacc <= 1000 then GPS_ACC_HIGH
+    else if pacc > 1000 && pacc < 2000 then GPS_ACC_LOW
+    else if pacc > 999 then GPS_NO_ACC else GPS_ACC_VERY_LOW in
+  if ac.last_gps_acc <> new_acc then begin
+    match new_acc, ac.last_gps_acc with
+    | GPS_ACC_HIGH, GPS_NO_ACC -> () (* nothing if pacc is good from the start *)
+    | GPS_ACC_HIGH, _ -> log_and_say alarm "gcs" (sprintf "%s, GPS accuracy better than 10 meter" ac.ac_speech_name)
+    | GPS_ACC_LOW, _ -> log_and_say alarm "gcs" (sprintf "%s, low GPS accuracy" ac.ac_speech_name)
+    | GPS_ACC_VERY_LOW, _ -> log_and_say alarm "gcs" (sprintf "%s, Warning: GPS accuracy worse than 20 meter" ac.ac_speech_name)
+    | _, _ -> ()
+  end;
+  ac.last_gps_acc <- new_acc
 
 let listen_svsinfo = fun a -> safe_bind "SVSINFO" (get_svsinfo a)
 
@@ -1417,14 +1460,31 @@ let listen_tcas = fun a timestamp ->
   tele_bind "TCAS_TA" (get_alarm_tcas a "tcas TA") timestamp;
   tele_bind "TCAS_RA" (get_alarm_tcas a "TCAS RA") timestamp
 
-let listen_acs_and_msgs = fun geomap ac_notebook my_alert auto_center_new_ac alt_graph timestamp ->
+let get_intruders = fun (geomap:G.widget) _sender vs ->
+  let f = fun s -> Pprz.float_assoc s vs in
+  let i = fun s -> float (Pprz.int_assoc s vs) in
+  let name = Pprz.string_assoc "name" vs
+  and id = Pprz.string_assoc "id" vs
+  and time = Unix.gettimeofday ()
+  and lat = (i "lat") /. 1e7
+  and lon = (i "lon") /. 1e7 in
+  let pos = { posn_lat=(Deg>>Rad)lat; posn_long=(Deg>>Rad)lon } in
+  if not (Intruders.intruder_exist id) then
+    Intruders.new_intruder id name time geomap;
+  Intruders.update_intruder id pos (f "course") ((i "alt") /. 1000.) (f "speed") (f "climb") time
+
+let listen_intruders = fun (geomap:G.widget) ->
+  safe_bind "INTRUDER" (get_intruders geomap)
+
+
+let listen_acs_and_msgs = fun geomap ac_notebook strips my_alert auto_center_new_ac alt_graph timestamp ->
   (** Probe live A/Cs *)
   let probe = fun () ->
-    message_request "gcs" "AIRCRAFTS" [] (fun _sender vs -> aircrafts_msg my_alert geomap ac_notebook vs) in
-  let _ = GMain.Idle.add (fun () -> probe (); false) in
+    message_request "gcs" "AIRCRAFTS" [] (fun _sender vs -> _req_aircrafts := false; aircrafts_msg my_alert geomap ac_notebook strips vs) in
+  let _ = GMain.Timeout.add 1000 (fun () -> probe (); !_req_aircrafts) in
 
   (** New aircraft message *)
-  safe_bind "NEW_AIRCRAFT" (fun _sender vs -> one_new_ac my_alert geomap ac_notebook (Pprz.string_assoc "ac_id" vs));
+  safe_bind "NEW_AIRCRAFT" (fun _sender vs -> one_new_ac my_alert geomap ac_notebook  strips (Pprz.string_assoc "ac_id" vs));
 
   (** Listen for all messages on ivy *)
   listen_flight_params geomap auto_center_new_ac my_alert alt_graph;
@@ -1441,6 +1501,7 @@ let listen_acs_and_msgs = fun geomap ac_notebook my_alert auto_center_new_ac alt
   listen_autopilot_version_msg my_alert timestamp;
   listen_tcas my_alert timestamp;
   listen_dcshot geomap timestamp;
+  listen_intruders geomap;
 
   (** Select the active aircraft on notebook page selection *)
   let callback = fun i ->
@@ -1461,4 +1522,7 @@ let listen_acs_and_msgs = fun geomap ac_notebook my_alert auto_center_new_ac alt
     match GdkEvent.Key.keyval ev with
       | k when (k = GdkKeysyms._c) || (k = GdkKeysyms._C) -> center_active () ; true
       | _ -> false in
-  ignore (geomap#canvas#event#connect#after#key_press key_press)
+  ignore (geomap#canvas#event#connect#after#key_press key_press);
+
+  (* call periodic_handle_intruders every second *)
+  ignore (Glib.Timeout.add 1000 (fun () -> Intruders.remove_old_intruders (); true));

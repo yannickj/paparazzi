@@ -37,15 +37,8 @@
 #include "generated/airframe.h" // AC_ID is required
 
 #if defined SITL
-
-#ifdef SIM_UART
-#include "sim_uart.h"
-#include "subsystems/datalink/pprz_transport.h"
-#include "subsystems/datalink/xbee.h"
-#else /* SIM_UART */
 /** Software In The Loop simulation uses IVY bus directly as the transport layer */
 #include "ivy_transport.h"
-#endif
 
 #else /** SITL */
 
@@ -53,6 +46,9 @@
 #include "subsystems/datalink/pprzlog_transport.h"
 #include "subsystems/datalink/xbee.h"
 #include "subsystems/datalink/w5100.h"
+#if DATALINK == BLUEGIGA
+#include "subsystems/datalink/bluegiga.h"
+#endif
 #if USE_SUPERBITRF
 #include "subsystems/datalink/superbitrf.h"
 #endif
@@ -83,19 +79,13 @@
 #define DefaultChannel DOWNLINK_TRANSPORT
 #endif
 
-// FIXME are DOWNLINK_AP|FBW_DEVICE distinction really necessary ?
-// by default use AP_DEVICE if nothing is set ?
-#ifndef DOWNLINK_DEVICE
-#define DOWNLINK_DEVICE DOWNLINK_AP_DEVICE
-#endif
-
 #ifndef DefaultDevice
 #define DefaultDevice DOWNLINK_DEVICE
 #endif
 
 /** Downlink structure */
 struct downlink {
-  uint8_t nb_ovrn;    ///< Counter of messages not sent because of unavailibity of the output buffer
+  uint8_t nb_ovrn;    ///< Counter of messages not sent because of unavailability of the output buffer
   uint16_t nb_bytes;  ///< Number of bytes send over telemetry
   uint16_t nb_msgs;   ///< Number of messages send over telemetry
 };

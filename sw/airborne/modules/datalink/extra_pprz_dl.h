@@ -20,7 +20,7 @@
  *
  */
 
-/** \file pprz_transport.h
+/** \file extra_pprz_dl.h
  *  \brief Extra datalink using PPRZ protocol
  *
  */
@@ -37,7 +37,7 @@ extern struct pprz_transport extra_pprz_tp;
 /* Datalink Event */
 
 #define ExtraDatalinkEvent() {                        \
-    PprzCheckAndParse(EXTRA_PPRZ_UART, extra_pprz_tp); \
+    PprzCheckAndParse(EXTRA_DOWNLINK_DEVICE, extra_pprz_tp); \
     DlCheckAndParse();                                  \
   }
 

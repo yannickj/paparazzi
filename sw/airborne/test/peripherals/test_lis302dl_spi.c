@@ -28,6 +28,7 @@
 #include BOARD_CONFIG
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
+#define DATALINK_C
 #include "subsystems/datalink/downlink.h"
 #include "led.h"
 
@@ -88,6 +89,8 @@ static inline void main_periodic_task(void)
 
 static inline void main_event_task(void)
 {
+  mcu_event();
+
   if (sys_time.nb_sec > 1) {
     lis302dl_spi_event(&lis302);
   }

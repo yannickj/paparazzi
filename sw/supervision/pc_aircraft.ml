@@ -81,7 +81,9 @@ let new_ac_id = fun () ->
 let parse_conf_xml = fun vbox ->
   let strings = ref [] in
   Hashtbl.iter (fun name _ac -> strings := name :: !strings) Utils.aircrafts;
-  let ordered = List.sort String.compare ("" :: !strings) in
+  let compare_ignore_case = fun s1 s2 ->
+    String.compare (String.lowercase s1) (String.lowercase s2) in
+  let ordered = List.sort compare_ignore_case ("" :: !strings) in
   Gtk_tools.combo ordered vbox
 
 let editor =
@@ -215,6 +217,8 @@ let first_word = fun s ->
   with
     Not_found -> s
 
+(** Test if an element is available for the current target *)
+
 (** Get list of targets of an airframe *)
 let get_targets_list = fun ac_xml ->
   let firmwares = List.filter (fun x -> ExtXml.tag_is x "firmware") (Xml.children ac_xml) in
@@ -223,6 +227,8 @@ let get_targets_list = fun ac_xml ->
 
 (** Parse Airframe File for Targets **)
 let parse_ac_targets = fun target_combo ac_file (log:string->unit) ->
+  (* remember last target *)
+  let last_target = try Gtk_tools.combo_value target_combo with _ -> "" in
   (* Clear ComboBox *)
   let (store, column) = Gtk_tools.combo_model target_combo in
   store#clear ();
@@ -236,12 +242,16 @@ let parse_ac_targets = fun target_combo ac_file (log:string->unit) ->
       Gtk_tools.add_to_combo target_combo "ap";
       Gtk_tools.add_to_combo target_combo "sim"
     end;
-    let combo_box = Gtk_tools.combo_widget target_combo in
-    combo_box#set_active 0
-  with _ -> log (sprintf "Error while parsing targets from file %s\n" ac_file)
+    Gtk_tools.select_in_combo target_combo last_target
+  with _ ->
+    log (sprintf "Error while parsing targets from file %s\n" ac_file);
+    raise Not_found
 
 (* Parse AC file for flash mode *)
 let parse_ac_flash = fun target flash_combo ac_file ->
+  (* remember last flash mode *)
+  let last_flash_mode = Gtk_tools.combo_value flash_combo in
+  (* Clear ComboBox *)
   let (store, column) = Gtk_tools.combo_model flash_combo in
   store#clear ();
   Gtk_tools.add_to_combo flash_combo "Default";
@@ -256,11 +266,12 @@ let parse_ac_flash = fun target flash_combo ac_file ->
         flash_modes := !flash_modes @ m;
       ) (snd CP.flash_modes);
     List.iter (fun m ->  Gtk_tools.add_to_combo flash_combo m) !flash_modes;
-    Gtk_tools.select_in_combo flash_combo "Default";
-    (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive (List.length !flash_modes > 0)
+    (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive (List.length !flash_modes > 0);
+    Gtk_tools.select_in_combo flash_combo last_flash_mode
   with _ ->
     (* not a valid airframe file *)
-    (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false
+    (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false;
+    raise Not_found
 
 (* Link A/C to airframe & flight_plan labels *)
 let ac_combo_handler = fun gui (ac_combo:Gtk_tools.combo) target_combo flash_combo (log:string->unit) ->
@@ -293,8 +304,19 @@ let ac_combo_handler = fun gui (ac_combo:Gtk_tools.combo) target_combo flash_com
       let aircraft = Hashtbl.find Utils.aircrafts ac_name in
       let sample = aircraft_sample ac_name "42" in
       (* update list of modules settings *)
+      let af_file = (Env.paparazzi_home // "conf" // (Xml.attrib aircraft "airframe")) in
+      let af_xml = try Xml.parse_file af_file
+      with
+      | Xml.File_not_found x ->
+          gui#label_airframe#set_text "";
+          gui#button_clean#misc#set_sensitive false;
+          gui#button_build#misc#set_sensitive false;
+          (Gtk_tools.combo_widget target_combo)#misc#set_sensitive false;
+          (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false;
+          log (sprintf "Error airframe file not found: %s\n" x);
+          Xml.Element ("airframe", [], []);
+      in
       let settings_modules = try
-        let af_xml = Xml.parse_file (Env.paparazzi_home // "conf" // (Xml.attrib aircraft "airframe")) in
         get_settings_modules af_xml (ExtXml.attrib_or_default aircraft "settings_modules" "")
       with
       | Failure x -> prerr_endline x; []
@@ -312,27 +334,39 @@ let ac_combo_handler = fun gui (ac_combo:Gtk_tools.combo) target_combo flash_com
         | Tree t ->
           ignore (Gtk_tools.clear_tree t);
           let names = Str.split regexp_space (value a) in
-          List.iter (fun n -> Gtk_tools.add_to_tree t n) names;
+          List.iter (Gtk_tools.add_to_tree t) names;
       ) ac_files;
       let ac_id = ExtXml.attrib aircraft "ac_id"
       and gui_color = ExtXml.attrib_or_default aircraft "gui_color" "white" in
       gui#button_clean#misc#set_sensitive true;
       gui#button_build#misc#set_sensitive true;
+      gui#button_upload#misc#set_sensitive true;
       gui#eventbox_gui_color#misc#modify_bg [`NORMAL, `NAME gui_color];
       current_color := gui_color;
       gui#entry_ac_id#set_text ac_id;
       (Gtk_tools.combo_widget target_combo)#misc#set_sensitive true;
       (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive true;
-      parse_ac_targets target_combo (ExtXml.attrib aircraft "airframe") log;
-      parse_ac_flash (Gtk_tools.combo_value target_combo) flash_combo (ExtXml.attrib aircraft "airframe");
+      let last_flash_mode = try Gtk_tools.combo_value flash_combo with _ -> "Default" in
+      begin
+        (* try parsing target from airframe file, may fail if not valid *)
+        try parse_ac_targets target_combo (ExtXml.attrib aircraft "airframe") log with _ ->
+          (Gtk_tools.combo_widget target_combo)#misc#set_sensitive false;
+          gui#button_build#misc#set_sensitive false
+      end;
+      begin
+        try parse_ac_flash (Gtk_tools.combo_value target_combo) flash_combo (ExtXml.attrib aircraft "airframe") with _ ->
+          (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false;
+          gui#button_upload#misc#set_sensitive false
+      end;
+      Gtk_tools.select_in_combo flash_combo last_flash_mode;
     with
       Not_found ->
-        gui#label_airframe#set_text "";
-        gui#label_flight_plan#set_text "";
-        gui#button_clean#misc#set_sensitive false;
+        (* Not found in aircrafts hashtbl *)
         gui#button_build#misc#set_sensitive false;
+        gui#button_clean#misc#set_sensitive false;
         (Gtk_tools.combo_widget target_combo)#misc#set_sensitive false;
-        (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false
+        (Gtk_tools.combo_widget flash_combo)#misc#set_sensitive false;
+        log (sprintf "Aircraft %s not in conf\n" ac_name) 
   in
   Gtk_tools.combo_connect ac_combo update_params;
 
@@ -399,6 +433,15 @@ let ac_combo_handler = fun gui (ac_combo:Gtk_tools.combo) target_combo flash_com
   (* A/C id *)
   ignore(gui#entry_ac_id#connect#changed ~callback:(fun () -> save_callback gui ac_combo tree_set tree_set_mod ()));
 
+  let callback = fun _ ->
+    update_params (Gtk_tools.combo_value ac_combo);
+    save_callback gui ac_combo tree_set tree_set_mod () in
+  (* refresh button *)
+  ignore(gui#button_refresh#connect#clicked ~callback);
+  (* update with build and upload button *)
+  ignore(gui#button_build#connect#clicked ~callback);
+  ignore(gui#button_upload#connect#clicked ~callback);
+
   (* Conf *)
   List.iter (fun (name, subdir, label, button_browse, button_edit, editor, button_remove) ->
     (* editor button callback *)
@@ -422,7 +465,7 @@ let ac_combo_handler = fun gui (ac_combo:Gtk_tools.combo) target_combo flash_com
             let names = String.concat " " names in
             l#set_text names
         | Tree t ->
-            List.iter (fun n -> Gtk_tools.add_to_tree t n) names
+            List.iter (Gtk_tools.add_to_tree t) names
         );
         save_callback gui ac_combo tree_set tree_set_mod ();
         let ac_name = Gtk_tools.combo_value ac_combo in
@@ -471,7 +514,12 @@ let build_handler = fun ~file gui ac_combo (target_combo:Gtk_tools.combo) (flash
       and target = Gtk_tools.combo_value target_combo
       and config = if gui#checkbutton_printconfig#active then "PRINT_CONFIG=1 " else "" in
       let target_cmd = sprintf "%s%s.compile" config target in
-      Utils.command ~file gui log ac_name target_cmd
+      gui#button_build#misc#set_sensitive false;
+      gui#button_upload#misc#set_sensitive false;
+      let finished_callback = fun () ->
+        gui#button_build#misc#set_sensitive true;
+        gui#button_upload#misc#set_sensitive true in
+      Utils.command ~file ~finished_callback gui log ac_name target_cmd
     ) with _ -> log "ERROR: Nothing to build!!!\n" in
     ignore (gui#button_build#connect#clicked ~callback);
 
@@ -483,6 +531,11 @@ let build_handler = fun ~file gui ac_combo (target_combo:Gtk_tools.combo) (flash
     and config = if gui#checkbutton_printconfig#active then "PRINT_CONFIG=1 " else "" in
     let options = try Hashtbl.find (fst CP.flash_modes) flash with _ -> "" in
     let target_cmd = sprintf "%s%s %s.upload" config options target in
-    Utils.command ~file gui log ac_name target_cmd in
+    gui#button_build#misc#set_sensitive false;
+    gui#button_upload#misc#set_sensitive false;
+    let finished_callback = fun () ->
+      gui#button_build#misc#set_sensitive true;
+      gui#button_upload#misc#set_sensitive true in
+    Utils.command ~file ~finished_callback gui log ac_name target_cmd in
   ignore (gui#button_upload#connect#clicked ~callback)
 

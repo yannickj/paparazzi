@@ -67,6 +67,7 @@ TMTC=sw/ground_segment/tmtc
 GENERATORS=$(PAPARAZZI_SRC)/sw/tools/generators
 JOYSTICK=sw/ground_segment/joystick
 EXT=sw/ext
+TOOLS=sw/tools
 
 #
 # build some stuff in subdirs
@@ -121,6 +122,9 @@ _save_build_version:
 update_google_version:
 	-$(MAKE) -C data/maps
 
+init:
+	@[ -d $(PAPARAZZI_HOME) ] || (echo "Copying config example in your $(PAPARAZZI_HOME) directory"; mkdir -p $(PAPARAZZI_HOME); cp -a conf $(PAPARAZZI_HOME); cp -a data $(PAPARAZZI_HOME); mkdir -p $(PAPARAZZI_HOME)/var/maps; mkdir -p $(PAPARAZZI_HOME)/var/include)
+
 conf: conf/conf.xml conf/control_panel.xml conf/maps.xml
 
 conf/%.xml :conf/%_example.xml
@@ -161,11 +165,14 @@ sim_static: libpprz
 
 ext:
 	$(MAKE) -C $(EXT)
+	$(MAKE) -C $(TOOLS)/bluegiga_usb_dongle
 
 #
 # make misc subdirs
 #
 subdirs: $(SUBDIRS)
+
+$(MISC): ext
 
 $(SUBDIRS):
 	$(MAKE) -C $@
@@ -304,22 +311,29 @@ ab_clean:
 #
 # Tests
 #
+test: test_math test_examples
 
-replace_current_conf_xml:
-	test conf/conf.xml && mv conf/conf.xml conf/conf.xml.backup.$(BUILD_DATETIME)
-	cp conf/conf_tests.xml conf/conf.xml
+# compiles all aircrafts in conf_tests.xml
+test_examples: all
+	CONF_XML=conf/conf_tests.xml prove tests/aircrafts/
 
-restore_conf_xml:
-	test conf/conf.xml.backup.$(BUILD_DATETIME) && mv conf/conf.xml.backup.$(BUILD_DATETIME) conf/conf.xml
+test_all_confs: all
+	$(Q)$(eval $CONFS:=$(shell ./find_confs.py))
+	@echo "************\nFound $(words $($CONFS)) config files: $($CONFS)"
+	$(Q)$(foreach conf,$($CONFS),echo "\n************\nTesting all aircrafts in conf: $(conf)\n************" && (CONF_XML=$(conf) prove tests/aircrafts/ || echo "failed $(conf)" >> TEST_ALL_CONFS_FAILED);) test -f TEST_ALL_CONFS_FAILED && cat TEST_ALL_CONFS_FAILED && rm -f TEST_ALL_CONFS_FAILED && exit 1; exit 0
 
-run_tests:
-	cd tests; $(MAKE) test
+# run some math tests that don't need whole paparazzi to be built
+test_math:
+	make -C tests/math
 
-test: all replace_current_conf_xml run_tests restore_conf_xml
+# super simple simulator test, needs X
+# always uses conf/conf.xml, so that needs to contain the appropriate aircrafts
+# (only Microjet right now)
+test_sim: all
+	prove tests/sim
 
-
-.PHONY: all print_build_version _print_building _save_build_version update_google_version dox ground_segment ground_segment.opt \
+.PHONY: all print_build_version _print_building _save_build_version update_google_version init dox ground_segment ground_segment.opt \
 subdirs $(SUBDIRS) conf ext libpprz multimon cockpit cockpit.opt tmtc tmtc.opt generators\
 static sim_static lpctools commands \
 clean cleanspaces ab_clean dist_clean distclean dist_clean_irreversible \
-test replace_current_conf_xml run_tests restore_conf_xml
+test test_examples test_math test_sim test_all_confs
