@@ -765,10 +765,6 @@ let print_inside_polygon_global = fun pts ->
   lprintf "}\n";
   lprintf "return c;\n"
 
-let rec last = function
-  | [] -> invalid_arg "last"
-  | [x] -> x
-  | _ :: xs -> last xs
 
 type sector_type = StaticSector | DynamicSector
 
@@ -783,14 +779,6 @@ let print_inside_sector = fun t (s, pts) ->
   left ();
   lprintf "}\n"
 
-(*
-let print_inside_sector = fun (s, pts) ->
-  lprintf "static inline bool_t %s(float _x, float _y) { \\\n" (inside_function s);
-  right ();
-  print_inside_polygon pts;
-  left ();
-  lprintf "}\n"
-*)
 
 let parse_wpt_sector = fun indexes waypoints xml ->
   let sector_name = ExtXml.attrib xml "name" in
