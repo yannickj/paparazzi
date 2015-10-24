@@ -81,9 +81,9 @@ let get_autopilot_of_airframe = fun xml ->
 let get_targets_of_module = fun xml ->
   let targets = Xml.map
       (fun x ->
-	match String.lowercase (Xml.tag x) with
-	| "makefile" -> targets_of_field x Env.default_module_targets
-	| _ -> []
+        match String.lowercase (Xml.tag x) with
+        | "makefile" -> targets_of_field x Env.default_module_targets
+        | _ -> []
       ) xml in
   singletonize (List.flatten targets)
 
@@ -96,22 +96,22 @@ let get_module = fun m global_targets ->
   | "module" ->
       let name = module_name m in
       let filename =
-	let modtype = ExtXml.attrib_or_default m "type" "" in
-	name ^ (if modtype = "" then "" else "-") ^ modtype ^ ".xml" in
+        let modtype = ExtXml.attrib_or_default m "type" "" in
+        name ^ (if modtype = "" then "" else "-") ^ modtype ^ ".xml" in
       let file = modules_dir // filename in
       let xml = ExtXml.parse_file file in
       let targets = get_targets_of_module xml in
       let targets = union global_targets targets in
       { name = name; xml = xml; file = file; filename = filename; vpath = None;
-	param = Xml.children m; targets = targets }
+        param = Xml.children m; targets = targets }
   | "load" -> (* this case should be removed after transition phase *)
       let dir, vpath =
-	try
-	  let dir = ExtXml.attrib m "dir" in
-	  let dir =
-	    if Filename.is_relative dir then Env.paparazzi_home // dir
-	    else dir in
-	  (dir, Some dir)
+        try
+          let dir = ExtXml.attrib m "dir" in
+          let dir =
+            if Filename.is_relative dir then Env.paparazzi_home // dir
+            else dir in
+          (dir, Some dir)
         with _ -> modules_dir, None in
       let filename = ExtXml.attrib m "name" in
       let name = Filename.chop_extension filename in
@@ -121,7 +121,7 @@ let get_module = fun m global_targets ->
       let extra_targets = global_targets @ targets_of_field m "" in
       let targets = singletonize (extra_targets @ targets) in
       { name = name; xml = xml; file = file; filename = filename; vpath = vpath;
-	param = Xml.children m; targets = targets }
+        param = Xml.children m; targets = targets }
   | _ -> Xml2h.xml_error "module or load"
 
 (** [get_modules_of_airframe xml]
@@ -132,14 +132,14 @@ let rec get_modules_of_airframe = fun xml ->
     match xml with
     | Xml.PCData _ -> modules
     | Xml.Element (tag, _attrs, children) when is_module tag ->
-	let m = get_module xml targets in
-	List.fold_left
-	  (fun acc xml -> iter_modules targets acc xml) (m :: modules) children
+        let m = get_module xml targets in
+        List.fold_left
+          (fun acc xml -> iter_modules targets acc xml) (m :: modules) children
     | Xml.Element (tag, _attrs, children) ->
-	let targets =
-	  if tag = "modules" then targets_of_field xml "" else targets in
-	List.fold_left
-	  (fun acc xml -> iter_modules targets acc xml) modules children in
+        let targets =
+          if tag = "modules" then targets_of_field xml "" else targets in
+        List.fold_left
+          (fun acc xml -> iter_modules targets acc xml) modules children in
   let modules = iter_modules [] [] xml in
   let ap_modules =
     try

@@ -313,8 +313,8 @@ let parse_firmware = fun makefile_ac modules firmware ->
     fprintf makefile_ac "ifeq ($(TARGET), %s)\n" target_name;
     begin (* Check for "processor" attribute *)
       try
-	let proc = Xml.attrib target "processor" in
-	fprintf makefile_ac "BOARD_PROCESSOR = %s\n" proc
+        let proc = Xml.attrib target "processor" in
+        fprintf makefile_ac "BOARD_PROCESSOR = %s\n" proc
       with Xml.No_attribute _ -> ()
     end;
     List.iter (configure_xml2mk makefile_ac) config;
