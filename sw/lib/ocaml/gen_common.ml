@@ -97,7 +97,7 @@ let get_module = fun m global_targets ->
       let name = module_name m in
       let filename =
         let modtype = ExtXml.attrib_or_default m "type" "" in
-        name ^ (if modtype = "" then "" else "-") ^ modtype ^ ".xml" in
+        name ^ (if modtype = "" then "" else "_") ^ modtype ^ ".xml" in
       let file = modules_dir // filename in
       let xml = ExtXml.parse_file file in
       let targets = get_targets_of_module xml in
@@ -132,9 +132,11 @@ let rec get_modules_of_airframe = fun xml ->
     match xml with
     | Xml.PCData _ -> modules
     | Xml.Element (tag, _attrs, children) when is_module tag ->
-        let m = get_module xml targets in
-        List.fold_left
-          (fun acc xml -> iter_modules targets acc xml) (m :: modules) children
+        begin try
+          let m = get_module xml targets in
+          List.fold_left
+            (fun acc xml -> iter_modules targets acc xml) (m :: modules) children
+        with  _ -> modules end (* not a valid module, probably a subsystem *)
     | Xml.Element (tag, _attrs, children) ->
         let targets =
           if tag = "modules" then targets_of_field xml "" else targets in

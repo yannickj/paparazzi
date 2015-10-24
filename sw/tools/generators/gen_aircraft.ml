@@ -290,7 +290,7 @@ let mod_or_subsys_xml2mk = fun f (*modules*) global_targets firmware target xml 
 (*    let name = Gen_common.module_name xml in
     let m = List.find (fun m -> m.name = name) modules in*)
     let m = Gen_common.get_module xml global_targets in
-    module_xml2mk f target m
+    module_xml2mk f target m;
   with Failure _ -> subsystem_xml2mk f firmware xml
 
 let parse_firmware = fun makefile_ac modules firmware ->

@@ -158,12 +158,14 @@
 
   <firmware name="fixedwing">
     <target name="sim" 			board="pc" />
-    <target name="ap" 			board="tiny_1.1"/>
+    <target name="ap" 			board="tiny_1.1">
+      <module name="tune_airspeed"/>
+    </target>
 
     <define name="AGR_CLIMB" />
     <define name="LOITER_TRIM" />
 
-    <subsystem name="radio_control" type="ppm"/>
+    <module name="radio_control" type="ppm"/>
 
     <!-- Communication -->
     <subsystem name="telemetry" 	type="xbee_api">
@@ -177,6 +179,7 @@
     </subsystem>
     <subsystem name="gps"       type="ublox_utm"/>
     <subsystem name="navigation"/>
+    <module name="nav" type="flower"/>
     <subsystem name="ins" type="alt_float"/>
   </firmware>
 
@@ -190,13 +193,12 @@
     <module name="nav_line_border.xml"/>
     <module name="nav_line.xml"/>
     <module name="nav_smooth.xml"/>
-    <module name="nav_flower.xml"/>
+    <!--module name="nav_flower.xml"/-->
     <module name="nav_line_osam.xml"/>
     <module name="nav_survey_poly_osam.xml"/>
     <module name="nav_vertical_raster.xml"/>
     <module name="nav_bungee_takeoff.xml"/>
     <module name="infrared_adc.xml"/>
-    <module name="tune_airspeed.xml"/>
     <module name="digital_cam_servo.xml">
       <define name="DC_SHUTTER_SERVO" value="COMMAND_SHUTTER" />
     </module>
