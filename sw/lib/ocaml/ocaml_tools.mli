@@ -48,3 +48,8 @@ val make_1st_order_noise_generator :
 val shifter : int -> 'a -> ('a -> 'a)
 (* [shifter size init] Returns a shift register containing [size] values
    initialized to [init] *)
+
+val counter : unit -> (unit -> int)
+    (** [counter ()] creates a new counting function [c]. Each call of [c ()]
+	provides a unique (w.r.t. [c]) integer. Useful for creating unique IDs
+     *)

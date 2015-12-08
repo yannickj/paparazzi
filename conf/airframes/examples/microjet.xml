@@ -177,7 +177,8 @@
     <subsystem name="imu"       type="analog">
       <configure name="GYRO_P" value="ADC_3"/>
     </subsystem>
-    <subsystem name="gps"       type="ublox_utm"/>
+    <subsystem name="ahrs"      type="infrared"/>
+    <module name="gps"       type="ublox_utm"/>
     <subsystem name="navigation"/>
     <module name="nav" type="flower"/>
     <subsystem name="ins" type="alt_float"/>

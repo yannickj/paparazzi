@@ -92,3 +92,7 @@ let shifter = fun n default ->
     a.(!i) <- new_value;
     i := (!i + 1) mod n;
     old_value
+
+let counter = fun () ->
+  let x = ref (-1) in
+  fun () -> incr x; !x

@@ -45,8 +45,8 @@ let singletonize = fun ?(compare = Pervasives.compare) l ->
   let rec loop = fun l ->
     match l with
     | [] | [_] -> l
-    | x::((x'::_) as xs) -> if compare x  x' = 0 then loop xs else x::loop xs in
-  loop (List.sort Pervasives.compare l)
+    | x::((x'::_) as xs) -> if compare x x' = 0 then loop xs else x::loop xs in
+  loop (List.sort compare l)
 
 (** union of two lists *)
 let union = fun l1 l2 -> singletonize (l1 @ l2)
@@ -91,6 +91,7 @@ let module_name = fun xml ->
   let name = ExtXml.attrib xml "name" in
   try Filename.chop_extension name with _ -> name
 
+exception Subsystem
 let get_module = fun m global_targets ->
   match Xml.tag m with
   | "module" ->
@@ -99,6 +100,7 @@ let get_module = fun m global_targets ->
         let modtype = ExtXml.attrib_or_default m "type" "" in
         name ^ (if modtype = "" then "" else "_") ^ modtype ^ ".xml" in
       let file = modules_dir // filename in
+      if not (Sys.file_exists file) then raise Subsystem else
       let xml = ExtXml.parse_file file in
       let targets = get_targets_of_module xml in
       let targets = union global_targets targets in
@@ -125,18 +127,19 @@ let get_module = fun m global_targets ->
   | _ -> Xml2h.xml_error "module or load"
 
 (** [get_modules_of_airframe xml]
-    * Returns a list of module configuration from airframe file *)
+ * Returns a list of module configuration from airframe file *)
 let rec get_modules_of_airframe = fun xml ->
   let is_module = fun tag -> List.mem tag [ "module"; "load" ] in
   let rec iter_modules = fun targets modules xml ->
     match xml with
     | Xml.PCData _ -> modules
     | Xml.Element (tag, _attrs, children) when is_module tag ->
-        begin try
-          let m = get_module xml targets in
-          List.fold_left
-            (fun acc xml -> iter_modules targets acc xml) (m :: modules) children
-        with  _ -> modules end (* not a valid module, probably a subsystem *)
+	begin try
+	  let m = get_module xml targets in
+	  List.fold_left
+	    (fun acc xml -> iter_modules targets acc xml)
+	    (m :: modules) children
+	with Subsystem -> modules end
     | Xml.Element (tag, _attrs, children) ->
         let targets =
           if tag = "modules" then targets_of_field xml "" else targets in

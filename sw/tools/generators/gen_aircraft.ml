@@ -202,12 +202,15 @@ let file_xml2mk = fun f ?(arch = false) dir_name target xml ->
     else format_of_string "%s.srcs += %s/%s\n" in
   fprintf f fmt target dir_name name
 
+exception Subsystem
 let module_xml2mk = fun f (*modules*) target m ->
   if not (List.mem target m.targets) then () else
   let name = ExtXml.attrib m.xml "name" in
   let dir = try Xml.attrib m.xml "dir" with Xml.No_attribute _ -> name in
   let dir_name = String.uppercase dir ^ "_DIR" in
   (* print global flags as compilation defines and flags *)
+  if not (Sys.file_exists (paparazzi_conf // "modules" // dir)) then
+    raise Subsystem;
   fprintf f "\n# makefile for module %s in modules/%s\n" name dir;
   List.iter (fun flag ->
     match String.lowercase (Xml.tag flag) with
@@ -323,7 +326,9 @@ let parse_firmware = fun makefile_ac modules firmware ->
     fprintf makefile_ac "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n" (Xml.attrib firmware "name");
     List.iter (fun def -> define_xml2mk makefile_ac def) defines;
     List.iter (fun def -> define_xml2mk makefile_ac def) t_defines;
-    List.iter (module_xml2mk makefile_ac target_name) modules;
+(*    List.iter (module_xml2mk makefile_ac target_name) modules;*)
+    List.iter (fun m ->
+      mod_or_subsys_xml2mk makefile_ac [] firmware target_name m.xml) modules;
     List.iter (mod_or_subsys_xml2mk makefile_ac [] firmware target_name) t_mods;
     List.iter (mod_or_subsys_xml2mk makefile_ac [] firmware target_name) mods;
     List.iter (subsystem_xml2mk makefile_ac firmware) t_subsystems;
@@ -356,14 +361,19 @@ let extract_makefile = fun ac_id airframe_file makefile_ac ->
 
   (** Look for modules *)
   let modules = Gen_common.get_modules_of_airframe xml in
+  Printf.printf "Modules listed\n%!";
   let module_files = modules_xml2mk f modules xml in
+  Printf.printf "Module files built\n%!";
 
   (** Search and dump makefile sections that have a "location" attribute set to "before" or no attribute *)
   dump_makefile_section xml f airframe_file "before";
+  Printf.printf "Makefile section (before) dumped\n%!";
   (** Search and dump the firmware sections *)
   dump_firmware_sections f modules xml;
+  Printf.printf "Firmware section dumped\n%!";
   (** Search and dump makefile sections that have a "location" attribute set to "after" *)
   dump_makefile_section xml f airframe_file "after";
+  Printf.printf "Makefile section (after) dumped\n%!";
 
   close_out f;
   module_files
@@ -374,10 +384,8 @@ let is_older = fun target_file dep_files ->
   not (Sys.file_exists target_file) ||
     let target_file_time = (U.stat target_file).U.st_mtime in
     let rec loop = function
-    [] -> false
-      | f::fs ->
-        target_file_time < (U.stat f).U.st_mtime ||
-          loop fs in
+      | [] -> false
+      | f :: fs -> target_file_time < (U.stat f).U.st_mtime || loop fs in
     loop dep_files
 
 
@@ -500,12 +508,12 @@ let () =
     let abs_airframe_file = paparazzi_conf // airframe_file in
 
     let modules_files = extract_makefile (value "ac_id") abs_airframe_file temp_makefile_ac in
+  Printf.printf "**************** I'm here\n%!";
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in
-    if is_older makefile_ac (abs_airframe_file :: modules_files) then begin
-      assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0)
-    end;
+    if is_older makefile_ac (abs_airframe_file :: modules_files) then
+      assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0);
 
     (* Get TARGET env, needed to build modules.h according to the target *)
     let t = try Printf.sprintf "TARGET=%s" (Sys.getenv "TARGET") with _ -> "" in

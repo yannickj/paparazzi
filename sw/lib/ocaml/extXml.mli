@@ -43,6 +43,8 @@ val float_attrib : Xml.xml -> string -> float
 val tag_is : Xml.xml -> string -> bool
 (** [tag_is xml s] Case safe test *)
 
+val attrib_option : Xml.xml -> string -> string option
+
 val attrib_or_default : Xml.xml -> string -> string -> string
 (** [get xml attribute_name default_value] *)
 

@@ -70,6 +70,10 @@ let attrib = fun xml attr ->
 	attr sprint_fields (Xml.attribs xml) in
     raise (Error msg)
 
+let attrib_option = fun xml attr ->
+  try Some (Xml.attrib xml attr)
+  with Xml.No_attribute _ -> None
+
 let tag_is = fun x v -> String.lowercase (Xml.tag x) = String.lowercase v
 
 let attrib_or_default = fun x a default ->
