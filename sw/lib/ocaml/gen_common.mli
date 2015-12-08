@@ -43,12 +43,13 @@ val singletonize : ?compare: ('a -> 'a -> int) -> 'a list -> 'a list
  * Default "ap|sim" *)
 val targets_of_field : Xml.xml -> string -> string list
 
+exception Subsystem of string
 val module_name : Xml.xml -> string
 val get_module : Xml.xml -> string list -> module_conf
 
 (** [get_modules_of_airframe xml]
  * Returns a list of pair (modules ("load" node), targets) from airframe file *)
-val get_modules_of_airframe : Xml.xml -> module_conf list
+val get_modules_of_airframe : ?target: string -> Xml.xml -> module_conf list
 
 (** [get_targets_of_module xml] Returns the list of targets of a module *)
 val get_targets_of_module : Xml.xml -> string list

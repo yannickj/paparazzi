@@ -91,7 +91,7 @@ let module_name = fun xml ->
   let name = ExtXml.attrib xml "name" in
   try Filename.chop_extension name with _ -> name
 
-exception Subsystem
+exception Subsystem of string
 let get_module = fun m global_targets ->
   match Xml.tag m with
   | "module" ->
@@ -100,7 +100,7 @@ let get_module = fun m global_targets ->
         let modtype = ExtXml.attrib_or_default m "type" "" in
         name ^ (if modtype = "" then "" else "_") ^ modtype ^ ".xml" in
       let file = modules_dir // filename in
-      if not (Sys.file_exists file) then raise Subsystem else
+      if not (Sys.file_exists file) then raise (Subsystem file) else
       let xml = ExtXml.parse_file file in
       let targets = get_targets_of_module xml in
       let targets = union global_targets targets in
@@ -126,9 +126,11 @@ let get_module = fun m global_targets ->
         param = Xml.children m; targets = targets }
   | _ -> Xml2h.xml_error "module or load"
 
+let fprint_targets = fun ch m -> List.iter (Printf.fprintf ch "%s ") m.targets
+
 (** [get_modules_of_airframe xml]
  * Returns a list of module configuration from airframe file *)
-let rec get_modules_of_airframe = fun xml ->
+let rec get_modules_of_airframe = fun ?target xml ->
   let is_module = fun tag -> List.mem tag [ "module"; "load" ] in
   let rec iter_modules = fun targets modules xml ->
     match xml with
@@ -139,7 +141,14 @@ let rec get_modules_of_airframe = fun xml ->
 	  List.fold_left
 	    (fun acc xml -> iter_modules targets acc xml)
 	    (m :: modules) children
-	with Subsystem -> modules end
+	with Subsystem _file -> modules end
+    | Xml.Element (tag, _attrs, children) when tag = "target" ->
+	let target_name = Xml.attrib xml "name" in
+	begin match target with
+	| Some t when t = target_name ->
+	    List.fold_left
+              (fun acc xml -> iter_modules targets acc xml) modules children
+	| _ -> modules end
     | Xml.Element (tag, _attrs, children) ->
         let targets =
           if tag = "modules" then targets_of_field xml "" else targets in
@@ -151,7 +160,12 @@ let rec get_modules_of_airframe = fun xml ->
       let ap_file = fst (get_autopilot_of_airframe xml) in
       iter_modules [] [] (ExtXml.parse_file ap_file)
     with _ -> [] in
-  ap_modules @ modules
+  let modules = List.rev (ap_modules @ modules) in
+  Printf.fprintf stderr "Modules found in airframe:\n%!";
+  List.iter (fun m -> Printf.fprintf stderr "%s (%a)\n%!" m.file fprint_targets m) modules;
+  match target with
+  | None -> modules
+  | Some t -> List.filter (fun m -> List.mem t m.targets) modules
 
 (** [unload_unused_modules modules ?print_error]
     * Returns a list of [modules] where unused modules are removed
