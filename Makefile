@@ -99,8 +99,11 @@ XSENS_PROTOCOL_H=$(STATICINCLUDE)/xsens_protocol.h
 DL_PROTOCOL_H=$(STATICINCLUDE)/dl_protocol.h
 DL_PROTOCOL2_H=$(STATICINCLUDE)/dl_protocol2.h
 ABI_MESSAGES_H=$(STATICINCLUDE)/abi_messages.h
+INTERMCU_MSG_H=$(STATICINCLUDE)/intermcu_msg.h
+MAVLINK_DIR=$(STATICINCLUDE)/mavlink/
+MAVLINK_PROTOCOL_H=$(MAVLINK_DIR)protocol.h
 
-GEN_HEADERS = $(MESSAGES_H) $(UBX_PROTOCOL_H) $(MTK_PROTOCOL_H) $(XSENS_PROTOCOL_H) $(DL_PROTOCOL_H) $(ABI_MESSAGES_H)
+GEN_HEADERS = $(MESSAGES_H) $(UBX_PROTOCOL_H) $(MTK_PROTOCOL_H) $(XSENS_PROTOCOL_H) $(DL_PROTOCOL_H) $(ABI_MESSAGES_H) $(INTERMCU_MSG_H) $(MAVLINK_PROTOCOL_H)
 
 
 all: ground_segment ext lpctools
@@ -242,6 +245,17 @@ $(ABI_MESSAGES_H) : $(ABI_XML) generators
 	$(Q)mv $($@_TMP) $@
 	$(Q)chmod a+r $@
 
+$(INTERMCU_MSG_H) : $(MESSAGES_XML) generators
+	$(Q)test -d $(STATICINCLUDE) || mkdir -p $(STATICINCLUDE)
+	@echo GENERATE $@
+	$(eval $@_TMP := $(shell $(MKTEMP)))
+	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) $(GENERATORS)/gen_messages.out $< intermcu > $($@_TMP)
+	$(Q)mv $($@_TMP) $@
+	$(Q)chmod a+r $@
+
+$(MAVLINK_PROTOCOL_H) :
+	$(Q)make -C $(PAPARAZZI_HOME)/sw/ext mavlink
+
 #
 # code generation for aircrafts from xml files
 #
@@ -272,6 +286,7 @@ paparazzi:
 #
 dox:
 	$(Q)PAPARAZZI_HOME=$(PAPARAZZI_HOME) sw/tools/doxygen_gen/gen_modules_doc.py -pv
+	$(Q)PAPARAZZI_HOME=$(PAPARAZZI_HOME) sw/tools/doxygen_gen/gen_messages_doc.py -pv
 	@echo "Generationg doxygen html documentation in doc/generated/html"
 	$(Q)( cat Doxyfile ; echo "PROJECT_NUMBER=$(./paparazzi_version)"; echo "QUIET=YES") | doxygen -
 	@echo "Done. Open doc/generated/html/index.html in your browser to view it."
@@ -281,8 +296,9 @@ dox:
 #
 
 clean:
-	$(Q)rm -fr dox build-stamp configure-stamp conf/%gconf.xml
+	$(Q)rm -fr dox build-stamp configure-stamp conf/%gconf.xml paparazzi
 	$(Q)rm -f  $(GEN_HEADERS)
+	$(Q)rm -fr $(MAVLINK_DIR)
 	$(Q)find . -mindepth 2 -name Makefile -a ! -path "./sw/ext/*" -exec sh -c 'echo "Cleaning {}"; $(MAKE) -C `dirname {}` $@' \;
 	$(Q)$(MAKE) -C $(EXT) clean
 	$(Q)find . -name '*~' -exec rm -f {} \;
