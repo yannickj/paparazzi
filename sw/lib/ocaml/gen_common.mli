@@ -73,8 +73,9 @@ val get_modules_dir : module_conf list -> string list
  * Fail if more than one *)
 val get_autopilot_of_airframe : Xml.xml -> (string * string option)
 
-(** [is_element_unselected target file]
- * Returns True if [target] is supported the element [file],
+(** [is_element_unselected target modules file]
+ * Returns True if [target] is supported in the element [file] and, if it is
+ * a module, that it is loaded,
  * [file] being the file name of an Xml file (module or setting) *)
-val is_element_unselected : ?verbose:bool -> string -> string -> bool
+val is_element_unselected : ?verbose:bool -> string -> module_conf list -> string -> bool
 

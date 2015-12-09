@@ -128,6 +128,16 @@ let get_module = fun m global_targets ->
 
 let fprint_targets = fun ch m -> List.iter (Printf.fprintf ch "%s ") m.targets
 
+let test_targets = fun target targets ->
+  List.exists (fun t ->
+  let l = String.length t in
+  (* test for inverted selection *)
+  if l > 0 && t.[0] = '!' then
+  not ((String.sub t 1 (l-1)) = target)
+  else
+  t = target
+  ) targets
+
 (** [get_modules_of_airframe xml]
  * Returns a list of module configuration from airframe file *)
 let rec get_modules_of_airframe = fun ?target xml ->
@@ -145,6 +155,9 @@ let rec get_modules_of_airframe = fun ?target xml ->
     | Xml.Element (tag, _attrs, children) when tag = "target" ->
 	let target_name = Xml.attrib xml "name" in
 	begin match target with
+	| None ->
+	    List.fold_left
+              (fun acc xml -> iter_modules targets acc xml) modules children
 	| Some t when t = target_name ->
 	    List.fold_left
               (fun acc xml -> iter_modules targets acc xml) modules children
@@ -165,7 +178,7 @@ let rec get_modules_of_airframe = fun ?target xml ->
   List.iter (fun m -> Printf.fprintf stderr "%s (%a)\n%!" m.file fprint_targets m) modules;
   match target with
   | None -> modules
-  | Some t -> List.filter (fun m -> List.mem t m.targets) modules
+  | Some t -> List.filter (fun m -> test_targets t m.targets) modules
 
 (** [unload_unused_modules modules ?print_error]
     * Returns a list of [modules] where unused modules are removed
@@ -191,20 +204,11 @@ let get_modules_dir = fun modules ->
   let dir = List.map (fun m -> try Xml.attrib m.xml "dir" with _ -> ExtXml.attrib m.xml "name") modules in
   singletonize (List.sort compare dir)
 
-(** [is_element_unselected target file]
- * Returns True if [target] is supported the element [file],
+(** [is_element_unselected target modules file]
+ * Returns True if [target] is supported in the element [file] and, if it is
+ * a module, that it is loaded,
  * [file] being the file name of an Xml file (module or setting) *)
-let is_element_unselected = fun ?(verbose=false) target name ->
-  let test_targets = fun targets ->
-    List.exists (fun t ->
-      let l = String.length t in
-      (* test for inverted selection *)
-      if l > 0 && t.[0] = '!' then
-        not ((String.sub t 1 (l-1)) = target)
-      else
-        t = target
-    ) targets
-  in
+let is_element_unselected = fun ?(verbose=false) target modules name ->
   try
     let name = (Env.paparazzi_home // "conf" // name) in
     let xml = Xml.parse_file name in
@@ -212,11 +216,13 @@ let is_element_unselected = fun ?(verbose=false) target name ->
     | "settings" ->
         let targets = Xml.attrib xml "target" in
         let target_list = Str.split (Str.regexp "|") targets in
-        let unselected = not (test_targets target_list) in
+        let unselected = not (test_targets target target_list) in
         if unselected && verbose then
           begin Printf.printf "Info: settings '%s' unloaded for target '%s'\n" name target; flush stdout end;
         unselected
     | "module" ->
+	let unselected = List.for_all (fun m -> m.file <> name) modules in
+(*
         let targets = List.map (fun x ->
           match String.lowercase (Xml.tag x) with
           | "makefile" -> targets_of_field x Env.default_module_targets
@@ -225,7 +231,7 @@ let is_element_unselected = fun ?(verbose=false) target name ->
         let targets = (List.flatten targets) in
         (* singletonized list *)
         let targets = singletonize (List.sort compare targets) in
-        let unselected = not (test_targets targets) in
+        let unselected = not (test_targets target targets) in*)
         if unselected && verbose then
           begin Printf.printf "Info: module '%s' unloaded for target '%s'\n" name target; flush stdout end;
         unselected

@@ -123,9 +123,6 @@ let module_xml2mk = fun f (*modules*) target m ->
 let modules_xml2mk = fun f target xml ->
   let modules = Gen_common.get_modules_of_airframe ~target xml in
   (* print modules directories and includes for all targets *)
-  fprintf f "\n####################################################\n";
-  fprintf f   "# modules makefile section\n";
-  fprintf f   "####################################################\n";
   fprintf f "\n# include modules directory for all targets\n";
   (* get dir list *)
   let dir_list = Gen_common.get_modules_dir modules in
@@ -140,6 +137,7 @@ let modules_xml2mk = fun f target xml ->
     | Some vp -> fprintf f "VPATH += %s\n" vp
     | _ -> ()
     ) modules;
+  fprintf f "\n";
   (*List.map (fun m -> m.file) modules*)
   modules
 
@@ -159,7 +157,7 @@ let dump_makefile_section = fun xml makefile_ac airframe_infile location ->
 let subsystem_xml2mk = fun f firmware s ->
   let name = ExtXml.attrib s "name"
   and s_type = try "_" ^ (Xml.attrib s "type") with Xml.No_attribute _ -> "" in
-  fprintf f "# -subsystem: '%s'\n" name;
+  fprintf f "\n# -subsystem: '%s'\n" name;
   let s_config, rest = ExtXml.partition_tag "configure" (Xml.children s) in
   let s_defines, _ = ExtXml.partition_tag "define" rest in
   List.iter (configure_xml2mk f) s_config;
@@ -217,7 +215,7 @@ let parse_firmware = fun makefile_ac ac_xml firmware ->
     List.iter (mod_or_subsys_xml2mk makefile_ac [] firmware target_name) mods;
     List.iter (subsystem_xml2mk makefile_ac firmware) t_subsystems;
     List.iter (subsystem_xml2mk makefile_ac firmware) subsystems;
-    fprintf makefile_ac "endif\n\n"
+    fprintf makefile_ac "\nendif # end of target '%s'\n\n" target_name
   ) targets
 
 
@@ -305,16 +303,17 @@ let () =
     mkdir (aircraft_conf_dir // "telemetry");
 
     let target = try Sys.getenv "TARGET" with _ -> "" in
+    let modules = Gen_common.get_modules_of_airframe ~target aircraft_xml in
     (* normal settings *)
     let settings = try Env.filter_settings (value "settings") with _ -> "" in
     (* remove settings if not supported for the current target *)
-    let settings = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings) in
+    let settings = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target modules s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings) in
     (* update aircraft_xml *)
     let aircraft_xml = ExtXml.subst_attrib "settings" (String.concat " " settings) aircraft_xml in
     (* add modules settings *)
     let settings_modules = try Env.filter_settings (value "settings_modules") with _ -> "" in
     (* remove settings if not supported for the current target *)
-    let settings_modules = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings_modules) in
+    let settings_modules = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target modules s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings_modules) in
     (* update aircraft_xml *)
     let aircraft_xml = ExtXml.subst_attrib "settings_modules" (String.concat " " settings_modules) aircraft_xml in
     (* finally, concat all settings *)
