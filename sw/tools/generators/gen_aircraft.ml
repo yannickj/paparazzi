@@ -54,120 +54,6 @@ let check_unique_id_and_name = fun conf conf_xml ->
       Hashtbl.add names name id
     ) conf
 
-
-
-(** [get_modules dir xml]
-    * [dir] is the conf directory for modules, [xml] is the parsed airframe.xml *)
-(*let get_modules = fun dir xml ->
-  let modules = Gen_common.get_modules_of_airframe xml in
-(* build a list (file name, (xml, xml list of flags)) *)
-  let extract = List.map Gen_common.get_full_module_conf modules in
-(* return a list of name and a list of pairs (xml, xml list) *)
-  List.split extract*)
-
-(**
-   Search and dump the module section :
-   xml : the parsed airframe.xml
-   f   : makefile.ac
-**)
-(*
-let dump_module_section = fun xml f ->
-  (* get modules *)
-  let modules = Gen_common.get_modules_of_airframe xml in
-  (* print modules directories and includes for all targets *)
-  fprintf f "\n####################################################\n";
-  fprintf f   "# modules makefile section\n";
-  fprintf f   "####################################################\n";
-  fprintf f "\n# include modules directory for all targets\n";
-  (* get dir list *)
-  let dir_list = Gen_common.get_modules_dir modules in
-  (** include modules directory for ALL targets and not just the defined ones **)
-  fprintf f "$(TARGET).CFLAGS += -Imodules -Iarch/$(ARCH)/modules\n";
-  List.iter (fun dir -> let dir_name = (String.uppercase dir)^"_DIR" in fprintf f "%s = modules/%s\n" dir_name dir) dir_list;
-  (* add vpath for external modules *)
-  List.iter (fun m -> match m.vpath with Some vp -> fprintf f "VPATH += %s\n" vp | _ -> ()) modules;
-  (* parse each module *)
-  List.iter (fun m ->
-    let name = ExtXml.attrib m.xml "name" in
-    let dir = try Xml.attrib m.xml "dir" with _ -> name in
-    let dir_name = (String.uppercase dir)^"_DIR" in
-    (* get the list of all the targets for this module and concat the extra targets *)
-    let module_target_list = [] (***Gen_common.get_targets_of_module m*) in
-    (* print global flags as compilation defines and flags *)
-    fprintf f "\n# makefile for module %s in modules/%s\n" name dir;
-    List.iter (fun flag ->
-      match String.lowercase (Xml.tag flag) with
-          "configure" ->
-            let value = Xml.attrib flag "value"
-            and name = Xml.attrib flag "name" in
-            fprintf f "%s = %s\n" name value
-        | "define" ->
-          List.iter (fun target ->
-            let name = ExtXml.attrib flag "name"
-            and value = try "="^(Xml.attrib flag "value") with _ -> "" in
-            fprintf f "%s.CFLAGS += -D%s%s\n" target name value
-          ) module_target_list
-        | _ -> ()
-    ) m.param;
-    (* Look for makefile section *)
-    List.iter (fun l ->
-      if ExtXml.tag_is l "makefile" then begin
-        (* add extra targets only if default is used *)
-        let et = try ignore(Xml.attrib l "target"); [] with _ -> m.targets in
-        let targets = Gen_common.singletonize (
-          Gen_common.targets_of_field l Env.default_module_targets @ et) in
-        (* Look for defines, flags, files, ... *)
-        List.iter (fun field ->
-          match String.lowercase (Xml.tag field) with
-              "configure" ->
-                let value = Xml.attrib field "value"
-                and name = Xml.attrib field "name" in
-                fprintf f "%s = %s\n" name value
-            | "define" ->
-              List.iter (fun target ->
-                let value = try "="^(Xml.attrib field "value") with _ -> ""
-                and name = Xml.attrib field "name"
-                and vpath = match m.vpath with Some vp -> vp^"/" | _ -> "" in
-                let flag_type = match (ExtXml.attrib_or_default field "type" "define") with
-                    "define" | "D" -> "D"
-                  | "include" | "I" -> "I"^vpath
-                  | "raw" -> ""
-                  | _ -> "D" in
-                try
-                  let cond = Xml.attrib field "cond" in
-                  fprintf f "%s\n" cond;
-                  fprintf f "%s.CFLAGS += -%s%s%s\n" target flag_type name value;
-                  fprintf f "endif\n";
-                with _ ->
-                  fprintf f "%s.CFLAGS += -%s%s%s\n" target flag_type name value
-              ) targets
-            | "flag" ->
-              List.iter (fun target ->
-                let value = Xml.attrib field "value"
-                and name = Xml.attrib field "name" in
-                fprintf f "%s.%s += -%s\n" target name value
-              ) targets
-            | "file" ->
-              let name = Xml.attrib field "name" in
-              let dir_name = ExtXml.attrib_or_default field "dir" ("$("^dir_name^")") in
-              List.iter (fun target -> fprintf f "%s.srcs += %s/%s\n" target dir_name name) targets
-            | "file_arch" ->
-              let name = Xml.attrib field "name" in
-              let dir_name = ExtXml.attrib_or_default field "dir" ("$("^dir_name^")") in
-              List.iter (fun target -> fprintf f "%s.srcs += arch/$(ARCH)/%s/%s\n" target dir_name name) targets
-            | "raw" ->
-              begin match Xml.children field with
-                  [Xml.PCData s] -> List.iter (fun target -> fprintf f "ifeq ($(TARGET), %s)\n%s\nendif\n" target s) targets
-                | _ -> fprintf stderr "Warning: wrong makefile section in module '%s'\n" name
-              end
-            | _ -> ()
-        ) (Xml.children l)
-      end) (Xml.children m.xml)
-  ) modules;
-  (** returns a list of modules file name *)
-  List.map (fun m -> m.file) modules
-*)
-
 let configure_xml2mk = fun f xml ->
   let name = String.uppercase (ExtXml.attrib xml "name")
   and value = ExtXml.attrib xml "value" in
@@ -328,9 +214,6 @@ let parse_firmware = fun makefile_ac ac_xml firmware ->
     List.iter (fun def -> define_xml2mk makefile_ac def) defines;
     List.iter (fun def -> define_xml2mk makefile_ac def) t_defines;
     List.iter (module_xml2mk makefile_ac target_name) modules;
-(*    List.iter (fun m ->
-      mod_or_subsys_xml2mk makefile_ac [] firmware target_name m.xml) modules;*)
-    List.iter (mod_or_subsys_xml2mk makefile_ac [] firmware target_name) t_mods;
     List.iter (mod_or_subsys_xml2mk makefile_ac [] firmware target_name) mods;
     List.iter (subsystem_xml2mk makefile_ac firmware) t_subsystems;
     List.iter (subsystem_xml2mk makefile_ac firmware) subsystems;
