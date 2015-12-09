@@ -243,18 +243,11 @@ let extract_makefile = fun ac_id airframe_file makefile_ac ->
 
   (** Search and dump makefile sections that have a "location" attribute set to "before" or no attribute *)
   dump_makefile_section xml f airframe_file "before";
-  Printf.printf "Makefile section (before) dumped\n%!";
   (** Search and dump the firmware sections *)
   dump_firmware_sections f xml;
-  Printf.printf "Firmware section dumped\n%!";
   (** Search and dump makefile sections that have a "location" attribute set to "after" *)
   dump_makefile_section xml f airframe_file "after";
-  Printf.printf "Makefile section (after) dumped\n%!";
-
-  close_out f(*;
-  module_files*)
-
-
+  close_out f
 
 let is_older = fun target_file dep_files ->
   not (Sys.file_exists target_file) ||
@@ -385,7 +378,6 @@ let () =
     let abs_airframe_file = paparazzi_conf // airframe_file in
 
     let () (*modules_files*) = extract_makefile (value "ac_id") abs_airframe_file temp_makefile_ac in
-  Printf.printf "**************** I'm here\n%!";
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in

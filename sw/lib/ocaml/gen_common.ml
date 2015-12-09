@@ -126,8 +126,6 @@ let get_module = fun m global_targets ->
         param = Xml.children m; targets = targets }
   | _ -> Xml2h.xml_error "module or load"
 
-let fprint_targets = fun ch m -> List.iter (Printf.fprintf ch "%s ") m.targets
-
 let test_targets = fun target targets ->
   List.exists (fun t ->
   let l = String.length t in
@@ -174,8 +172,6 @@ let rec get_modules_of_airframe = fun ?target xml ->
       iter_modules [] [] (ExtXml.parse_file ap_file)
     with _ -> [] in
   let modules = List.rev (ap_modules @ modules) in
-  Printf.fprintf stderr "Modules found in airframe:\n%!";
-  List.iter (fun m -> Printf.fprintf stderr "%s (%a)\n%!" m.file fprint_targets m) modules;
   match target with
   | None -> modules
   | Some t -> List.filter (fun m -> test_targets t m.targets) modules
