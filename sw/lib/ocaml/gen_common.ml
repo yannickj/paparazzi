@@ -144,22 +144,22 @@ let rec get_modules_of_airframe = fun ?target xml ->
     match xml with
     | Xml.PCData _ -> modules
     | Xml.Element (tag, _attrs, children) when is_module tag ->
-	begin try
-	  let m = get_module xml targets in
-	  List.fold_left
-	    (fun acc xml -> iter_modules targets acc xml)
-	    (m :: modules) children
-	with Subsystem _file -> modules end
+        begin try
+          let m = get_module xml targets in
+          List.fold_left
+            (fun acc xml -> iter_modules targets acc xml)
+            (m :: modules) children
+        with Subsystem _file -> modules end
     | Xml.Element (tag, _attrs, children) when tag = "target" ->
-	let target_name = Xml.attrib xml "name" in
-	begin match target with
-	| None ->
-	    List.fold_left
+        let target_name = Xml.attrib xml "name" in
+        begin match target with
+        | None ->
+            List.fold_left
               (fun acc xml -> iter_modules targets acc xml) modules children
-	| Some t when t = target_name ->
-	    List.fold_left
+        | Some t when t = target_name ->
+            List.fold_left
               (fun acc xml -> iter_modules targets acc xml) modules children
-	| _ -> modules end
+        | _ -> modules end
     | Xml.Element (tag, _attrs, children) ->
         let targets =
           if tag = "modules" then targets_of_field xml "" else targets in
@@ -217,17 +217,7 @@ let is_element_unselected = fun ?(verbose=false) target modules name ->
           begin Printf.printf "Info: settings '%s' unloaded for target '%s'\n" name target; flush stdout end;
         unselected
     | "module" ->
-	let unselected = List.for_all (fun m -> m.file <> name) modules in
-(*
-        let targets = List.map (fun x ->
-          match String.lowercase (Xml.tag x) with
-          | "makefile" -> targets_of_field x Env.default_module_targets
-          | _ -> []
-          ) (Xml.children xml) in
-        let targets = (List.flatten targets) in
-        (* singletonized list *)
-        let targets = singletonize (List.sort compare targets) in
-        let unselected = not (test_targets target targets) in*)
+        let unselected = List.for_all (fun m -> m.file <> name) modules in
         if unselected && verbose then
           begin Printf.printf "Info: module '%s' unloaded for target '%s'\n" name target; flush stdout end;
         unselected

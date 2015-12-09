@@ -78,7 +78,7 @@ let raw_xml2mk = fun f name xml ->
   match Xml.children xml with
   | [Xml.PCData s] -> fprintf f "%s\n" s
   | _ -> eprintf "Warning: wrong makefile section in '%s': %s\n"
-	name (Xml.to_string_fmt xml)
+        name (Xml.to_string_fmt xml)
 
 let file_xml2mk = fun f ?(arch = false) dir_name target xml ->
   let name = Xml.attrib xml "name" in
@@ -105,19 +105,19 @@ let module_xml2mk = fun f (*modules*) target m ->
     (fun section ->
       (* Look for defines, flags, files, ... *)
       Xml.iter
-	(fun field ->
+      (fun field ->
           match String.lowercase (Xml.tag field) with
           | "configure" -> configure_xml2mk f field
           | "define" -> define_xml2mk f ~target ~vpath:m.vpath field
           | "flag" ->
-	      let value = Xml.attrib field "value"
-	      and name = Xml.attrib field "name" in
-	      fprintf f "%s.%s += -%s\n" target name value
+              let value = Xml.attrib field "value"
+              and name = Xml.attrib field "name" in
+              fprintf f "%s.%s += -%s\n" target name value
           | "file" -> file_xml2mk f dir_name target field
           | "file_arch" -> file_xml2mk f ~arch:true dir_name target field
           | "raw" -> raw_xml2mk f name field
           | _ -> ()
-	) section
+        ) section
     ) m.xml
 
 let modules_xml2mk = fun f target xml ->
@@ -149,7 +149,7 @@ let dump_makefile_section = fun xml makefile_ac airframe_infile location ->
       match location, loc with
       | "before", "before" | "after", "after" ->
           fprintf makefile_ac "\n# raw makefile\n";
-	  raw_xml2mk makefile_ac airframe_infile x
+          raw_xml2mk makefile_ac airframe_infile x
       | _ -> ()
     ) xml
 
@@ -282,6 +282,9 @@ let () =
     let aircraft_dir = Env.paparazzi_home // "var" // "aircrafts" // aircraft in
     let aircraft_conf_dir = aircraft_dir // "conf" in
 
+    let airframe_file = value "airframe" in
+    let abs_airframe_file = paparazzi_conf // airframe_file in
+
     mkdir (Env.paparazzi_home // "var");
     mkdir (Env.paparazzi_home // "var" // "aircrafts");
     mkdir aircraft_dir;
@@ -296,7 +299,7 @@ let () =
     mkdir (aircraft_conf_dir // "telemetry");
 
     let target = try Sys.getenv "TARGET" with _ -> "" in
-    let modules = Gen_common.get_modules_of_airframe ~target aircraft_xml in
+    let modules = Gen_common.get_modules_of_airframe ~target (Xml.parse_file abs_airframe_file) in
     (* normal settings *)
     let settings = try Env.filter_settings (value "settings") with _ -> "" in
     (* remove settings if not supported for the current target *)
@@ -323,7 +326,7 @@ let () =
     let conf_aircraft = Env.expand_ac_xml aircraft_xml in
     let configuration =
       make_element
-	"configuration" []
+        "configuration" []
         [ make_element "conf" [] [conf_aircraft]; Pprz.messages_xml () ] in
     let conf_aircraft_file = aircraft_conf_dir // "conf_aircraft.xml" in
     let f = open_out conf_aircraft_file in
@@ -349,8 +352,6 @@ let () =
       Printf.fprintf f "%s\n" (ExtXml.to_string_fmt configuration);
       close_out f end;
 
-    let airframe_file = value "airframe" in
-
     let airframe_dir = Filename.dirname airframe_file in
     let var_airframe_dir = aircraft_conf_dir // airframe_dir in
     mkdir var_airframe_dir;
@@ -375,7 +376,6 @@ let () =
       with Xml.No_attribute _ -> () in
 
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
-    let abs_airframe_file = paparazzi_conf // airframe_file in
 
     let () (*modules_files*) = extract_makefile (value "ac_id") abs_airframe_file temp_makefile_ac in
 
