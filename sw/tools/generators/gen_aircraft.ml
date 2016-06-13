@@ -414,8 +414,10 @@ let () =
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in
-    if is_older makefile_ac (abs_airframe_file ::(List.map (fun m -> m.file) modules)) then
+    if is_older makefile_ac (abs_airframe_file ::(List.map (fun m -> m.file) modules)) then begin
       assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0);
+      Unix.chmod makefile_ac 0o664;
+    end;
 
     (* Get TARGET env, needed to build modules.h according to the target *)
     let t = try Printf.sprintf "TARGET=%s" (Sys.getenv "TARGET") with _ -> "" in
