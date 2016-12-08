@@ -137,7 +137,7 @@
   <section name="BAT">
     <define name="CALIB_AMP_A" value="0.0045360"/>
     <define name="CALIB_AMP_B" value="2.8136"/>
-    <define name="CATASTROPHIC_BAT_LEVEL" value="9.3" unit="V"/>
+    <define name="CATASTROPHIC_BAT_LEVEL" value="8.6" unit="V"/>
     <define name="MilliAmpereOfAdc(_adc)" value="(_adc-620)*4.536"/>
   </section>
 
@@ -164,7 +164,7 @@
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="3."/>
     <!-- auto throttle inner loop -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.5"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.6"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
     <define name="AUTO_THROTTLE_LOITER_TRIM" value="1000"/>

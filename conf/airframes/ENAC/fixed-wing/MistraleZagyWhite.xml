@@ -127,7 +127,7 @@
   </section>
 
   <section name="BAT">
-    <define name="CATASTROPHIC_BAT_LEVEL" value="9.3" unit="V"/>
+    <define name="CATASTROPHIC_BAT_LEVEL" value="8.6" unit="V"/>
     <define name="MilliAmpereOfAdc(_adc)" value="(_adc-632)*4.14"/>
   </section>
 
@@ -156,7 +156,7 @@
     <define name="AUTO_CLIMB_LIMIT" value="2*V_CTL_ALTITUDE_MAX_CLIMB"/>
 
     <!-- Cruise throttle + limits -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.55"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.45"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
 
