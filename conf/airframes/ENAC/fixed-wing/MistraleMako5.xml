@@ -18,7 +18,7 @@
   <firmware name="fixedwing">
 
 
-    <configure name="PERIODIC_FREQUENCY" value="100"/>
+    <!--configure name="PERIODIC_FREQUENCY" value="100"/-->
 
     <target name="ap" board="apogee_1.0_chibios">
       <module name="radio_control" type="sbus"/>
