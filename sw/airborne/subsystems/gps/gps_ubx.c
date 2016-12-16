@@ -57,6 +57,15 @@ struct GpsUbxRaw gps_ubx_raw;
 
 struct GpsTimeSync gps_ubx_time_sync;
 
+// DEBUG XPA
+static uint8_t getbitu(const uint8_t *buff, uint8_t pos, uint8_t len)
+{
+  uint8_t bits=0;
+  uint8_t i;
+  for (i=pos;i<pos+len;i++) bits=(bits<<1)+((buff[i/8]>>(7-i%8))&1u);
+  return bits;
+}
+
 void gps_ubx_init(void)
 {
   gps_ubx.status = UNINIT;
@@ -90,7 +99,8 @@ void gps_ubx_read_message(void)
       gps_ubx_time_sync.t0_tow_frac   = UBX_NAV_SOL_Frac(gps_ubx.msg_buf);
       gps_ubx.state.tow        = UBX_NAV_SOL_ITOW(gps_ubx.msg_buf);
       gps_ubx.state.week       = UBX_NAV_SOL_week(gps_ubx.msg_buf);
-      gps_ubx.state.fix        = UBX_NAV_SOL_GPSfix(gps_ubx.msg_buf);
+// DEBUG XPA
+//      gps_ubx.state.fix        = UBX_NAV_SOL_GPSfix(gps_ubx.msg_buf);
       gps_ubx.state.ecef_pos.x = UBX_NAV_SOL_ECEF_X(gps_ubx.msg_buf);
       gps_ubx.state.ecef_pos.y = UBX_NAV_SOL_ECEF_Y(gps_ubx.msg_buf);
       gps_ubx.state.ecef_pos.z = UBX_NAV_SOL_ECEF_Z(gps_ubx.msg_buf);
@@ -157,9 +167,28 @@ void gps_ubx_read_message(void)
         gps_ubx.state.svinfos[i].azim = UBX_NAV_SVINFO_Azim(gps_ubx.msg_buf, i);
       }
     } else if (gps_ubx.msg_id == UBX_NAV_STATUS_ID) {
+// DEBUG XPA
+#ifndef USE_GPS_UBX_RTCM
       gps_ubx.state.fix = UBX_NAV_STATUS_GPSfix(gps_ubx.msg_buf);
+#endif
       gps_ubx.status_flags = UBX_NAV_STATUS_Flags(gps_ubx.msg_buf);
       gps_ubx.sol_flags = UBX_NAV_SOL_Flags(gps_ubx.msg_buf);
+    } else if (gps_ubx.msg_id == UBX_NAV_RELPOSNED_ID){
+      uint8_t flags = UBX_NAV_RELPOSNED_Flags(gps_ubx.msg_buf);
+      if(getbitu(&flags, 7, 1) > 0) {      // gnssFixOK: (i.e within DOP & accuracy masks)
+        if(getbitu(&flags, 6, 1) > 0) {    // diffSoln: 1 if differential corrections were applied
+          uint8_t carrSoln = getbitu(&flags, 3, 2);
+          if(carrSoln == 2) {              // carrSoln: Carrier phase range solution status
+            gps_ubx.state.fix = 5;         //   Fixed solution -> "rtk"
+          } else if(carrSoln == 1) {
+            gps_ubx.state.fix = 4;         //   Float solution -> "dgnss"
+          }
+        } else {
+          gps_ubx.state.fix = 3;           //   No carrier phase range solution -> "3d"
+        }
+      } else {
+        gps_ubx.state.fix = 0;             //   No fixed
+      }
     }
   }
 #if USE_GPS_UBX_RXM_RAW
@@ -192,7 +221,8 @@ void gps_ubx_read_message(void)
 void gps_ubx_parse(uint8_t c)
 {
 #if LOG_RAW_GPS
-  sdLogWriteByte(pprzLogFile, c);
+  if (pprzLogFile != -1)
+    sdLogWriteByte(pprzLogFile, c);
 #endif
   if (gps_ubx.status < GOT_PAYLOAD) {
     gps_ubx.ck_a += c;
@@ -342,3 +372,14 @@ void gps_ubx_msg(void)
   gps_ubx.msg_available = false;
 }
 
+// DEBUG XPA
+#ifdef USE_GPS_UBX_RTCM
+void gps_inject_data(uint8_t packet_id, uint8_t length, uint8_t *data) {
+  struct link_device *dev = &(UBX_GPS_LINK).device;
+  uint32_t i = 0;
+  for (i = 0; i < length; i++) {
+    dev->put_byte(dev->periph, 0, data[i]);
+  }
+  dev->send_message(dev->periph, 0);
+}
+#endif

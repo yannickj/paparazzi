@@ -52,6 +52,9 @@
       <configure name="GPS_BAUD" value="B115200"/>
     </module>
 
+    <!-- DGPS>
+    <define name="USE_GPS_UBX_RTCM" value="TRUE"/-->
+    
     <module name="current_sensor">
       <configure name="ADC_CURRENT_SENSOR" value="ADC_1"/>
     </module>

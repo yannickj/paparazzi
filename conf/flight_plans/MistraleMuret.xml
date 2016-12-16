@@ -1,21 +1,20 @@
 <!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
 
-<flight_plan alt="250" ground_alt="185" lat0="43.46223" lon0="1.27289" max_dist_from_home="1000" name="example - Muret for loops" qfu="270" security_height="25">
-<!--flight_plan alt="230" ground_alt="185" lat0="43.4873131" lon0="1.2322148" max_dist_from_home="400" name="Basic" qfu="110" security_height="25"-->
+<flight_plan alt="250" ground_alt="185" lat0="43.46223" lon0="1.27289" max_dist_from_home="300" name="example - Muret for loops" qfu="270" security_height="25">
   <header>
 #include "subsystems/datalink/datalink.h"
 </header>
   <waypoints>
-    <waypoint name="HOME" x="-121.9" y="-253.3"/>
-    <waypoint name="STDBY" x="-205.3" y="-126.1"/>
-    <waypoint name="1" x="-334.7" y="-32.1"/>
-    <waypoint name="2" x="-407.2" y="-278.9"/>
-    <waypoint name="3" x="-30.6" y="-411.6"/>
-    <waypoint name="4" x="38.1" y="-174.4"/>
-    <waypoint alt="215.0" name="AF" x="-281.1" y="77.1"/>
-    <waypoint alt="185.0" name="TD" x="-120.4" y="27.4"/>
-    <waypoint name="_BASELEG" x="145.6" y="-74.9"/>
-    <waypoint name="CLIMB" x="45.9" y="-22.6"/>
+    <waypoint name="HOME" x="70.0" y="106.9"/>
+    <waypoint name="STDBY" x="95.6" y="85.7"/>
+    <waypoint name="1" x="-5.4" y="247.1"/>
+    <waypoint name="2" x="-46.9" y="123.4"/>
+    <waypoint name="3" x="189.3" y="34.6"/>
+    <waypoint name="4" x="235.6" y="154.4"/>
+    <waypoint alt="215.0" name="AF" x="-34.5" y="83.9"/>
+    <waypoint alt="185.0" name="TD" x="49.7" y="57.8"/>
+    <waypoint name="_BASELEG" x="113.7" y="145.4"/>
+    <waypoint name="CLIMB" x="123.6" y="-12.8"/>
   </waypoints>
   <sectors>
     <sector color="orange" name="Survey">
