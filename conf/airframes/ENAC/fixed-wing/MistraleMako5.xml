@@ -23,8 +23,9 @@
     <target name="ap" board="apogee_1.0_chibios">
       <module name="radio_control" type="sbus"/>
     </target>
-    <target name="sim" board="pc">
+    <target name="nps" board="pc">
       <module name="radio_control" type="ppm"/>
+      <subsystem name="fdm"   type="jsbsim"/>
     </target>
 
     <module name="telemetry" type="xbee_api"/>
@@ -67,14 +68,12 @@
     <axis name="THROTTLE" failsafe_value="0"/>
     <axis name="ROLL" failsafe_value="0"/>
     <axis name="PITCH" failsafe_value="0"/>
-    <axis name="YAW" failsafe_value="0"/>
   </commands>
 
   <rc_commands>
     <set command="THROTTLE" value="@THROTTLE"/>
     <set command="ROLL" value="@ROLL"/>
     <set command="PITCH" value="@PITCH"/>
-    <set command="YAW" value="@YAW"/>
   </rc_commands>
 
   <section name="MIXER">
@@ -100,6 +99,11 @@
   </section>
 
   <section name="IMU" prefix="IMU_">
+
+    <!-- Needed by NPS (simulation) -->
+    <define name="MAG_X_NEUTRAL" value="0"/>
+    <define name="MAG_Y_NEUTRAL" value="0"/>
+    <define name="MAG_Z_NEUTRAL" value="0"/>
 
     <define name="GYRO_P_SIGN" value="-1"/>
     <define name="GYRO_Q_SIGN" value="1"/>
@@ -167,8 +171,11 @@
     <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.6"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
-    <define name="AUTO_THROTTLE_LOITER_TRIM" value="1000"/>
-    <define name="AUTO_THROTTLE_DASH_TRIM" value="-1200"/>
+
+    <!--XPA not used/-->
+    <!--define name="AUTO_THROTTLE_LOITER_TRIM" value="1000"/>
+    <define name="AUTO_THROTTLE_DASH_TRIM" value="-1200"/-->
+
     <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.08" unit="%/(m/s)"/>
     <define name="AUTO_THROTTLE_PGAIN" value="0.011"/>
     <define name="AUTO_THROTTLE_IGAIN" value="0.006"/>
@@ -211,4 +218,11 @@
     <define name="DEFAULT_PITCH" value="0.08" unit="rad"/>
     <define name="HOME_RADIUS" value="100" unit="m"/>
   </section>
+
+  <section name="SIMULATOR" prefix="NPS_">
+    <define name="JSBSIM_LAUNCHSPEED" value="15"/>
+    <define name="JSBSIM_MODEL" value="easystar" type="string"/>
+    <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
+  </section>
+
 </airframe>
