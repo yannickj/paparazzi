@@ -17,7 +17,7 @@
     <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="0"/>
 
     <module name="actuators" type="pwm">
-      <define name="TIM5_SERVO_HZ" value="300"/>
+      <define name="TIM5_SERVO_HZ" value="2000"/>
       <define name="SERVO_HZ" value="300"/>
       <define name="USE_SERVOS_1AND2"/>
     </module>
@@ -26,10 +26,10 @@
     <module name="telemetry" type="bluegiga"/>
     <module name="imu" type="lisa_s_v1.0"/>
     <module name="gps" type="ublox"/>
-    <module name="stabilization" type="heli_indi"/> <!-- int_quat / heli_indi -->
+    <module name="stabilization" type="int_quat"/>
     <module name="ahrs" type="int_cmpl_quat"/>
     <module name="ins"/>
-<!--    <module name="rpm_sensor" type="eagletree"/>
+<!--
     <module name="stabilization" type="heli_indi"/>
     <module name="rpm_sensor" type="eagletree"/>
     <module name="ahrs" type="int_cmpl_quat_notch"/>-->
@@ -52,10 +52,10 @@
   </servos>
 
   <commands>
+    <axis name="THRUST" failsafe_value="0"/>
     <axis name="ROLL" failsafe_value="0"/>
     <axis name="PITCH" failsafe_value="0"/>
     <axis name="YAW" failsafe_value="0"/>
-    <axis name="THRUST" failsafe_value="0"/>
     <axis name="FMODE" failsafe_value="-9600"/>
   </commands>
 
@@ -76,7 +76,7 @@
   </section>
 
   <command_laws>
-    <call fun="throttle_curve_run(autopilot_motors_on, values)"/>
+    <call fun="throttle_curve_run(autopilot_get_motors_on(), values)"/>
     <call fun="swashplate_mixing_run(values)"/>
     <set servo="THROTTLE" value="throttle_curve.throttle"/>
     <set servo="FRONT" value="swashplate_mixing.commands[SW_FRONT]"/>
@@ -86,8 +86,8 @@
   </command_laws>
 
   <heli_curves>
-    <curve throttle="0,4800,7200,8400,9600" collective="-5500,-3750,-1500,250,2000"/>
-    <!--    <curve throttle="0,4800,7200,8400,9600" collective="-1000,750,2500,4250,6000"/>-->
+    <curve throttle="0,4800,7200,8400,9600" collective="-1000,750,2500,4250,6000"/>
+    <!--<curve throttle="9600,7200,9600" collective="-7500,0,7500"/>-->
   </heli_curves>
 
   <section name="MISC">
@@ -139,18 +139,6 @@
     <define name="IGAIN_P" value="75"/>
     <define name="IGAIN_Q" value="75"/>
     <define name="IGAIN_R" value="50"/>
-  </section>
-
-  <section name="STABILIZATION_ATTITUDE_HELI_INDI" prefix="STABILIZATION_ATTITUDE_HELI_INDI_">
-    <define name="ROLL_P" value="12"/><!--20 3052 -->
-    <define name="PITCH_P" value="8"/><!--20 3052 -->
-    <define name="YAW_P" value="10"/>
-    <define name="YAW_D" value="30"/>
-    <define name="USE_FAST_DYN_FILTERS" value="1" />
-    <define name="FAST_DYN_ROLL_BW" value="68" />
-    <define name="FAST_DYN_PITCH_BW" value="17" />
-    <define name="GINV_ROLL_TO_ROLL" value="12000" />
-    <define name="GINV_PITCH_TO_PITCH" value="13000" />
   </section>
 
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
@@ -214,9 +202,9 @@
   <section name="AUTOPILOT">
     <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
     <define name="MODE_AUTO1" value="AP_MODE_HOVER_Z_HOLD"/>
-    <define name="MODE_AUTO2" value="AP_MODE_HOVER_Z_HOLD"/>
+    <define name="MODE_AUTO2" value="AP_MODE_HOVER_DIRECT"/>
 
-    <!--define name="USE_THROTTLE_FOR_MOTOR_ARMING" value="TRUE"/-->
+    <define name="USE_THROTTLE_FOR_MOTOR_ARMING" value="TRUE"/>
     <define name="NO_RC_THRUST_LIMIT" value="TRUE"/>
   </section>
 
