@@ -1,7 +1,6 @@
 <!DOCTYPE airframe SYSTEM "../../airframe.dtd">
 
 <airframe name="JP">
-
   <firmware name="fixedwing">
     <define name="USE_I2C1"/>
     <configure name="PERIODIC_FREQUENCY" value="125"/>
@@ -83,6 +82,7 @@
     <axis name="THROTTLE" failsafe_value="0"/>
     <axis name="ROLL" failsafe_value="0"/>
     <axis name="PITCH" failsafe_value="0"/>
+    <axis name="FAULT" failsafe_value="0"/>
   </commands>
 
   <rc_commands>
@@ -90,6 +90,10 @@
     <set command="ROLL" value="@ROLL"/>
     <set command="PITCH" value="@PITCH"/>
   </rc_commands>
+
+ <ap_only_commands>
+   <copy command="FAULT" />
+ </ap_only_commands>
 
   <section name="MIXER">
     <define name="AILEVON_AILERON_RATE" value="0.75"/>
@@ -99,9 +103,10 @@
   <command_laws>
     <let var="aileron" value="@ROLL  * AILEVON_AILERON_RATE"/>
     <let var="elevator" value="@PITCH * AILEVON_ELEVATOR_RATE"/>
+    <let var="fault" value="@FAULT"/>
     <set servo="MOTOR" value="@THROTTLE"/>
-    <set servo="AILEVON_LEFT" value="$elevator - $aileron"/>
-    <set servo="AILEVON_RIGHT" value="$elevator + $aileron"/>
+    <set servo="AILEVON_LEFT" value="($elevator - $aileron)*$fault"/>
+    <set servo="AILEVON_RIGHT" value="($elevator + $aileron)*$fault"/>
   </command_laws>
 
   <section name="AUTO1" prefix="AUTO1_">
