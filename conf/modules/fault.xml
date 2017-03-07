@@ -1,0 +1,18 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="fault">
+  <doc>
+    <description>Generates faults on the actuators</description>
+  </doc>
+  <header>
+    <file name="fault.h"/>
+  </header>
+  <init fun="fault_init()"/>
+  <periodic fun="fault_periodic()" freq="60" start="fault_start()" stop="fault_stop()" autorun="FALSE"/>
+  <event fun="fault_event()"/>
+  <datalink message="fault_datalink_event()" fun="fault_datalink_callback()"/>
+  <makefile>
+    <file name="fault.c"/>
+  </makefile>
+</module>
+
