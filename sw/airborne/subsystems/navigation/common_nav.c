@@ -127,7 +127,26 @@ void common_nav_periodic_task_4Hz()
  */
 void nav_move_waypoint(uint8_t wp_id, float ux, float uy, float alt)
 {
-  if (wp_id < nb_waypoint) {
+  // if moving dummy waypoint 0, move reference frame but not filters ?
+  if (wp_id == 0) {
+    struct UtmCoor_f utm = {
+      .east = ux,
+      .north = uy,
+      .alt = alt,
+      .zone = nav_utm_zone0
+    };
+    // Set state interface ref
+    stateSetLocalUtmOrigin_f(&utm);
+    /* Set nav UTM ref */
+    nav_utm_east0 = state.utm_origin_f.east;
+    nav_utm_north0 = state.utm_origin_f.north;
+    nav_utm_zone0 = state.utm_origin_f.zone;
+    /* Ground alt */
+    previous_ground_alt = ground_alt;
+    ground_alt = state.utm_origin_f.alt;
+    // update waypoints alt
+    nav_update_waypoints_alt();
+  } else if (wp_id < nb_waypoint) {
     float dx, dy;
     dx = ux - nav_utm_east0 - waypoints[WP_HOME].x;
     dy = uy - nav_utm_north0 - waypoints[WP_HOME].y;
