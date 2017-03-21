@@ -27,20 +27,39 @@
  *   (moving wpt dummy = 0)
  */
 
+#include <sys/time.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <glib.h>
 #include <Ivy/ivy.h>
 
+#define UPDATE_PERIOD 10000.0
+
 int ac_id=3;
 int wpt_nb=0;
 
+struct timeval t1, t2;
+
 static void on_Position(IvyClientPtr app, void *user_data, int argc, char *argv[])
 {
+  double elapsedTime;
 
-  // latitude, longitude, altitude
-  IvySendMsg("gcs MOVE_WAYPOINT %d %d %f %f %f",
-    ac_id,wpt_nb,atof(argv[3]),atof(argv[4]),atof(argv[7]));
+  gettimeofday(&t2, NULL);
+
+  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+
+  printf("[%f]\n",elapsedTime);
+
+  if(elapsedTime >= UPDATE_PERIOD) {
+    // latitude, longitude, altitude
+    IvySendMsg("gcs MOVE_WAYPOINT %d %d %f %f %f",
+        ac_id,wpt_nb,atof(argv[3]),atof(argv[4]),atof(argv[7]));
+      
+    printf("send \n");
+    memcpy(&t1,&t2,sizeof(struct timeval));
+  }
 }
 
 int main(int argc, char** argv)
@@ -48,18 +67,15 @@ int main(int argc, char** argv)
   char* ivy_bus;
   int ret=0;
 
-  if(argc>1) {
-    ac_id=atoi(argv[1]);
-    if(argc==3) {
-      wpt_nb=atoi(argv[2]);
-      if((wpt_nb!=0)||(wpt_nb!=1)) ret=-1;
-    } else ret=-1;
-  } else ret=-1;
+  if(argc==2) ac_id=atoi(argv[1]);
+  else ret=-1; 
 
   if(ret==-1) {
-    printf("Usage:\nreset_gpsd2ivy ac_id wpt_nb\n wpt_nb optional 0 or 1\n");
+    printf("Usage:\nreset_gpsd2ivy ac_id\n");
     exit(0);
   }
+
+  memset(&t1, 0, sizeof(struct timeval));
 
 #ifdef __APPLE__
   ivy_bus = "224.255.255.255";
