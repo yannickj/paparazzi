@@ -20,7 +20,7 @@
  *
  */
 
-/** \file reset_state_ref_from_gpsd2ivy.c
+/** \file gpsd2ivy_resetWPT.c
  *  \brief Reset state from gpsd
  *
  *   This receives position information through ivy bus and request on board reset state ref
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
   else ret=-1; 
 
   if(ret==-1) {
-    printf("Usage:\nreset_gpsd2ivy ac_id\n");
+    printf("Usage:\ngpsd2ivy_resetWPT ac_id\n");
     exit(0);
   }
 
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
   GMainLoop *ml =  g_main_loop_new(NULL, FALSE);
 
-  IvyInit ("ResetStateRef", "ResetStateRef READY", NULL, NULL, NULL, NULL);
+  IvyInit ("gpsd2ivy_resetWPT", "gpsd2ivy_resetWPT READY", NULL, NULL, NULL, NULL);
 
   IvyBindMsg(on_Position, NULL, "^ground FLIGHT_PARAM GCS (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (.*)");
 

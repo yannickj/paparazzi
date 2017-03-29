@@ -43,7 +43,7 @@ all: link server messages settings ivy_tcp_aircraft ivy_tcp_controller broadcast
 opt: server.opt
 
 clean:
-	$(Q)rm -f link server messages settings *.bak *~ core *.o .depend *.opt *.out *.cm* ivy_tcp_aircraft ivy_tcp_controller broadcaster ivy2udp ivy2serial ivy_serial_bridge app_server gpsd2ivy c_ivy_client_example_1 c_ivy_client_example_2 c_ivy_client_example_3 ivy2nmea reset_gpsd2ivy
+	$(Q)rm -f link server messages settings *.bak *~ core *.o .depend *.opt *.out *.cm* ivy_tcp_aircraft ivy_tcp_controller broadcaster ivy2udp ivy2serial ivy_serial_bridge app_server gpsd2ivy c_ivy_client_example_1 c_ivy_client_example_2 c_ivy_client_example_3 ivy2nmea gpsd2ivy_resetWPT
 
 messages : messages.cmo $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $@
@@ -136,7 +136,7 @@ app_server: app_server.c
 gpsd2ivy: gpsd2ivy.c
 	$(CC) $(GLIBIVY_CFLAGS) -o $@ $< $(GLIBIVY_LDFLAGS) -lgps
 
-reset_gpsd2ivy: reset_gpsd2ivy.c
+gpsd2ivy_resetWPT: gpsd2ivy_resetWPT.c
 	$(CC) $(GLIBIVY_CFLAGS) -g -o $@ $< $(GLIBIVY_LDFLAGS)
 
 ivy2nmea: ivy2nmea.c
