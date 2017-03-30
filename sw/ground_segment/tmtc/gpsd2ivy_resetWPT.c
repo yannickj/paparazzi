@@ -34,6 +34,8 @@
 #include <glib.h>
 #include <Ivy/ivy.h>
 
+#define DEBUG 0
+
 #define UPDATE_PERIOD 10000.0
 
 int ac_id=3;
@@ -50,14 +52,18 @@ static void on_Position(IvyClientPtr app, void *user_data, int argc, char *argv[
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
 
-  printf("[%f]\n",elapsedTime);
+#if DEBUG
+  printf("[%f]\n",elapsedTime); flush(stdout);
+#endif
 
   if(elapsedTime >= UPDATE_PERIOD) {
     // latitude, longitude, altitude
     IvySendMsg("gcs MOVE_WAYPOINT %d %d %f %f %f",
         ac_id,wpt_nb,atof(argv[3]),atof(argv[4]),atof(argv[7]));
       
-    printf("send \n");
+#if DEBUG
+    printf("send \n"); flush(stdout);
+#endif
     memcpy(&t1,&t2,sizeof(struct timeval));
   }
 }
