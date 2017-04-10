@@ -14,9 +14,8 @@ $(TARGET).ARCHDIR = $(ARCH)
 
 RTOS=chibios
 
-# FPU on F4
-USE_FPU=yes
-HARD_FLOAT=yes
+## FPU on F4
+USE_FPU=hard
 
 $(TARGET).CFLAGS += -DSTM32F4 -DPPRZLINK_ENABLE_FD
 
@@ -31,11 +30,17 @@ CHIBIOS_BOARD_PLATFORM = STM32F4xx/platform.mk
 CHIBIOS_BOARD_LINKER = STM32F407xG.ld
 CHIBIOS_BOARD_STARTUP = startup_stm32f4xx.mk
 
+# bootloader for Lisa MX is available from https://github.com/podhrmic/aggieair-bootloader
+HAS_LUFTBOOT ?= 0
+ifeq (,$(findstring $(HAS_LUFTBOOT),0 FALSE))
+$(TARGET).CFLAGS+=-DLUFTBOOT
+DFU_ADDR = 0x8004000
+DFU_PRODUCT = Lisa/Lia
+endif
+
 ##############################################################################
 # Compiler settings
 #
 MCU  = cortex-m4
-
-HAS_LUFTBOOT = FALSE
 
 include $(PAPARAZZI_SRC)/conf/boards/lisa_mx_defaults.makefile
