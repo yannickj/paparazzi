@@ -188,6 +188,9 @@
  </modules>
 
   <firmware name="rotorcraft">
+      <!-- Black Magic Prob at MacBook -->
+      <configure name="BMP_PORT" value="/dev/cu.usbmodemE2B9C6C1"/>
+      
     <target name="ap" board="lisa_s_1.0">
       <module name="radio_control" type="superbitrf_rc">
 	<!-- To store the binding parameters for the superbit radio in your
@@ -215,6 +218,10 @@
     </module>
 
     <module name="telemetry" type="superbitrf"/>
+    <!--module name="telemetry" type="transparent">
+        <define name="MODEM_BAUD" value="B57600"/>
+        <define name="MODEM_PORT" value="UART1"/>
+    </module-->
     <module name="imu" type="lisa_s_v1.0"/>
     <module name="gps" type="ublox"/>
     <module name="stabilization" type="int_quat"/>
