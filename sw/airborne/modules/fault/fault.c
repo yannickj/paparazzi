@@ -24,13 +24,31 @@
  */
 
 #include "modules/fault/fault.h"
-float fault_mult;
+
+#if FLIGHTRECORDER_SDLOG
+#include "subsystems/datalink/telemetry.h"
+#include "modules/loggers/pprzlog_tp.h"
+#include "modules/loggers/sdlog_chibios.h"
+#endif
+
+float fault_right;
+float fault_left;
 
 void fault_init(void) {
-fault_mult = 1.0;
+fault_right = 1.0;
+fault_left  = 1.0; 
 }
 
-// void fault_periodic() {}
+void fault_periodic(void) {
+
+#if FLIGHTRECORDER_SDLOG
+          if (flightRecorderLogFile != -1) {
+            DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
+                &fault_right, &fault_left);
+          }
+#endif
+
+}
 // void fault_event() {}
 // void fault_datalink_callback() {}
 

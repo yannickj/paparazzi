@@ -25,9 +25,10 @@
 
 #ifndef FAULT_H
 #define FAULT_H
-extern float fault_mult;
+extern float fault_right;
+extern float fault_left;
 extern void fault_init(void);
-// extern void fault_periodic();
+extern void fault_periodic(void);
 // extern void fault_event();
 // extern void fault_datalink_callback();
 
