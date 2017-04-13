@@ -4,13 +4,21 @@
   <doc>
     <description>Generates faults on the actuators</description>
   </doc>
+  <settings>
+    <dl_settings>
+      <dl_settings NAME="FAULT">
+        <dl_setting MAX="2" MIN="0.0" STEP="0.1" VAR="fault_mult" shortname="mult" module="modules/fault/fault" param="fault_mult"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
+
   <header>
     <file name="fault.h"/>
   </header>
   <init fun="fault_init()"/>
-  <periodic fun="fault_periodic()" freq="60" start="fault_start()" stop="fault_stop()" autorun="FALSE"/>
+  <!--periodic fun="fault_periodic()" freq="60" start="fault_start()" stop="fault_stop()" autorun="FALSE"/>
   <event fun="fault_event()"/>
-  <datalink message="fault_datalink_event()" fun="fault_datalink_callback()"/>
+  <datalink message="fault_datalink_event()" fun="fault_datalink_callback()"/-->
   <makefile>
     <file name="fault.c"/>
   </makefile>
