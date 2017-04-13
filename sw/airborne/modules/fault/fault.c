@@ -24,8 +24,12 @@
  */
 
 #include "modules/fault/fault.h"
+float fault_mult;
 
-// void fault_init() {}
+void fault_init(void) {
+fault_mult = 1.0;
+}
+
 // void fault_periodic() {}
 // void fault_event() {}
 // void fault_datalink_callback() {}
