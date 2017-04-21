@@ -39,16 +39,28 @@ fault_right = 1.0;
 fault_left  = 1.0; 
 }
 
-void fault_periodic(void) {
-
+void fault_Set_Right(float _v)
+{
+  fault_right = _v;
 #if FLIGHTRECORDER_SDLOG
           if (flightRecorderLogFile != -1) {
             DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
                 &fault_right, &fault_left);
           }
 #endif
-
 }
+
+void fault_Set_Left(float _v)
+{
+  fault_left = _v;
+#if FLIGHTRECORDER_SDLOG
+          if (flightRecorderLogFile != -1) {
+            DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
+                &fault_right, &fault_left);
+          }
+#endif
+}
+
 // void fault_event() {}
 // void fault_datalink_callback() {}
 

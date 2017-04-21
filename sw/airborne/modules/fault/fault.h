@@ -28,7 +28,8 @@
 extern float fault_right;
 extern float fault_left;
 extern void fault_init(void);
-extern void fault_periodic(void);
+extern void fault_Set_Right(float _v);
+extern void fault_Set_Left(float _v);
 // extern void fault_event();
 // extern void fault_datalink_callback();
 

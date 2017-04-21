@@ -7,8 +7,8 @@
   <settings>
     <dl_settings>
       <dl_settings NAME="FAULT">
-        <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_right" shortname="right" module="modules/fault/fault" param="fault_right"/>
-        <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_left" shortname="left" module="modules/fault/fault" param="fault_left"/>
+        <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_right" shortname="right" module="modules/fault/fault" handler="Set_Right"/>
+        <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_left" shortname="left" module="modules/fault/fault" handler="Set_Left"/>
       </dl_settings>
     </dl_settings>
   </settings>
@@ -17,7 +17,7 @@
     <file name="fault.h"/>
   </header>
   <init fun="fault_init()"/>
-  <periodic fun="fault_periodic()" freq="60" autorun="TRUE"/>
+  <!--periodic fun="fault_periodic()" freq="60" autorun="TRUE"/-->
   <!--event fun="fault_event()"/>
   <datalink message="fault_datalink_event()" fun="fault_datalink_callback()"/-->
   <makefile>
