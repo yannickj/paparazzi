@@ -66,6 +66,28 @@
    gui_color="#3cf2d51335a7"
   />
   <aircraft
+   name="EDURA"
+   ac_id="31"
+   airframe="airframes/ENAC/fixed-wing/edura.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/mission_fw.xml"
+   settings="settings/fixedwing_basic.xml [settings/control/ctl_dash_loiter_trim.xml] settings/nps.xml"
+   settings_modules="modules/gps.xml modules/nav_basic_fw.xml modules/guidance_basic_fw.xml modules/stabilization_attitude_fw.xml modules/ahrs_int_cmpl_quat.xml modules/imu_common.xml"
+   gui_color="red"
+  />
+  <aircraft
+   name="EDURA_LisaS"
+   ac_id="33"
+   airframe="airframes/ENAC/fixed-wing/edura_lisa_s.xml"
+   radio="radios/spektrum.xml"
+   telemetry="telemetry/default_fixedwing_imu.xml"
+   flight_plan="flight_plans/mission_fw.xml"
+   settings="settings/fixedwing_basic.xml [settings/control/ctl_dash_loiter_trim.xml] settings/nps.xml"
+   settings_modules="modules/gps.xml modules/nav_basic_fw.xml modules/guidance_basic_fw.xml modules/stabilization_attitude_fw.xml modules/ahrs_int_cmpl_quat.xml modules/imu_common.xml modules/radio_control_superbitrf_rc.xml"
+   gui_color="red"
+  />
+  <aircraft
    name="FJ2"
    ac_id="8"
    airframe="airframes/ENAC/fixed-wing/funjet2.xml"
