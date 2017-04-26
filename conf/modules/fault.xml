@@ -9,6 +9,8 @@
       <dl_settings NAME="FAULT">
         <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_right" shortname="right" module="modules/fault/fault" handler="Set_Right"/>
         <dl_setting MAX="1.2" MIN="0.0" STEP="0.1" VAR="fault_left" shortname="left" module="modules/fault/fault" handler="Set_Left"/>
+        <dl_setting MAX="9600.0" MIN="-9600.0" STEP="1" VAR="fault_offset_right" shortname="right_offset" module="modules/fault/fault" handler="Set_Offset_Right"/>
+        <dl_setting MAX="9600.0" MIN="-9600.0" STEP="1" VAR="fault_offset_left" shortname="left_offset" module="modules/fault/fault" handler="Set_Offset_Left"/>
       </dl_settings>
     </dl_settings>
   </settings>

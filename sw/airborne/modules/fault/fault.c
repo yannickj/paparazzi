@@ -33,10 +33,14 @@
 
 float fault_right;
 float fault_left;
+float fault_offset_right;
+float fault_offset_left;
 
 void fault_init(void) {
 fault_right = 1.0;
 fault_left  = 1.0; 
+fault_offset_left  = 0.0; 
+fault_offset_right  = 0.0; 
 }
 
 void fault_Set_Right(float _v)
@@ -45,7 +49,7 @@ void fault_Set_Right(float _v)
 #if FLIGHTRECORDER_SDLOG
           if (flightRecorderLogFile != -1) {
             DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
-                &fault_right, &fault_left);
+                &fault_right, &fault_left, &fault_offset_left, &fault_offset_right);
           }
 #endif
 }
@@ -56,10 +60,33 @@ void fault_Set_Left(float _v)
 #if FLIGHTRECORDER_SDLOG
           if (flightRecorderLogFile != -1) {
             DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
-                &fault_right, &fault_left);
+                &fault_right, &fault_left, &fault_offset_left, &fault_offset_right);
           }
 #endif
 }
+
+void fault_Set_Offset_Right(float _v)
+{
+  fault_offset_right = _v;
+#if FLIGHTRECORDER_SDLOG
+          if (flightRecorderLogFile != -1) {
+            DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
+                &fault_right, &fault_left, &fault_offset_left, &fault_offset_right);
+          }
+#endif
+}
+
+void fault_Set_Offset_Left(float _v)
+{
+  fault_offset_left = _v;
+#if FLIGHTRECORDER_SDLOG
+          if (flightRecorderLogFile != -1) {
+            DOWNLINK_SEND_SETTINGS(pprzlog_tp, flightrecorder_sdlog,
+                &fault_right, &fault_left, &fault_offset_left, &fault_offset_right);
+          }
+#endif
+}
+
 
 // void fault_event() {}
 // void fault_datalink_callback() {}

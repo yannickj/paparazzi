@@ -27,9 +27,13 @@
 #define FAULT_H
 extern float fault_right;
 extern float fault_left;
+extern float fault_offset_left;
+extern float fault_offset_right;
 extern void fault_init(void);
 extern void fault_Set_Right(float _v);
 extern void fault_Set_Left(float _v);
+extern void fault_Set_Offset_Right(float _v);
+extern void fault_Set_Offset_Left(float _v);
 // extern void fault_event();
 // extern void fault_datalink_callback();
 
