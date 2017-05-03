@@ -108,10 +108,11 @@
   <command_laws>
     <let var="aileron" value="@ROLL  * AILEVON_AILERON_RATE"/>
     <let var="elevator" value="@PITCH * AILEVON_ELEVATOR_RATE"/>
-    <let var="vfault_left" value="(pprz_mode==PPRZ_MODE_AUTO2 ? 1 : fault_left)"/>
-    <let var="vfault_right" value="(pprz_mode==PPRZ_MODE_AUTO2 ? 1 : fault_right)"/>
-    <let var="vfault_offset_left" value="(pprz_mode==PPRZ_MODE_AUTO2 ? 0 : fault_offset_left)"/>
-    <let var="vfault_offset_right" value="(pprz_mode==PPRZ_MODE_AUTO2 ? 0 : fault_offset_right)"/>
+    <let var="manual" value="(fbw_mode==FBW_MODE_MANUAL)"/>
+    <let var="vfault_left" value="($manual ? 1 : fault_left)"/>
+    <let var="vfault_right" value="($manual ? 1 : fault_right)"/>
+    <let var="vfault_offset_left" value="($manual ? 0 : fault_offset_left)"/>
+    <let var="vfault_offset_right" value="($manual ? 0 : fault_offset_right)"/>
     <set servo="MOTOR" value="@THROTTLE"/>
     <set servo="AILEVON_LEFT" value="($elevator - $aileron) * $vfault_left + $vfault_offset_left"/>
     <set servo="AILEVON_RIGHT" value="($elevator + $aileron) * $vfault_right + $vfault_offset_right"/>
