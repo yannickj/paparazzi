@@ -41,11 +41,15 @@
 int ac_id=3;
 int wpt_nb=0;
 
+gboolean fixed_altitude=FALSE;
+double altitude=0.0;
+
 struct timeval t1, t2;
 
 static void on_Position(IvyClientPtr app, void *user_data, int argc, char *argv[])
 {
   double elapsedTime;
+  double alt=0.0;
 
   gettimeofday(&t2, NULL);
 
@@ -57,9 +61,12 @@ static void on_Position(IvyClientPtr app, void *user_data, int argc, char *argv[
 #endif
 
   if(elapsedTime >= UPDATE_PERIOD) {
+    if(fixed_altitude==TRUE) alt=fixed_altitude;
+    else alt=atof(argv[7]);
+	    
     // latitude, longitude, altitude
     IvySendMsg("gcs MOVE_WAYPOINT %d %d %f %f %f",
-        ac_id,wpt_nb,atof(argv[3]),atof(argv[4]),atof(argv[7]));
+        ac_id,wpt_nb,atof(argv[3]),atof(argv[4]),alt);
       
 #if DEBUG
     printf("send \n"); flush(stdout);
@@ -73,11 +80,16 @@ int main(int argc, char** argv)
   char* ivy_bus;
   int ret=0;
 
-  if(argc==2) ac_id=atoi(argv[1]);
+  if((argc==2)||(argc==3)) ac_id=atoi(argv[1]);
   else ret=-1; 
+  if(argc==3) {
+   fixed_altitude=TRUE;
+   altitude=atof(argv[2]);
+  }
 
   if(ret==-1) {
     printf("Usage:\ngpsd2ivy_resetWPT ac_id\n");
+    printf("option:\ngpsd2ivy_resetWPT ac_id fixed_altitude\n");
     exit(0);
   }
 
