@@ -61,7 +61,7 @@ static void on_Position(IvyClientPtr app, void *user_data, int argc, char *argv[
 #endif
 
   if(elapsedTime >= UPDATE_PERIOD) {
-    if(fixed_altitude==TRUE) alt=fixed_altitude;
+    if(fixed_altitude==TRUE) alt=altitude;
     else alt=atof(argv[7]);
 	    
     // latitude, longitude, altitude
