@@ -86,6 +86,19 @@ FileDes pprzLogFile = -1;
 
 struct chibios_sdlog chibios_sdlog;
 
+
+struct chibios_sdlog chibios_sdlog_gpsup;
+static const char GPSUP_LOG_NAME[] = "gpsup_";
+static const char GPSUP_LOG_DIR[] = "GPSUP";
+FileDes gpsupLogFile = -1;
+
+struct chibios_sdlog chibios_sdlog_gpsdown;
+static const char GPSDOWN_LOG_NAME[] = "gpsdown_";
+static const char GPSDOWN_LOG_DIR[] = "GPSDOWN";
+FileDes gpsdownLogFile = -1;
+
+
+
 #if FLIGHTRECORDER_SDLOG
 static const char FLIGHTRECORDER_LOG_NAME[] = "fr_";
 static const char FR_LOG_DIR[] = "FLIGHT_RECORDER";
@@ -188,6 +201,10 @@ void sdlog_chibios_finish(const bool flush)
     sdLogCloseAllLogs(flush);
     sdLogFinish();
     pprzLogFile = 0;
+
+    gpsupLogFile = 0;
+    gpsdownLogFile = 0;
+
 #if FLIGHTRECORDER_SDLOG
     flightRecorderLogFile = 0;
 #endif
@@ -210,6 +227,10 @@ static void thd_startlog(void *arg)
   // Init sdlog struct
   chibios_sdlog_init(&chibios_sdlog, &pprzLogFile);
 
+  chibios_sdlog_init(&chibios_sdlog_gpsup, &gpsupLogFile);
+  chibios_sdlog_init(&chibios_sdlog_gpsdown, &gpsdownLogFile);
+
+
   // Check for init errors
   sdOk = true;
 
@@ -222,6 +243,23 @@ static void thd_startlog(void *arg)
 		     SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
       sdOk = false;
     }
+
+
+    removeEmptyLogs(GPSUP_LOG_DIR, GPSUP_LOG_NAME, 50);
+    if (sdLogOpenLog(&gpsupLogFile, GPSUP_LOG_DIR,
+		     GPSUP_LOG_NAME, SDLOG_AUTO_FLUSH_PERIOD, true,
+		     SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
+      sdOk = false;
+    }
+
+    removeEmptyLogs(GPSDOWN_LOG_DIR, GPSDOWN_LOG_NAME, 50);
+    if (sdLogOpenLog(&gpsdownLogFile, GPSDOWN_LOG_DIR,
+		     GPSDOWN_LOG_NAME, SDLOG_AUTO_FLUSH_PERIOD, true,
+		     SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
+      sdOk = false;
+    }
+
+
 #if FLIGHTRECORDER_SDLOG
     removeEmptyLogs(FR_LOG_DIR, FLIGHTRECORDER_LOG_NAME, 50);
     if (sdLogOpenLog(&flightRecorderLogFile, FR_LOG_DIR, FLIGHTRECORDER_LOG_NAME,

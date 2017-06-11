@@ -41,6 +41,9 @@
 
 extern FileDes pprzLogFile;
 
+extern FileDes gpsupLogFile;
+extern FileDes gpsdownLogFile;
+
 #if FLIGHTRECORDER_SDLOG
 // if activated, will log specific telemetry process
 extern FileDes flightRecorderLogFile;

@@ -1,0 +1,255 @@
+<!DOCTYPE airframe SYSTEM "../../airframe.dtd">
+
+
+<!-- this is a gimball frame equiped with
+     * Autopilot:   APOGEE V1.0
+     * IMU OPTION 1:  APOGEE Board = MPU6050 (acc & gyro ) 
+		   + baro  / MPL3115 
+     * IMU OPTION2 :  MPU9250 external DROTEK board 
+     * Actuators:   L6234 (Drotek board)
+     * GPS:         Ublox M8 x 2: UART4 and UART6 (INS) 
+     * RC:          Set to datalink, to free UART2 for telemetry (configured but not used)
+-->
+
+<airframe name="mistralegimball">
+    
+  <firmware name="fixedwing">
+
+    <!-- Should be higher than L6234 module period of 60Hz -->
+    <!-- and not lower than imu sensors acquisitions of 100Hz -->
+    <!-- and not lower than gpslogsd of 500Hz -->
+    <configure name="PERIODIC_FREQUENCY" value="100"/>
+
+    <target name="ap" board="apogee_1.0_chibios">
+      <module name="radio_control" type="datalink"/>
+      <module name="ahrs" type="float_dcm"/>
+      <module name="ins" type="alt_float"/>
+      <configure name="USE_BARO_BOARD" value="FALSE"/>
+    </target>
+    <target name="sim" board="pc"/>
+    <module name="telemetry" type="xbee_api"/>
+
+
+    <!-- IMU OPTION 1A
+	 APOGEE board IMU orientation: SD card up, "+/-" front -->
+    <!--module name="imu" type="apogee">
+      <define name="IMU_APOGEE_CHAN_X" value="0"/>      
+      <define name="IMU_APOGEE_CHAN_Y" value="1"/>
+    </module-->
+
+    <!-- IMU OPTION 1B
+	 APOGEE board IMU orientation: SD card up, "+/-" right -->
+    <!--module name="imu" type="apogee">
+      <define name="IMU_APOGEE_CHAN_X" value="1"/>      
+      <define name="IMU_APOGEE_CHAN_Y" value="0"/>
+    </module-->
+
+    <!-- IMU OPTION 1C
+	 APOGEE board IMU orientation: SD card down-up, "+/-" right -->
+    <module name="imu" type="apogee">
+      <define name="IMU_APOGEE_CHAN_X" value="2"/>      
+      <define name="IMU_APOGEE_CHAN_Y" value="0"/>
+      <define name="IMU_APOGEE_CHAN_Z" value="1"/>      
+    </module>
+
+    <!-- IMU OPTION 2 
+	 MPU9250 board IMU orientation: component upside, connector to the rear -->
+    <!--module name="imu" type="mpu9250_i2c">
+      <configure name="IMU_MPU9250_I2C_DEV" value="i2c2"/>
+      <define name="IMU_MPU9250_I2C_ADDR" value="MPU9250_ADDR"/>
+      <define name="IMU_MPU9250_CHAN_X" value="1"/>      
+      <define name="IMU_MPU9250_CHAN_Y" value="0"/>
+    </module-->
+
+    <!-- GPS UP board (default) -->
+    <!-- configured to send UBX_RXM_RAWX and UBX_RXM_SFRBX -->
+    <module name="gps" type="ublox">
+      <configure name="GPS_PORT" value="UART4"/>
+      <configure name="GPS_BAUD" value="B115200"/>
+      <define name="LOG_RAW_GPS"/>
+    </module>
+    <!-- GPS DOWN board  -->
+    <!-- configured to send UBX_RXM_RAWX and UBX_RXM_SFRBX -->
+    <module name="gpslogsd">  
+      <configure name="GPSLOGSD_PORT" value="UART6"/>
+      <configure name="GPSLOGSD_BAUD" value="B115200"/>
+    </module>
+
+    <module name="control" type="new"/>
+    <module name="navigation"/>
+
+    <module name="tlsf"/>
+    <module name="pprzlog"/>
+    <module name="logger" type="sd_chibios"/>
+    <module name="flight_recorder"/>
+
+    <module name="actuators"  type="pwm"/>
+
+  </firmware>
+
+  <!-- commands section
+       choose servos connectors that are ont the same timer 
+       For the Apogee V0.1 
+         on Timer 2 there are servo 1, 4 and 5 
+         on Timer 3 there are servo 0, 2 and 3 
+       Min, neutral and max values should be the same for all three servos. -->
+  <servos>
+    <servo name="PWM1"  no="0" min="0" neutral="0" max="400"/>
+    <servo name="PWM2"  no="3" min="0" neutral="0" max="400"/>
+    <servo name="PWM3"  no="2" min="0" neutral="0" max="400"/>
+  </servos>
+
+  <commands>
+    <axis name="THROTTLE"  failsafe_value="0"/>
+    <axis name="ROLL"      failsafe_value="0"/>
+    <axis name="PITCH"     failsafe_value="0"/>
+    <axis name="PWM1"      failsafe_value="0"/>
+    <axis name="PWM2"      failsafe_value="0"/>
+    <axis name="PWM3"      failsafe_value="0"/>
+  </commands>
+
+  <rc_commands>
+    <set command="THROTTLE" value="@THROTTLE"/>
+    <set command="ROLL"     value="@ROLL"/>
+    <set command="PITCH"    value="@PITCH"/>
+  </rc_commands>
+
+  <command_laws>
+    <!-- Rotation direction can be modified by interchanging 2 PWM --> 
+    <set servo="PWM1"  value="@PWM1"/>
+    <set servo="PWM2"  value="@PWM2"/>
+    <set servo="PWM3"  value="@PWM3"/>
+  </command_laws>
+
+  <section name="AUTO1" prefix="AUTO1_">
+    <define name="MAX_ROLL" value="45." unit="deg"/>
+    <define name="MAX_PITCH" value="30." unit="deg"/>
+  </section>
+
+  <section name="IMU" prefix="IMU_">
+
+    <!-- IMU OPTION 1A
+         APOGEE board IMU orientation: SD card up, "+/-" front
+         GPS board Mag orientation: "Fix" left -->
+    <!--define name="GYRO_P_SIGN"  value="1" />
+    <define name="GYRO_Q_SIGN"  value="-1"/>
+    <define name="GYRO_R_SIGN"  value="-1"/>
+    <define name="ACCEL_X_SIGN" value="1" />
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="-1"/>
+    <define name="MAG_X_SIGN"   value="1"/>
+    <define name="MAG_Y_SIGN"   value="-1" />
+    <define name="MAG_Z_SIGN"   value="-1" /-->
+
+    <!-- IMU OPTION 1B
+         APOGEE board IMU orientation: SD card up, "+/-" front
+         GPS board Mag orientation: "Fix" left -->
+    <!--define name="GYRO_P_SIGN"  value="-1" />
+    <define name="GYRO_Q_SIGN"  value="-1"/>
+    <define name="GYRO_R_SIGN"  value="-1"/>
+    <define name="ACCEL_X_SIGN" value="-1" />
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="-1"/>
+    <define name="MAG_X_SIGN"   value="-1"/>
+    <define name="MAG_Y_SIGN"   value="-1" />
+    <define name="MAG_Z_SIGN"   value="-1" /-->
+
+    <!-- IMU OPTION 1C
+         APOGEE board IMU orientation: SD card down-up, "+/-" front
+         GPS board Mag orientation: "Fix" left -->
+    <define name="GYRO_P_SIGN"  value="-1" />
+    <define name="GYRO_Q_SIGN"  value="-1"/>
+    <define name="GYRO_R_SIGN"  value="1"/>
+    <define name="ACCEL_X_SIGN" value="-1" />
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="1"/>
+    <define name="MAG_X_SIGN"   value="-1"/>
+    <define name="MAG_Y_SIGN"   value="-1" />
+    <define name="MAG_Z_SIGN"   value="1" />
+
+    <!-- IMU OPTION 2
+	 MPU9250 board IMU orientation: component upside, 
+         connector to the rear -->
+    <!--define name="GYRO_P_SIGN"  value="-1" />
+    <define name="GYRO_Q_SIGN"  value="-1"/>
+    <define name="GYRO_R_SIGN"  value="-1"/>
+    <define name="ACCEL_X_SIGN" value="-1" />
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="-1"/>
+    <define name="MAG_X_SIGN"   value="-1"/>
+    <define name="MAG_Y_SIGN"   value="-1" />
+    <define name="MAG_Z_SIGN"   value="-1" /-->
+
+    <define name="ACCEL_X_NEUTRAL" value="26"/>
+    <define name="ACCEL_Y_NEUTRAL" value="-28"/>
+    <define name="ACCEL_Z_NEUTRAL" value="253"/>
+    <define name="ACCEL_X_SENS" value="2.44377554254" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.45827623443" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.44550194945" integer="16"/>
+
+    <define name="MAG_X_NEUTRAL" value="-1619"/>
+    <define name="MAG_Y_NEUTRAL" value="1"/>
+    <define name="MAG_Z_NEUTRAL" value="-174"/>
+    <define name="MAG_X_SENS" value="4.07630683919" integer="16"/>
+    <define name="MAG_Y_SENS" value="3.99387737328" integer="16"/>
+    <define name="MAG_Z_SENS" value="4.14364218243" integer="16"/>
+
+    <define name="BODY_TO_IMU_PHI"   value="0" unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="0" unit="deg"/>
+    <define name="BODY_TO_IMU_PSI"   value="0" unit="deg"/>
+  </section>
+
+  <section name="INS" prefix="INS_">
+    <!--muret-->
+    <define name="H_X" value="0.5180"/>
+    <define name="H_Y" value="-0.0071"/>
+    <define name="H_Z" value="0.8554"/>
+  </section>
+
+
+  <section name="BAT">
+    <define name="CATASTROPHIC_BAT_LEVEL" value="9.3" unit="V"/>
+    <define name="MilliAmpereOfAdc(_adc)" value="(_adc-620)*4.536"/>
+  </section>
+
+  <section name="MISC">
+    <define name="NOMINAL_AIRSPEED" value="12." unit="m/s"/>
+    <define name="CARROT" value="5." unit="s"/>
+    <define name="DEFAULT_CIRCLE_RADIUS" value="80."/>
+  </section>
+
+
+  <section name="VERTICAL CONTROL" prefix="V_CTL_">
+    <!-- outer loop proportional gain -->
+    <define name="ALTITUDE_PGAIN" value="0.06"/>
+    <!-- outer loop saturation -->
+    <define name="ALTITUDE_MAX_CLIMB" value="3."/>
+    <!-- auto throttle inner loop -->
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.5"/>
+    <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
+    <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
+    <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.08" unit="%/(m/s)"/>
+    <define name="AUTO_THROTTLE_PGAIN" value="0.007"/>
+    <define name="AUTO_THROTTLE_IGAIN" value="0.008"/>
+    <define name="AUTO_THROTTLE_PITCH_OF_VZ_PGAIN" value="0.09"/>
+    <define name="AUTO_PITCH_PGAIN" value="0.024"/>
+    <define name="AUTO_PITCH_DGAIN" value="0.013"/>
+    <define name="AUTO_PITCH_IGAIN" value="0.0"/>
+    <define name="AUTO_PITCH_MAX_PITCH" value="20" unit="deg"/>
+    <define name="AUTO_PITCH_MIN_PITCH" value="-20" unit="deg"/>
+  </section>
+
+  <section name="HORIZONTAL CONTROL" prefix="H_CTL_">
+    <define name="COURSE_PGAIN" value="0.4"/>
+    <define name="PITCH_MAX_SETPOINT" value="30." unit="deg"/>
+    <define name="PITCH_MIN_SETPOINT" value="-30." unit="deg"/>
+    <define name="PITCH_PGAIN" value="10210"/>
+    <define name="PITCH_IGAIN" value="322"/>
+    <define name="PITCH_DGAIN" value="1485"/>
+
+    <!--define name="ROLL_MAX_SETPOINT"  value="41.0000004297" unit="deg"/-->
+    <define name="ROLL_MAX_SETPOINT"  value="41.0000004297" unit="deg"/>
+    <define name="ROLL_ATTITUDE_GAIN" value="10041"/>
+  </section>
+
+</airframe>
