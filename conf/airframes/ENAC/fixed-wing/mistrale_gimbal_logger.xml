@@ -1,13 +1,13 @@
 <!DOCTYPE airframe SYSTEM "../../airframe.dtd">
 
 
-<!-- this is a gimball frame equiped with
+<!-- this is a gimball-logger frame equiped with
      * Autopilot:   APOGEE V1.0
      * IMU OPTION 1:  APOGEE Board = MPU6050 (acc & gyro ) 
 		   + baro  / MPL3115 
      * IMU OPTION2 :  MPU9250 external DROTEK board 
      * Actuators:   L6234 (Drotek board)
-     * GPS:         Ublox M8 x 2: UART4 and UART6 (INS) 
+     * GPS:         Ublox M8 x 2: UART4 (INS) and UART6
      * RC:          Set to datalink, to free UART2 for telemetry (configured but not used)
 -->
 
@@ -15,20 +15,19 @@
     
   <firmware name="fixedwing">
 
-    <!-- Should be higher than L6234 module period of 60Hz -->
+    <!-- Should be higher than L6234 module period of 400Hz -->
     <!-- and not lower than imu sensors acquisitions of 100Hz -->
-    <!-- and not lower than gpslogsd of 500Hz -->
-    <configure name="PERIODIC_FREQUENCY" value="100"/>
+    <configure name="PERIODIC_FREQUENCY" value="600"/>
 
-    <target name="ap" board="apogee_1.0_chibios">
-      <module name="radio_control" type="datalink"/>
-      <module name="ahrs" type="float_dcm"/>
-      <module name="ins" type="alt_float"/>
-      <configure name="USE_BARO_BOARD" value="FALSE"/>
-    </target>
-    <target name="sim" board="pc"/>
+    <target name="ap" board="apogee_1.0_chibios"/>
+      
+    <module name="radio_control" type="datalink"/>
+    <module name="ahrs" type="float_dcm"/>
+    <module name="ins" type="alt_float"/>
     <module name="telemetry" type="xbee_api"/>
 
+    <configure name="USE_BARO_BOARD" value="FALSE"/>
+    
 
     <!-- IMU OPTION 1A
 	 APOGEE board IMU orientation: SD card up, "+/-" front -->
@@ -46,23 +45,24 @@
 
     <!-- IMU OPTION 1C
 	 APOGEE board IMU orientation: SD card down-up, "+/-" right -->
-    <module name="imu" type="apogee">
+    <!--module name="imu" type="apogee">
       <define name="IMU_APOGEE_CHAN_X" value="2"/>      
       <define name="IMU_APOGEE_CHAN_Y" value="0"/>
       <define name="IMU_APOGEE_CHAN_Z" value="1"/>      
-    </module>
+    </module-->
 
     <!-- IMU OPTION 2 
 	 MPU9250 board IMU orientation: component upside, connector to the rear -->
-    <!--module name="imu" type="mpu9250_i2c">
+    <module name="imu" type="mpu9250_i2c">
       <configure name="IMU_MPU9250_I2C_DEV" value="i2c2"/>
       <define name="IMU_MPU9250_I2C_ADDR" value="MPU9250_ADDR"/>
       <define name="IMU_MPU9250_CHAN_X" value="1"/>      
       <define name="IMU_MPU9250_CHAN_Y" value="0"/>
-    </module-->
+    </module>
 
     <!-- GPS UP board (default) -->
-    <!-- configured to send UBX_RXM_RAWX and UBX_RXM_SFRBX -->
+    <!-- configured to send navigation message for the INS
+	               plus UBX_RXM_RAWX and UBX_RXM_SFRBX -->
     <module name="gps" type="ublox">
       <configure name="GPS_PORT" value="UART4"/>
       <configure name="GPS_BAUD" value="B115200"/>
@@ -81,7 +81,23 @@
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger" type="sd_chibios"/>
+
+    <!-- Flight recorder is used to provide GPS and attitude logs -->
     <module name="flight_recorder"/>
+
+    <!-- This airframe is using the servo PWM outputs directly to drive 
+         the mosfets (L6234) which in turn directly drive brushed motors. -->
+    <module name="cam_roll_l6234"/> 
+      <!--define name="L6234_ROTATION_DIR" value="FALSE"/>
+    </module-->
+
+    <module name="actuators"  type="pwm">
+      <!-- Setting the PWM interval to 42KHz -->
+      <define name="PWM_FREQUENCY" value="42000000"/>
+      <define name="SERVO_HZ"      value="42000"/>
+      <!--define name="PWM_FREQUENCY" value="32000000"/-->
+      <!--define name="SERVO_HZ"    value="32000"/-->
+    </module>
 
     <module name="actuators"  type="pwm"/>
 
@@ -157,7 +173,7 @@
     <!-- IMU OPTION 1C
          APOGEE board IMU orientation: SD card down-up, "+/-" front
          GPS board Mag orientation: "Fix" left -->
-    <define name="GYRO_P_SIGN"  value="-1" />
+    <!--define name="GYRO_P_SIGN"  value="-1" />
     <define name="GYRO_Q_SIGN"  value="-1"/>
     <define name="GYRO_R_SIGN"  value="1"/>
     <define name="ACCEL_X_SIGN" value="-1" />
@@ -165,12 +181,12 @@
     <define name="ACCEL_Z_SIGN" value="1"/>
     <define name="MAG_X_SIGN"   value="-1"/>
     <define name="MAG_Y_SIGN"   value="-1" />
-    <define name="MAG_Z_SIGN"   value="1" />
+    <define name="MAG_Z_SIGN"   value="1" /-->
 
     <!-- IMU OPTION 2
 	 MPU9250 board IMU orientation: component upside, 
          connector to the rear -->
-    <!--define name="GYRO_P_SIGN"  value="-1" />
+    <define name="GYRO_P_SIGN"  value="-1" />
     <define name="GYRO_Q_SIGN"  value="-1"/>
     <define name="GYRO_R_SIGN"  value="-1"/>
     <define name="ACCEL_X_SIGN" value="-1" />
@@ -178,7 +194,7 @@
     <define name="ACCEL_Z_SIGN" value="-1"/>
     <define name="MAG_X_SIGN"   value="-1"/>
     <define name="MAG_Y_SIGN"   value="-1" />
-    <define name="MAG_Z_SIGN"   value="-1" /-->
+    <define name="MAG_Z_SIGN"   value="-1" />
 
     <define name="ACCEL_X_NEUTRAL" value="26"/>
     <define name="ACCEL_Y_NEUTRAL" value="-28"/>
