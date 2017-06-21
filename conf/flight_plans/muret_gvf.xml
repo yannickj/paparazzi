@@ -1,0 +1,83 @@
+<!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
+
+<flight_plan alt="250" ground_alt="185" lat0="43.46223" lon0="1.27289" max_dist_from_home="400" name="muret-gvf-polysurvey" qfu="120" security_height="25">
+  <header>
+
+</header>
+  <waypoints>
+    <waypoint name="HOME" x="63.2" y="138.9"/>
+    <waypoint alt="235.0" name="STDBY" x="64.2" y="90.6"/>
+    <waypoint alt="215.0" name="AF" x="-59.5" y="106.0"/>
+    <waypoint alt="185.0" name="TD" x="50.9" y="50.4"/>
+    <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
+    <waypoint name="CLIMB" x="269.7" y="-11.4"/>
+    <waypoint alt="235.0" name="S1" x="-21.5" y="246.6"/>
+    <waypoint alt="235.0" name="S2" x="218.1" y="178.1"/>
+    <waypoint alt="235.0" name="S3" x="181.6" y="63.2"/>
+    <waypoint alt="235.0" name="S4" x="-52.8" y="135.7"/>
+  </waypoints>
+  <sectors>
+    <sector color="orange" name="Survey">
+      <corner name="S1"/>
+      <corner name="S2"/>
+      <corner name="S3"/>
+      <corner name="S4"/>
+    </sector>
+  </sectors>
+  <variables>
+    <variable init="110" max="179" min="-180" step="1" var="angle_ps"/>
+  </variables>
+  <modules>
+    <module name="gvf_module"/>
+  </modules>
+  <blocks>
+    <block name="Wait GPS">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+      <call_once fun="NavSetGroundReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <attitude roll="0" throttle="0" vmode="throttle"/>
+    </block>
+    <block group="home" key="t" name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
+      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="Standby"/>
+      <set value="0" var="autopilot.kill_throttle"/>
+      <set value="0" var="autopilot.flight_time"/>
+      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>
+    </block>
+    <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
+      <call_once fun="NavVerticalAutoThrottleMode(0.0)"/>
+      <call_once fun="NavVerticalAltitudeMode(flight_altitude, 0.0)"/>
+      <call fun="gvf_ellipse_wp(WP_STDBY, nav_radius, nav_radius, 0)"/>
+    </block>
+    <block name="Poly Survey">
+      <call_once fun="gvf_nav_survey_polygon_setup(WP_S1, 4, angle_ps, 30, 30, 40, flight_altitude)"/>
+      <call fun="gvf_nav_survey_polygon_run()"/>
+    </block>
+    <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
+      <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block group="land" name="Land Left AF-TD" strip_button="Land left (wp AF-TD)" strip_icon="land-left.png">
+      <set value="-DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block name="land">
+      <call_once fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, nav_radius)"/>
+      <circle radius="nav_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
+      <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
+    </block>
+    <block name="final">
+      <exception cond="GetAltRef() + 10 > GetPosAlt()" deroute="flare"/>
+      <go from="AF" hmode="route" vmode="glide" wp="TD"/>
+    </block>
+    <block name="flare">
+      <go approaching_time="0" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
+      <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
