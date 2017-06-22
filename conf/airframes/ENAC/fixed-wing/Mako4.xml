@@ -123,8 +123,8 @@
     <define name="MAG_Z_SENS" value="4.14364218243" integer="16"/>
 
 
-    <define name="BODY_TO_IMU_PHI" value="0" unit="deg"/>
-    <define name="BODY_TO_IMU_THETA" value="0" unit="deg"/>
+    <define name="BODY_TO_IMU_PHI" value="-7.89999938407" unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="16.7000008738" unit="deg"/>
     <define name="BODY_TO_IMU_PSI" value="0" unit="deg"/>
   </section>
 
@@ -161,7 +161,7 @@
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="3."/>
     <!-- auto throttle inner loop -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.4"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.5"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
     
