@@ -57,6 +57,7 @@ struct opticflow_t {
   float derotation_correction_factor_y;     ///< Correction factor for derotation in Y axis, determined from a fit from the gyros and flow rotation. (wrong FOV, camera not in center)
 
   uint16_t subpixel_factor;                 ///< The amount of subpixels per pixel
+  uint16_t resolution_factor;                 ///< The resolution in EdgeFlow to determine the Divergence
   uint8_t max_iterations;               ///< The maximum amount of iterations the Lucas Kanade algorithm should do
   uint8_t threshold_vec;                ///< The threshold in x, y subpixels which the algorithm should stop
   uint8_t pyramid_level;              ///< Number of pyramid levels used in Lucas Kanade algorithm (0 == no pyramids used)
@@ -69,10 +70,13 @@ struct opticflow_t {
 
   uint16_t fast9_rsize;             ///< Amount of corners allocated
   struct point_t *fast9_ret_corners;    ///< Corners
+  bool feature_management;        ///< Decides whether to keep track corners in memory for the next frame instead of re-detecting every time
+  bool fast9_region_detect;       ///< Decides whether to detect fast9 corners in specific regions of interest or the whole image (only for feature management)
+  uint8_t fast9_num_regions;      ///< The number of regions of interest the image is split into
 };
 
 
-void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h);
+void opticflow_calc_init(struct opticflow_t *opticflow);
 void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img,
                           struct opticflow_result_t *result);
 

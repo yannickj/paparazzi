@@ -95,12 +95,17 @@ PRINT_CONFIG_VAR(OPTICFLOW_WINDOW_SIZE)
 #ifndef OPTICFLOW_SEARCH_DISTANCE
 #define OPTICFLOW_SEARCH_DISTANCE 20
 #endif
-PRINT_CONFIG_VAR(OPTICFLOW_MAX_SEARCH_DISTANCE)
+PRINT_CONFIG_VAR(OPTICFLOW_SEARCH_DISTANCE)
 
 #ifndef OPTICFLOW_SUBPIXEL_FACTOR
 #define OPTICFLOW_SUBPIXEL_FACTOR 10
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_SUBPIXEL_FACTOR)
+
+#ifndef OPTICFLOW_RESOLUTION_FACTOR
+#define OPTICFLOW_RESOLUTION_FACTOR 100
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_RESOLUTION_FACTOR)
 
 #ifndef OPTICFLOW_MAX_ITERATIONS
 #define OPTICFLOW_MAX_ITERATIONS 10
@@ -113,7 +118,7 @@ PRINT_CONFIG_VAR(OPTICFLOW_MAX_ITERATIONS)
 PRINT_CONFIG_VAR(OPTICFLOW_THRESHOLD_VEC)
 
 #ifndef OPTICFLOW_PYRAMID_LEVEL
-#define OPTICFLOW_PYRAMID_LEVEL 0
+#define OPTICFLOW_PYRAMID_LEVEL 2
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_PYRAMID_LEVEL)
 
@@ -180,6 +185,21 @@ PRINT_CONFIG_VAR(OPTICFLOW_KALMAN_FILTER)
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_KALMAN_FILTER_PROCESS_NOISE)
 
+#ifndef OPTICFLOW_FEATURE_MANAGEMENT
+#define OPTICFLOW_FEATURE_MANAGEMENT 1
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_FEATURE_MANAGEMENT)
+
+#ifndef OPTICFLOW_FAST9_REGION_DETECT
+#define OPTICFLOW_FAST9_REGION_DETECT 1
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_FAST9_REGION_DETECT)
+
+#ifndef OPTICFLOW_FAST9_NUM_REGIONS
+#define OPTICFLOW_FAST9_NUM_REGIONS 9
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_FAST9_NUM_REGIONS)
+
 //Include median filter
 #include "filters/median_filter.h"
 struct MedianFilterInt vel_x_filt, vel_y_filt;
@@ -188,29 +208,16 @@ struct MedianFilterInt vel_x_filt, vel_y_filt;
 /* Functions only used here */
 static uint32_t timeval_diff(struct timeval *starttime, struct timeval *finishtime);
 static int cmp_flow(const void *a, const void *b);
+static int cmp_array(const void *a, const void *b);
 
 
 
 /**
  * Initialize the opticflow calculator
  * @param[out] *opticflow The new optical flow calculator
- * @param[in] *w The image width
- * @param[in] *h The image height
  */
-void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
+void opticflow_calc_init(struct opticflow_t *opticflow)
 {
-
-  init_median_filter(&vel_x_filt);
-  init_median_filter(&vel_y_filt);
-
-  /* Create the image buffers */
-  image_create(&opticflow->img_gray, w, h, IMAGE_GRAYSCALE);
-  image_create(&opticflow->prev_img_gray, w, h, IMAGE_GRAYSCALE);
-
-  /* Set the previous values */
-  opticflow->got_first_img = false;
-  FLOAT_RATES_ZERO(opticflow->prev_rates);
-
   /* Set the default values */
   opticflow->method = OPTICFLOW_METHOD; //0 = LK_fast9, 1 = Edgeflow
   opticflow->window_size = OPTICFLOW_WINDOW_SIZE;
@@ -221,12 +228,16 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
 
   opticflow->max_track_corners = OPTICFLOW_MAX_TRACK_CORNERS;
   opticflow->subpixel_factor = OPTICFLOW_SUBPIXEL_FACTOR;
+  opticflow->resolution_factor = OPTICFLOW_RESOLUTION_FACTOR;
   opticflow->max_iterations = OPTICFLOW_MAX_ITERATIONS;
   opticflow->threshold_vec = OPTICFLOW_THRESHOLD_VEC;
   opticflow->pyramid_level = OPTICFLOW_PYRAMID_LEVEL;
   opticflow->median_filter = OPTICFLOW_MEDIAN_FILTER;
   opticflow->kalman_filter = OPTICFLOW_KALMAN_FILTER;
   opticflow->kalman_filter_process_noise = OPTICFLOW_KALMAN_FILTER_PROCESS_NOISE;
+  opticflow->feature_management = OPTICFLOW_FEATURE_MANAGEMENT;
+  opticflow->fast9_region_detect = OPTICFLOW_FAST9_REGION_DETECT;
+  opticflow->fast9_num_regions = OPTICFLOW_FAST9_NUM_REGIONS;
 
   opticflow->fast9_adaptive = OPTICFLOW_FAST9_ADAPTIVE;
   opticflow->fast9_threshold = OPTICFLOW_FAST9_THRESHOLD;
@@ -234,7 +245,6 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
   opticflow->fast9_padding = OPTICFLOW_FAST9_PADDING;
   opticflow->fast9_rsize = 512;
   opticflow->fast9_ret_corners = malloc(sizeof(struct point_t) * opticflow->fast9_rsize);
-
 }
 /**
  * Run the optical flow with fast9 and lukaskanade on a new image frame
@@ -247,7 +257,17 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                              struct opticflow_result_t *result)
 {
   if (opticflow->just_switched_method) {
-    opticflow_calc_init(opticflow, img->w, img->h);
+    // Create the image buffers
+    image_create(&opticflow->img_gray, img->w, img->h, IMAGE_GRAYSCALE);
+    image_create(&opticflow->prev_img_gray, img->w, img->h, IMAGE_GRAYSCALE);
+
+    // Set the previous values
+    opticflow->got_first_img = false;
+    FLOAT_RATES_ZERO(opticflow->prev_rates);
+
+    // Init median filters with zeros
+    init_median_filter(&vel_x_filt);
+    init_median_filter(&vel_y_filt);
   }
 
   // variables for size_divergence:
@@ -275,22 +295,74 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   // Corner detection
   // *************************************************************************************
 
-  // FAST corner detection
-  // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
-  // to 0 (see defines), however a more permanent solution should be considered
-  fast9_detect(img, opticflow->fast9_threshold, opticflow->fast9_min_distance,
-               opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
-               &opticflow->fast9_rsize,
-               opticflow->fast9_ret_corners);
+  // if feature_management is selected and tracked corners drop below a threshold, redetect
+  if ((opticflow->feature_management) && (result->corner_cnt < opticflow->max_track_corners / 2)) {
+    // no need for "per region" re-detection when there are no previous corners
+    if ((!opticflow->fast9_region_detect) || (result->corner_cnt == 0)) {
+      fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
+                   opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
+                   &opticflow->fast9_rsize,
+                   &opticflow->fast9_ret_corners,
+                   NULL);
+    } else {
+      // allocating memory and initializing the 2d array that holds the number of corners per region and its index (for the sorting)
+      uint16_t **region_count = malloc(opticflow->fast9_num_regions * sizeof(uint16_t *));
+      for (uint16_t i = 0; i < opticflow->fast9_num_regions ; i++) {
+        region_count[i] = malloc(sizeof(uint16_t) * 2);
+        region_count[i][0] = 0;
+        region_count[i][1] = i;
+      }
+      for (uint16_t i = 0; i < result->corner_cnt; i++) {
+        region_count[(opticflow->fast9_ret_corners[i].x / (img->w / (uint8_t)sqrt(opticflow->fast9_num_regions))
+                      + opticflow->fast9_ret_corners[i].y / (img->h / (uint8_t)sqrt(opticflow->fast9_num_regions)) * (uint8_t)sqrt(opticflow->fast9_num_regions))][0]++;
+      }
 
-  // Adaptive threshold
-  if (opticflow->fast9_adaptive) {
-    // Decrease and increase the threshold based on previous values
-    if (result->corner_cnt < 40
-        && opticflow->fast9_threshold > FAST9_LOW_THRESHOLD) { // TODO: Replace 40 with OPTICFLOW_MAX_TRACK_CORNERS / 2
-      opticflow->fast9_threshold--;
-    } else if (result->corner_cnt > OPTICFLOW_MAX_TRACK_CORNERS * 2 && opticflow->fast9_threshold < FAST9_HIGH_THRESHOLD) {
-      opticflow->fast9_threshold++;
+      //sorting region_count array according to first column (number of corners).
+      qsort(region_count, opticflow->fast9_num_regions, sizeof(region_count[0]), cmp_array);
+
+      // Detecting corners from the region with the less to the one with the most, until a desired total is reached.
+      for (uint16_t i = 0; i < opticflow->fast9_num_regions && result->corner_cnt < 2 * opticflow->max_track_corners ; i++) {
+
+        // Find the boundaries of the region of interest
+        uint16_t *roi = malloc(4 * sizeof(uint16_t));
+        roi[0] = (region_count[i][1] % (uint8_t)sqrt(opticflow->fast9_num_regions)) * (img->w / (uint8_t)sqrt(opticflow->fast9_num_regions));
+        roi[1] = (region_count[i][1] / (uint8_t)sqrt(opticflow->fast9_num_regions)) * (img->h / (uint8_t)sqrt(opticflow->fast9_num_regions));
+        roi[2] = roi[0] + (img->w / (uint8_t)sqrt(opticflow->fast9_num_regions));
+        roi[3] = roi[1] + (img->h / (uint8_t)sqrt(opticflow->fast9_num_regions));
+
+        fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
+                     opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
+                     &opticflow->fast9_rsize,
+                     &opticflow->fast9_ret_corners,
+                     roi);
+        free(roi);
+      }
+      for (uint16_t i = 0; i < opticflow->fast9_num_regions; i++) {
+        free(region_count[i]);
+      }
+      free(region_count);
+    }
+  } else if (!opticflow->feature_management) {
+    // needs to be set to 0 because result is now static
+    result->corner_cnt = 0;
+    // FAST corner detection
+    // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
+    // to 0 (see defines), however a more permanent solution should be considered
+    fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
+                 opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
+                 &opticflow->fast9_rsize,
+                 &opticflow->fast9_ret_corners,
+                 NULL);
+
+    // Adaptive threshold
+    if (opticflow->fast9_adaptive) {
+      // Decrease and increase the threshold based on previous values
+      if (result->corner_cnt < 40
+          && opticflow->fast9_threshold > FAST9_LOW_THRESHOLD) { // TODO: Replace 40 with OPTICFLOW_MAX_TRACK_CORNERS / 2
+        opticflow->fast9_threshold--;
+      } else if (result->corner_cnt > OPTICFLOW_MAX_TRACK_CORNERS * 2 && opticflow->fast9_threshold < FAST9_HIGH_THRESHOLD) {
+        opticflow->fast9_threshold++;
+      }
     }
   }
 
@@ -300,6 +372,8 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
 
   // Check if we found some corners to track
   if (result->corner_cnt < 1) {
+    // Clear the result otherwise the previous values will be returned for this frame too
+    memset(result, 0, sizeof(struct opticflow_result_t));
     image_copy(&opticflow->img_gray, &opticflow->prev_img_gray);
     return;
   }
@@ -316,7 +390,6 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                                        opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level);
 
 #if OPTICFLOW_SHOW_FLOW
-  printf("show: n tracked = %d\n", result->tracked_cnt);
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
 
@@ -420,6 +493,18 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   // *************************************************************************************
   // Next Loop Preparation
   // *************************************************************************************
+
+  if (opticflow->feature_management) {
+    result->corner_cnt = result->tracked_cnt;
+    //get the new positions of the corners and the "residual" subpixel positions
+    for (uint16_t i = 0; i < result->tracked_cnt; i++) {
+      opticflow->fast9_ret_corners[i].x = (uint32_t)((vectors[i].pos.x + (float)vectors[i].flow_x) / opticflow->subpixel_factor);
+      opticflow->fast9_ret_corners[i].y = (uint32_t)((vectors[i].pos.y + (float)vectors[i].flow_y) / opticflow->subpixel_factor);
+      opticflow->fast9_ret_corners[i].x_sub = (uint16_t)((vectors[i].pos.x + vectors[i].flow_x) % opticflow->subpixel_factor);
+      opticflow->fast9_ret_corners[i].y_sub = (uint16_t)((vectors[i].pos.y + vectors[i].flow_y) % opticflow->subpixel_factor);
+      opticflow->fast9_ret_corners[i].count = vectors[i].pos.count;
+    }
+  }
   free(vectors);
   image_switch(&opticflow->img_gray, &opticflow->prev_img_gray);
 }
@@ -471,7 +556,7 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
     window_size = MAX_WINDOW_SIZE;
   }
 
-  uint16_t RES = opticflow->subpixel_factor;
+  uint16_t RES = opticflow->resolution_factor;
 
   //......................Calculating EdgeFlow..................... //
 
@@ -526,22 +611,25 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
 
   /* Save Resulting flow in results
    * Warning: The flow detected here is different in sign
-   * and size, therefore this will be multiplied with
+   * and size, therefore this will be divided with
    * the same subpixel factor and -1 to make it on par with
    * the LK algorithm of t opticalflow_calculator.c
    * */
   edgeflow.flow_x = -1 * edgeflow.flow_x;
   edgeflow.flow_y = -1 * edgeflow.flow_y;
 
-  result->flow_x = (int16_t)edgeflow.flow_x / previous_frame_offset[0];
-  result->flow_y = (int16_t)edgeflow.flow_y / previous_frame_offset[1];
+  edgeflow.flow_x = (int16_t)edgeflow.flow_x / previous_frame_offset[0];
+  edgeflow.flow_y = (int16_t)edgeflow.flow_y / previous_frame_offset[1];
+
+  result->flow_x = (int16_t)edgeflow.flow_x / RES;
+  result->flow_y = (int16_t)edgeflow.flow_y / RES;
 
   //Fill up the results optic flow to be on par with LK_fast9
   result->flow_der_x =  result->flow_x;
   result->flow_der_y =  result->flow_y;
   result->corner_cnt = getAmountPeaks(edge_hist_x, 500 , img->w);
   result->tracked_cnt = getAmountPeaks(edge_hist_x, 500 , img->w);
-  result->divergence = (float)edgeflow.flow_x / RES;
+  result->divergence = (float)edgeflow.div_x / RES;
   result->div_size = 0.0f;
   result->noise_measurement = 0.0f;
   result->surface_roughness = 0.0f;
@@ -584,6 +672,10 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
 #endif
   // Increment and wrap current time frame
   current_frame_nr = (current_frame_nr + 1) % MAX_HORIZON;
+
+  // Free malloc'd variables
+  free(displacement.x);
+  free(displacement.y);
 }
 
 
@@ -604,6 +696,8 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   if (switch_counter != opticflow->method) {
     opticflow->just_switched_method = true;
     switch_counter = opticflow->method;
+    // Clear the static result
+    memset(result, 0, sizeof(struct opticflow_result_t));
   } else {
     opticflow->just_switched_method = false;
   }
@@ -752,4 +846,17 @@ static int cmp_flow(const void *a, const void *b)
          b_p->flow_y);
 }
 
+/**
+ * Compare the rows of an integer (uint16_t) 2D array based on the first column.
+ * Used for sorting.
+ * @param[in] *a The first row (should be *uint16_t)
+ * @param[in] *b The second flow vector (should be *uint16_t)
+ * @return Negative if a[0] < b[0],0 if a[0] == b[0] and positive if a[0] > b[0]
+ */
+static int cmp_array(const void *a, const void *b)
+{
+  const uint16_t *pa = *(const uint16_t **)a;
+  const uint16_t *pb = *(const uint16_t **)b;
+  return pa[0] - pb[0];
+}
 
