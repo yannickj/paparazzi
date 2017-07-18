@@ -26,25 +26,6 @@
 let get_opt attrib attribs = try Some (List.assoc attrib attribs) with _ -> None
 
 
-module Header = struct
-
-  type t = {
-    name: string
-  }
-
-  let from_xml = function
-    | Xml.Element ("dl_setting", attribs, _) when List.mem_assoc "module" attribs ->
-        Printf.eprintf "Warning: please rename 'module' attribute in settings with 'header'";
-        { name = List.assoc "module" attribs }
-    | Xml.Element ("dl_setting", attribs, _) when List.mem_assoc "header" attribs ->
-        { name = List.assoc "header" attribs }
-    | Xml.Element ("include", [("header", name)], []) ->
-        { name }
-    | _ -> raise Not_found
-
-end
-
-
 module Dl_setting = struct
 
   type t = {
@@ -105,10 +86,35 @@ end
 type t = {
   target: string option;
   dl_settings: Dl_settings.t list;
-  headers: Header.t list;
   xml: Xml.xml
 }
 
 let from_xml = function
-  | Xml.Element ("settings")
+  | Xml.Element ("settings", attribs, children) as xml ->
+      {
+        target = get_opt "target" attribs;
+        dl_settings = List.map Dl_settings.from_xml children;
+        xml;
+      }
+  | _ -> failwith "Settings.from_xml: unreachable"
+
+(**
+ *  Get singletonized list of headers from a Settings.t
+ *)
+let get_headers = fun settings ->
+  let rec iter = fun headers s ->
+    let headers = List.fold_left (fun hl dl_s ->
+      match dl_s.header with
+      | Some x -> if List.mem x hl then hl else x :: hl
+      | None -> hl
+    ) headers s.dl_setting in
+    let headers = List.fold_left (fun hl h ->
+      if List.mem h hl then hl else h :: hl
+    ) headers s.headers in
+    let headers = List.fold_left (fun hl dl_ss ->
+      iter hl dl_ss
+    ) headers s.dl_settings in
+  in
+  iter [] settings
+
 

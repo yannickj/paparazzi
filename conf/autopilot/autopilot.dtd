@@ -72,8 +72,9 @@ name CDATA #REQUIRED>
 
 <!ATTLIST modules>
 
-<!ATTLIST load
+<!ATTLIST module
 name CDATA #REQUIRED
+type CDATA #IMPLIED
 target CDATA #IMPLIED>
 
 <!ATTLIST define
