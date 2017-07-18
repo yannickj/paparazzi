@@ -11,7 +11,7 @@ let find_name = fun attribs ->
   with
   | Not_found ->
       let msg = Printf.sprintf "Error: Attribute '%s' expected in <%a>"
-	  attr ExtXml.sprint_fields attribs in
+          attr ExtXml.sprint_fields attribs in
       raise (Error msg)
 
 type file = { filename: string; directory: string option }
@@ -85,8 +85,8 @@ let rec parse_makefile mkf = function
       (* TODO *)
   | Xml.Element ("include", attribs, []) ->
       { mkf with inclusions =
-	{ element = find_name attribs; condition = find_opt attribs "cond" }
-	:: mkf.inclusions }
+        { element = find_name attribs; condition = find_opt attribs "cond" }
+        :: mkf.inclusions }
   | Xml.Element ("flag", [("name", flag); ("value", value)], [])
   | Xml.Element ("flag", [("value", value); ("name", flag)], []) ->
       { mkf with flags = { flag; value } :: mkf.flags }
@@ -168,8 +168,8 @@ let make_event = fun f handlers ->
   { ev = f;
     handlers = List.map
       (function
-	| Xml.Element ("handler", [("fun", f)], []) -> f
-	| _ -> failwith "Module.make_event: unreachable"
+        | Xml.Element ("handler", [("fun", f)], []) -> f
+        | _ -> failwith "Module.make_event: unreachable"
       ) handlers }
 
 let fprint_event = fun ch e -> Printf.fprintf ch "%s;\n" e.ev
@@ -228,7 +228,7 @@ let rec parse_xml m = function
       { m with autoloads = module_name :: m.autoloads }
   | Xml.Element ("header", [], files) ->
       { m with headers =
-	List.fold_left (fun acc f -> parse_file f :: acc) m.headers files }
+        List.fold_left (fun acc f -> parse_file f :: acc) m.headers files }
   | Xml.Element ("init", [("fun", f)], []) -> { m with inits = f :: m.inits }
   | Xml.Element ("periodic", attribs, []) ->
       { m with periodics = parse_periodic attribs :: m.periodics }
