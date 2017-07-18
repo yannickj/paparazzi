@@ -1,4 +1,6 @@
 let find_opt = fun l k -> try Some (List.assoc k l) with Not_found -> None
+let find_opt_map = fun l k f ->
+  try Some (f (List.assoc k l)) with Not_found -> None
 let find_default = fun l def k -> try List.assoc k l with Not_found -> def
 
 let find_name = fun attribs ->
