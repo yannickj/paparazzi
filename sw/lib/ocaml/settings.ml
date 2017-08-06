@@ -62,15 +62,16 @@ module Dl_settings = struct
     name: string option;
     dl_settings: t list;
     dl_setting: Dl_setting.t list;
-    headers = string list;
-    xml: Xml.xml }
+    headers: string list;
+    xml: Xml.xml; }
 
   let rec iter_xml s = function
     | Xml.Element ("dl_settings", attribs, children) as xml ->
         {
           name = get_opt "name" attribs;
-          dl_settings = List.fold_left iter_xml s children;
+          dl_settings = List.map (iter_xml s) children;
           dl_setting = [];
+          headers = [];
           xml;
         }
     | Xml.Element ("dl_setting", attribs, _) as xml ->
@@ -79,7 +80,7 @@ module Dl_settings = struct
         { s with headers = name :: s.headers }
     | _ -> failwith "Settings.Dl_settings.iter_xml: unreachable"
 
-  let from_xml = iter_xml { name = None; dl_settings = []; dl_setting = []; xml = Xml.Element ("dl_settings", [], []) }
+  let from_xml = iter_xml { name = None; dl_settings = []; dl_setting = []; headers = []; xml = Xml.Element ("dl_settings", [], []) }
 
 end
 
@@ -104,17 +105,18 @@ let from_xml = function
 let get_headers = fun settings ->
   let rec iter = fun headers s ->
     let headers = List.fold_left (fun hl dl_s ->
-      match dl_s.header with
+      match dl_s.Dl_setting.header with
       | Some x -> if List.mem x hl then hl else x :: hl
       | None -> hl
-    ) headers s.dl_setting in
+    ) headers s.Dl_settings.dl_setting in
     let headers = List.fold_left (fun hl h ->
       if List.mem h hl then hl else h :: hl
-    ) headers s.headers in
+    ) headers s.Dl_settings.headers in
     let headers = List.fold_left (fun hl dl_ss ->
       iter hl dl_ss
-    ) headers s.dl_settings in
+    ) headers s.Dl_settings.dl_settings in
+    headers
   in
-  iter [] settings
+  List.fold_left iter [] settings.dl_settings
 
 

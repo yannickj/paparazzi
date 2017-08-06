@@ -33,16 +33,16 @@ type channel = {
 }
 
 let parse_channel = function
-  | Xml.Element ("channel", attribs, []) as xml ->
-      let iget = attrib -> int_of_string (List.assoc attrib attribs) in
-      let bget = attrib -> try List.assoc attrib attribs <> "0" with Not_found -> false in
+  | Xml.Element ("channel", attribs, []) ->
+      let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
+      let bget = fun attrib -> try List.assoc attrib attribs <> "0" with Not_found -> false in
       {
         name = List.assoc "name" attribs;
         min = iget "min";
         max = iget "max";
         neutral = iget "netral";
-        averaged = bget "average";
-        reversed = bget "reverse";
+        average = bget "average";
+        reverse = bget "reverse";
       }
   | _ -> failwith "Radio.parse_channel: unreachable"
 
@@ -55,15 +55,15 @@ type t = {
   data_max: int;
   sync_min: int;
   sync_max: int;
-  pulse_type: pulse
-  channels: channel list
+  pulse_type: pulse;
+  channels: channel list;
   xml: Xml.xml;
 }
 
 let from_xml = function
   | Xml.Element ("radio", attribs, channels) as xml ->
-      let get = attrib -> List.assoc attrib attribs in
-      let iget = attrib -> int_of_string (List.assoc attrib attribs) in
+      let get = fun attrib -> List.assoc attrib attribs in
+      let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
       {
         name = get "name";
         data_min = iget "data_min";
