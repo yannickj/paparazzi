@@ -49,7 +49,7 @@ messages : messages.cmo $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $@
 	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(LINKPKG) gtkInit.cmo $<
 
-settings : settings.cmo ../cockpit/page_settings.cmo $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
+settings : settings_gui.cmo ../cockpit/page_settings.cmo $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $@
 	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(XLINKPKG) gtkInit.cmo -I ../cockpit gtk_save_settings.cmo saveSettings.cmo page_settings.cmo $<
 
@@ -94,8 +94,8 @@ ivy2serial : ivy2serial.cmo $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $@
 	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(LINKPKG) gtkInit.cmo $<
 
-settings.cmo : INCLUDES += -I ../cockpit
-settings.cmo : ../cockpit/page_settings.cmi
+settings_gui.cmo : INCLUDES += -I ../cockpit
+settings_gui.cmo : ../cockpit/page_settings.cmi
 
 %.cmo : %.ml
 	@echo OC $<
