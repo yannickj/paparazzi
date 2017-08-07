@@ -1,3 +1,28 @@
+(*
+ * Copyright (C) 2017 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ *                    Cyril Allignol <cyril.allignol@enac.fr>
+ *
+ * This file is part of paparazzi.
+ *
+ * paparazzi is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * paparazzi is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *)
+
+(**
+ * Airframe module for parsing XML config files
+ *)
+
 (* duplicated code *)
 let find_opt = fun k l -> try Some (List.assoc k l) with Not_found -> None
 let find_opt_map = fun k l f ->
@@ -93,7 +118,7 @@ module Module = struct
 
   let from_xml = function
     | Xml.Element ("module", attrs, children) as xml ->
-        (* TODO *)
+        (* TODO *) ()
     | _ -> failwith "Airframe.Module.from_xml: unreachable"
 
 end
@@ -114,8 +139,12 @@ module Target = struct
     | Xml.Element ("target", attrs, []) as xml ->
         { name = List.assoc "name" attrs;
           board = List.assoc "board" attrs;
-          processor = Module.find_opt attrs "processor";
-          (* TODO *)
+          processor = find_opt "processor" attrs;
+          modules = []; (* FIXME *)
+          autopilot = None; (* FIXME *)
+          configures = []; (* FIXME *)
+          defines = []; (* FIXME *)
+          comments = []; (* FIXME *)
           xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 
@@ -135,7 +164,14 @@ module Firmware = struct
   let from_xml = function
     | Xml.Element ("firmware", [("name", name)], children) as xml ->
         (* TODO *)
-        { name; xml }
+        { name;
+          targets = []; (* FIXME *)
+          modules = []; (* FIXME *)
+          autopilot = None; (* FIXME *)
+          configures = []; (* FIXME *)
+          defines = []; (* FIXME *)
+          comments = []; (* FIXME *)
+          xml }
     | _ -> failwith "Airframe.Firmware.from_xml: unreachable"
 
 end
@@ -164,7 +200,8 @@ module Servo = struct
           xml }
     | _ -> failwith "Airframe.Servo.from_xml: unreachable"
 
-  let fprint = fun ch s ->
+  (* move to generators
+    let fprint = fun ch s ->
     let travel_up = (s.max -. s.neutral) /. max_pprz
     and travel_down = (s.neutral -. s.min) /. max_pprz in
     Printf.fprintf ch "#define SERVO_%s %d\n" s.name s.number;
@@ -174,7 +211,7 @@ module Servo = struct
     Printf.fprintf ch "#define %s_TRAVEL_DOWN %g\n" s.name travel_down;
     (* TODO: define_integer travel_down 16 *)
     Printf.fprintf ch "#define %s_MAX %g\n" s.name s.max;
-    Printf.fprintf ch "#define %s_MIN %g\n" s.name s.min;
+    Printf.fprintf ch "#define %s_MIN %g\n" s.name s.min;*)
 
 end
 
@@ -184,7 +221,7 @@ module Axis = struct
 
   let from_xml = function
     | Xml.Element ("axis", attrs, []) as xml ->
-        { name = List.assoc "name" attrs;
+        { axis = List.assoc "name" attrs;
           failsafe_value = List.assoc "failsafe_value" attrs;
           xml }
     | _ -> failwith "Airframe.Axis.from_xml: unreachable"
@@ -200,7 +237,7 @@ module Set = struct
 
   let from_xml = function
     | Xml.Element ("set", attrs, []) as xml ->
-        { value = List.assoc "value" attrs;
+        { value = float_of_string (List.assoc "value" attrs);
           command = find_opt "command" attrs;
           servo = find_opt "servo" attrs;
           xml }
@@ -229,9 +266,9 @@ module Ratelimit = struct
   let from_xml = function
     | Xml.Element ("ratelimit", attrs, []) as xml ->
         { var = List.assoc "var" attrs;
-          value = List.assoc "value" attrs;
-          rate_min = List.assoc "rate_min" attrs;
-          rate_max = List.assoc "rate_max" attrs;
+          value = float_of_string (List.assoc "value" attrs);
+          rate_min = float_of_string (List.assoc "rate_min" attrs);
+          rate_max = float_of_string (List.assoc "rate_max" attrs);
           xml }
     | _ -> failwith "Airframe.Ratelimit.from_xml: unreachable"
 
@@ -303,13 +340,13 @@ type heli_curve
 type t = {
     includes: Include.t list;
     servos: Servo.t list;
-    commands: axis list;
-    rc_commands: set list;
-    auto_rc_commands: set list;
+    commands: Axis.t list;
+    rc_commands: Set.t list;
+    auto_rc_commands: Set.t list;
     ap_only_commands: ap_only_command list;
     command_laws: command_law list;
     sections: section list;
-    makefiles: makefile list;
+    makefiles: Makefile.t list;
     modules: modul list;
     firmwares: Firmware.t list;
     autopilots: Autopilot.t list;

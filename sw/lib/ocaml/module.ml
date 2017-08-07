@@ -1,23 +1,51 @@
+(*
+ * Copyright (C) 2017 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ *                    Cyril Allignol <cyril.allignol@enac.fr>
+ *
+ * This file is part of paparazzi.
+ *
+ * paparazzi is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * paparazzi is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *)
+
+(**
+ * 'Module' module for parsing XML config files
+ *)
+
 let find_opt = fun l k -> try Some (List.assoc k l) with Not_found -> None
 let find_opt_map = fun l k f ->
   try Some (f (List.assoc k l)) with Not_found -> None
 let find_default = fun l def k -> try List.assoc k l with Not_found -> def
+let find_opt_int = fun l k -> try Some (int_of_string (List.assoc k l)) with Not_found -> None
 
 let find_name = fun attribs ->
   try
-    let name = List.assoc attribs "name" in
+    let name = List.assoc "name" attribs in
     if Filename.check_suffix name ".xml" then Filename.chop_extension name
     else name
   with
   | Not_found ->
-      let msg = Printf.sprintf "Error: Attribute '%s' expected in <%a>"
-          attr ExtXml.sprint_fields attribs in
-      raise (Error msg)
+      (*let msg = Printf.sprintf "Error: Attribute 'name' expected in <%a>"
+          ExtXml.sprint_fields attribs in
+      raise (Error msg)*)
+      failwith "FIXME"
 
 type file = { filename: string; directory: string option }
+type file_arch = file
 
 let parse_file = function
-  | Xml.Element ("file", attribs, []) ->
+  | Xml.Element ("file", attribs, []) | Xml.Element ("file_arch", attribs, []) ->
       { filename = find_name attribs; directory = find_opt attribs "dir" }
   | _ -> failwith "Module.parse_file: unreachable"
 
@@ -52,9 +80,11 @@ let parse_define = fun attribs ->
     dunit = get "unit"; dtype = get "type";
     ddescription = get "description"; cond = get "cond" }
 
-type incl = { element: string; condition: string }
+type incl = { element: string; condition: string option }
 
 type flag = { flag: string; value: string }
+
+type raw = string
 
 type makefile = {
     targets: string list;
@@ -64,7 +94,7 @@ type makefile = {
     inclusions: incl list;
     flags: flag list;
     files: file list;
-    files_arch: file_arch list;
+    files_arch: file list;
     raws: raw list
   }
 
@@ -80,9 +110,9 @@ let rec parse_makefile mkf = function
       let firmware = "" in (* TODO *)
       List.fold_left parse_makefile { mkf with targets; firmware } children
   | Xml.Element ("configure", attribs, []) ->
-      (* TODO *)
+      (* TODO *) empty_makefile
   | Xml.Element ("define", attribs, []) ->
-      (* TODO *)
+      (* TODO *) empty_makefile
   | Xml.Element ("include", attribs, []) ->
       { mkf with inclusions =
         { element = find_name attribs; condition = find_opt attribs "cond" }
@@ -94,7 +124,7 @@ let rec parse_makefile mkf = function
       { mkf with files = parse_file xml :: mkf.files }
   | Xml.Element ("file_arch", _, []) as xml ->
       { mkf with files_arch = parse_file xml :: mkf.files_arch }
-  | Xml.Element ("raw", [], Xml.PCData raw) -> {mkf with raws = raw :: mkf.raws}
+  | Xml.Element ("raw", [], [Xml.PCData raw]) -> {mkf with raws = raw :: mkf.raws}
   | _ -> failwith "Module.parse_makefile: unreachable"
 
 type autorun = True | False | Lock
@@ -105,15 +135,16 @@ type periodic = {
     call: string;
     fname: string;
     period_freq: period_freq;
-    delay: float option;
-    start: float option;
-    stop: float option;
+    delay: int option;
+    start: string option;
+    stop: string option;
     autorun: autorun
   }
 
 let parse_periodic = fun attribs ->
   let get = find_opt attribs in
-  let call = List.find "fun" attribs in
+  let geti = find_opt_int attribs in
+  let call = List.find (fun a -> a = "fun") (fst (List.split attribs)) in
   let call_regexp = Str.regexp "\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\(.*\\)" in
   let fname =
     if Str.string_match call_regexp call 0 then
@@ -127,9 +158,9 @@ let parse_periodic = fun attribs ->
   | Some p, None -> let p = float_of_string p in Set (p, 1. /. p)
   | Some p, Some _ ->
       Printf.eprintf "Warning: both period and freq are defined ";
-      Printf.eprintf "but only period is used for function %s\n%!" periodic;
+      Printf.eprintf "but only period is used for function %s\n%!" fname;
       let p = float_of_string p in Set (p, 1. /. p) in
-  { call; fname; period_freq; delay = get "delay";
+  { call; fname; period_freq; delay = geti "delay";
     start = get "start"; stop = get "stop";
     autorun = match get "autorun" with
     | None -> False (* TODO: what's the default? *)
@@ -149,7 +180,7 @@ let fprint_period_freq = fun ch max_freq p ->
 let status_name = fun mod_name p -> mod_name ^ "_" ^ p.fname ^ "_status"
 
 let fprint_status = fun ch mod_name p ->
-  match p.status with
+  match p.autorun with
   | True | False ->
       Printf.fprintf ch "EXTERN_MODULES uint8_t %s;\n" (status_name mod_name p)
   | Lock -> ()
@@ -215,16 +246,16 @@ let rec parse_xml m = function
   | Xml.Element ("settings_file", [("name", name)], files) -> m (* TODO *)
   | Xml.Element ("settings", [("name", name)], []) -> m (* TODO *)
   | Xml.Element ("settings", [("name", name)], [dl_setting]) -> m (* TODO *)
-  | Xml.Element ("depends", _, Xml.PCData depends) ->
+  | Xml.Element ("depends", _, [Xml.PCData depends]) ->
       { m with requires = parse_module_list depends }
-  | Xml.Element ("conflicts", _, Xml.PCData conflicts) ->
+  | Xml.Element ("conflicts", _, [Xml.PCData conflicts]) ->
       { m with conflicts = parse_module_list conflicts }
-  | Xml.Element ("provides", _, Xml.PCData provides) ->
+  | Xml.Element ("provides", _, [Xml.PCData provides]) ->
       { m with provides = parse_module_list provides }
   | Xml.Element ("autoload", attribs, []) ->
       let name = find_name attribs
       and atype = find_opt attribs "type" in
-      let module_name = atype ^ name in (* TODO *)
+      let module_name = match atype with None -> name | Some t -> name ^ "_" ^ t in (* CHECK *)
       { m with autoloads = module_name :: m.autoloads }
   | Xml.Element ("header", [], files) ->
       { m with headers =
