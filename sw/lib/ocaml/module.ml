@@ -87,8 +87,9 @@ type flag = { flag: string; value: string }
 type raw = string
 
 type makefile = {
-    targets: string list;
-    firmware: string;
+    targets: string option;
+    firmware: string option;
+    condition: string option;
     configurations: configure list;
     definitions: define list;
     inclusions: incl list;
@@ -99,20 +100,19 @@ type makefile = {
   }
 
 let empty_makefile =
-  { targets = []; firmware = ""; configurations = []; definitions = [];
+  { targets = None; firmware = None; condition = None; configurations = []; definitions = [];
     inclusions = []; flags = []; files = []; files_arch = []; raws = [] }
 
 let rec parse_makefile mkf = function
   | Xml.Element ("makefile", attribs, children) ->
-      let targets = match find_opt attribs "target" with
-      | None -> []
-      | Some targets -> [] (* TODO *) in
-      let firmware = "" in (* TODO *)
-      List.fold_left parse_makefile { mkf with targets; firmware } children
+      let targets = find_opt attribs "target"
+      and firmware = find_opt attribs "firmware"
+      and condition = find_opt attribs "cond" in
+      List.fold_left parse_makefile { mkf with targets; firmware; condition } children
   | Xml.Element ("configure", attribs, []) ->
-      (* TODO *) empty_makefile
+      { mkf with configurations = parse_configure attribs :: mkf.configurations }
   | Xml.Element ("define", attribs, []) ->
-      (* TODO *) empty_makefile
+      { mkf with definitions = parse_define attribs :: mkf.definitions }
   | Xml.Element ("include", attribs, []) ->
       { mkf with inclusions =
         { element = find_name attribs; condition = find_opt attribs "cond" }
@@ -163,7 +163,7 @@ let parse_periodic = fun attribs ->
   { call; fname; period_freq; delay = geti "delay";
     start = get "start"; stop = get "stop";
     autorun = match get "autorun" with
-    | None -> False (* TODO: what's the default? *)
+    | None -> Lock
     | Some "TRUE" | Some "true" -> True
     | Some "FALSE" | Some "false" -> False
     | Some "LOCK" | Some "lock" -> Lock
@@ -215,24 +215,25 @@ type t = {
     dir: string option;
     task: string option;
     path: string;
-    (*doc: *)
+    doc: Xml.xml;
     requires: string list;
     conflicts: string list;
     provides: string list;
     autoloads: string list;
+    settings: Settings.t list;
     headers: file list;
     inits: string list;
     periodics: periodic list;
     events: event list;
     datalinks: datalink list;
-    makefile: makefile
+    makefile: makefile list
   }
 
 let empty =
-  { name = ""; dir = None; task = None; path = "";
-    requires = []; conflicts = []; provides = []; autoloads = [];
+  { name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
+    requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
-    makefile = empty_makefile }
+    makefile = [] }
 
 let parse_module_list = Str.split (Str.regexp "[ \t]*,[ \t]*")
 
@@ -242,10 +243,10 @@ let rec parse_xml m = function
       and dir = find_opt attribs "dir"
       and task = find_opt attribs "task" in
       List.fold_left parse_xml { m with name; dir; task } children
-  | Xml.Element ("doc", _, _) -> m (* TODO *)
-  | Xml.Element ("settings_file", [("name", name)], files) -> m (* TODO *)
-  | Xml.Element ("settings", [("name", name)], []) -> m (* TODO *)
-  | Xml.Element ("settings", [("name", name)], [dl_setting]) -> m (* TODO *)
+  | Xml.Element ("doc", _, _) as xml -> { m with doc = xml }
+  (*| Xml.Element ("settings_file", [("name", name)], files) -> m (* TODO : remove unused *)*)
+  | Xml.Element ("settings", _, _) as xml ->
+      { m with settings = Settings.from_xml xml :: m.settings }
   | Xml.Element ("depends", _, [Xml.PCData depends]) ->
       { m with requires = parse_module_list depends }
   | Xml.Element ("conflicts", _, [Xml.PCData conflicts]) ->
@@ -269,10 +270,11 @@ let rec parse_xml m = function
   | Xml.Element ("datalink", [("fun", func); ("message", message)], []) ->
       { m with datalinks = { message; func } :: m.datalinks }
   | Xml.Element ("makefile", _, _) as xml ->
-      { m with makefile = parse_makefile m.makefile xml }
+      { m with makefile = parse_makefile empty_makefile xml :: m.makefile }
   | _ -> failwith "Module.parse_xml: unreachable"
 
 
+(** move to generators *)
 let fprint_headers = fun ch m ->
   let dirname = match m.dir with None -> m.name | Some d -> d in
   List.iter

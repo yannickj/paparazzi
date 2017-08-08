@@ -85,6 +85,7 @@ module Dl_settings = struct
 end
 
 type t = {
+  name: string option; (* for modules' settings *)
   target: string option;
   dl_settings: Dl_settings.t list;
   xml: Xml.xml
@@ -93,6 +94,7 @@ type t = {
 let from_xml = function
   | Xml.Element ("settings", attribs, children) as xml ->
       {
+        name = get_opt "name" attribs;
         target = get_opt "target" attribs;
         dl_settings = List.map Dl_settings.from_xml children;
         xml;

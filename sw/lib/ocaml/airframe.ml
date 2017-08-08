@@ -28,7 +28,10 @@ let find_opt = fun k l -> try Some (List.assoc k l) with Not_found -> None
 let find_opt_map = fun k l f ->
   try Some (f (List.assoc k l)) with Not_found -> None
 let find_default = fun def k l -> try List.assoc k l with Not_found -> def
-    (* end of duplicated code *)
+let parse_children = fun tag f children ->
+  List.fold_left (fun l x -> if Xml.tag x = tag then f x :: l else l)
+  [] children
+(* end of duplicated code *)
 
 module Autopilot = struct
 
@@ -106,7 +109,7 @@ module Comment = struct
 
 end
 
-module Module = struct
+module Module_af = struct
 
   type t = { name: string;
              mtype: string option;
@@ -118,8 +121,14 @@ module Module = struct
 
   let from_xml = function
     | Xml.Element ("module", attrs, children) as xml ->
-        (* TODO *) ()
-    | _ -> failwith "Airframe.Module.from_xml: unreachable"
+        { name = List.assoc "name" attrs;
+          mtype = find_opt "type" attrs;
+          dir = find_opt "dir" attrs;
+          configures = parse_children "configure" Configure.from_xml children;
+          defines = parse_children "define" Define.from_xml children;
+          comments = parse_children "comment" Comment.from_xml children;
+          xml }
+    | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
 
 end
 
@@ -128,7 +137,7 @@ module Target = struct
   type t = { name: string;
              board: string;
              processor: string option;
-             modules: Module.t list;
+             modules: Module_af.t list;
              autopilot: Autopilot.t option;
              configures: Configure.t list;
              defines: Define.t list;
@@ -136,15 +145,15 @@ module Target = struct
              xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("target", attrs, []) as xml ->
+    | Xml.Element ("target", attrs, children) as xml ->
         { name = List.assoc "name" attrs;
           board = List.assoc "board" attrs;
           processor = find_opt "processor" attrs;
-          modules = []; (* FIXME *)
-          autopilot = None; (* FIXME *)
-          configures = []; (* FIXME *)
-          defines = []; (* FIXME *)
-          comments = []; (* FIXME *)
+          modules = parse_children "module" Module_af.from_xml children;
+          autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
+          configures = parse_children "configure" Configure.from_xml children;
+          defines = parse_children "define" Define.from_xml children;
+          comments = parse_children "comment" Comment.from_xml children;
           xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 
@@ -154,7 +163,7 @@ module Firmware = struct
 
   type t = { name: string;
              targets: Target.t list;
-             modules: Module.t list;
+             modules: Module_af.t list;
              autopilot: Autopilot.t option;
              configures: Configure.t list;
              defines: Define.t list;
@@ -163,14 +172,13 @@ module Firmware = struct
 
   let from_xml = function
     | Xml.Element ("firmware", [("name", name)], children) as xml ->
-        (* TODO *)
         { name;
-          targets = []; (* FIXME *)
-          modules = []; (* FIXME *)
-          autopilot = None; (* FIXME *)
-          configures = []; (* FIXME *)
-          defines = []; (* FIXME *)
-          comments = []; (* FIXME *)
+          targets = parse_children "targets" Target.from_xml children;
+          modules = parse_children "module" Module_af.from_xml children;
+          autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
+          configures = parse_children "configure" Configure.from_xml children;
+          defines = parse_children "define" Define.from_xml children;
+          comments = parse_children "comment" Comment.from_xml children;
           xml }
     | _ -> failwith "Airframe.Firmware.from_xml: unreachable"
 
