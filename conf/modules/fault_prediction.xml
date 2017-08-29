@@ -1,0 +1,16 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="fault_prediction" dir="fault">
+  <doc>
+    <description>fault prediction MATLAB wrapper</description>
+  </doc>
+  <header>
+    <file name="fault_prediction.h"/>
+  </header>
+  <init fun="fault_prediction_init()"/>
+  <makefile>
+    <file name="fault_prediction.c"/>
+    <file name="predictFault/predictFault.c"/>
+  </makefile>
+</module>
+
