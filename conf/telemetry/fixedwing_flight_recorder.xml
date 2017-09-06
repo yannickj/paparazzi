@@ -119,6 +119,7 @@
   </process>
   <process name="FlightRecorder">
     <mode name="default">
+      <message name="ALIVE"               period="5"/>
       <message name="BAT"                 period="0.5"/>
       <message name="ENERGY"              period="0.5"/>
       <message name="GPS"                 period="0.2"/>

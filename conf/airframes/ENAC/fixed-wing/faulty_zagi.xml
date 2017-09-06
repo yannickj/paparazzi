@@ -47,6 +47,7 @@
     <module name="takeoff_detect"/>
 
     <module name="fault" />
+    <module name="fault_prediction" />
 
     <module name="tlsf"/>
     <module name="pprzlog"/>
