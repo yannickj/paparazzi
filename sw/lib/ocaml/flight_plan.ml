@@ -34,17 +34,20 @@ let from_xml = function
       let settings = List.fold_left (fun s el ->
         if Xml.tag el = "variables" then
           s @ List.fold_left (fun s e -> 
-            let attribs = Xml.attribs e in
-            let test attrib = List.mem_assoc attrib attribs in
-            let get_opt attrib = try Some (List.assoc attrib attribs) with _ -> None in
-            if test "min" && test "max" && test "step" then
-              [{
-                Settings.Dl_setting.var = List.assoc "var" attribs;
-                shortname = get_opt "shortname";
-                handler = None;
-                header = None;
-                xml = Xml.Element ("dl_setting", attribs, []);
-              }] @ s
+            if Xml.tag el = "variable" then
+              let attribs = Xml.attribs e in
+              let test attrib = List.mem_assoc attrib attribs in
+              let get_opt attrib = try Some (List.assoc attrib attribs) with _ -> None in
+              if test "min" && test "max" && test "step" then
+                [{
+                  Settings.Dl_setting.var = List.assoc "var" attribs;
+                  shortname = get_opt "shortname";
+                  handler = None;
+                  header = None;
+                  xml = Xml.Element ("dl_setting", attribs, []);
+                }] @ s
+              else
+                s
             else
               s
           ) [] (Xml.children el)
