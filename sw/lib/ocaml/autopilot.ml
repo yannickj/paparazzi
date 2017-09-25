@@ -24,7 +24,7 @@
  *)
 
 type t = {
-  modules: (*Module.t*) string list;
+  modules: Module.t list;
   xml: Xml.xml;
 }
 
@@ -32,7 +32,7 @@ let from_xml = function
   | Xml.Element ("autopilot", _, children) as xml ->
       let modules = List.fold_left (fun m el ->
         if Xml.tag el = "modules" then
-          m @ List.map (fun x -> (* TODO extract module *)"" ) (Xml.children el)
+          m @ List.map (Module.parse_xml Module.empty) (Xml.children el)
         else
           m
       ) [] children in
