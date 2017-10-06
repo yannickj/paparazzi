@@ -342,7 +342,6 @@ end
 type ap_only_command
 type command_law
 type section
-type modul
 type heli_curve
 
 type t = {
@@ -355,7 +354,7 @@ type t = {
     command_laws: command_law list;
     sections: section list;
     makefiles: Makefile.t list;
-    modules: modul list;
+    modules: Module.t list;
     firmwares: Firmware.t list;
     autopilots: Autopilot.t list;
     heli_curves: heli_curve list
