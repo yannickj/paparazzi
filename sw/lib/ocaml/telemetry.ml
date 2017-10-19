@@ -23,6 +23,9 @@
  * Periodic telemetry module for parsing XML config files
  *)
 
+let find_opt = fun k l -> try Some (List.assoc k l) with Not_found -> None
+let find_opt_int = fun k l -> try Some (int_of_string (List.assoc k l)) with Not_found -> None
+
 type msg_period = MsgPeriod of float | MsgFreq of float
 
 module Message = struct
@@ -46,7 +49,7 @@ module Message = struct
             | true, true -> failwith "Telemetry.Message.from_xml: either specify 'period' or 'freq' attribute, not both"
             | false, false -> failwith "Telemetry.Message.from_xml: specify 'period' or 'freq' attribute"
           end;
-          phase = try Some int_of_string (List.assoc "phase" attribs) with Not_found -> None;
+          phase = find_opt_int "phase" attribs;
           xml
         }
     | _ -> failwith "Telemetry.Message.from_xml: unreachable"
@@ -65,7 +68,7 @@ module Mode = struct
     | Xml.Element ("mode", attribs, messages) as xml ->
         {
           name = List.assoc "name" attribs;
-          key_press = try Some List.attrib "key_press" attribs with Not_found -> None;
+          key_press = find_opt "key_press" attribs;
           messages = List.map Message.from_xml messages;
           xml
         }
@@ -78,14 +81,14 @@ module Process = struct
   type t = {
     name: string;
     proc_type: string option;
-    modes: mode list;
+    modes: Mode.t list;
     xml: Xml.xml }
 
   let from_xml = function
     | Xml.Element ("process", attribs, modes) as xml ->
         {
           name = List.assoc "name" attribs;
-          proc_type = try Some List.assoc "type" attribs with Not_found -> None;
+          proc_type = find_opt "type" attribs;
           modes = List.map Mode.from_xml modes;
           xml
         }

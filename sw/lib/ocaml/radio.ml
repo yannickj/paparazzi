@@ -24,7 +24,7 @@
  *)
 
 type channel = {
-  name: string; (* a.k.a. function in DTD *)
+  cname: string; (* a.k.a. function in DTD *)
   min: int;
   max: int;
   neutral: int;
@@ -37,7 +37,7 @@ let parse_channel = function
       let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
       let bget = fun attrib -> try List.assoc attrib attribs <> "0" with Not_found -> false in
       {
-        name = List.assoc "name" attribs;
+        cname = List.assoc "name" attribs;
         min = iget "min";
         max = iget "max";
         neutral = iget "netral";

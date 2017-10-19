@@ -1,7 +1,6 @@
 (*
- * Call to Makefile.ac with the appropriate attributes from conf.xml
- *
  * Copyright (C) 2003-2009 Pascal Brisset, Antoine Drouin, ENAC
+ * Copyright (C) 2017 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi.
  *
@@ -16,10 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- *
+ * along with paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *)
+
+(**
+ * Main generator tool
  *)
 
 
@@ -32,6 +33,16 @@ let (//) = Filename.concat
 
 let paparazzi_conf = Env.paparazzi_home // "conf"
 let default_conf_xml = paparazzi_conf // "conf.xml"
+
+let radio_h = "radio.h"
+
+type t = {
+  airframe: Airframe.t option;
+  flight_plan: Flight_plan.t option;
+  settings: Settings.t list;
+  radio: Radio.t option;
+  telemetry: Telemetry.t option;
+}
 
 let mkdir = fun d ->
   assert (Sys.command (sprintf "mkdir -p %s" d) = 0)
@@ -56,7 +67,7 @@ let check_unique_id_and_name = fun conf conf_xml ->
     ) conf
 
 
-let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
+(*let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
   let firmware_name = Xml.attrib firmware "name" in
   (* get the configures, targets, subsystems and defines for this firmware *)
   let config, rest = ExtXml.partition_tag "configure" (Xml.children firmware) in
@@ -109,7 +120,7 @@ let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
     List.iter (subsystem_xml2mk makefile_ac firmware) subsystems;
     fprintf makefile_ac "\nendif # end of target '%s'\n\n" target_name
   ) targets
-
+*)
 
 let is_older = fun target_file dep_files ->
   not (Sys.file_exists target_file) ||
@@ -119,49 +130,86 @@ let is_older = fun target_file dep_files ->
       | f :: fs -> target_file_time < (U.stat f).U.st_mtime || loop fs in
     loop dep_files
 
-
 let make_element = fun t a c -> Xml.Element (t,a,c)
 
 
 (******************************* MAIN ****************************************)
 let () =
+  let ac_name = ref None
+  and conf_xml = ref default_conf_xml
+  and target = ref ""
+  and gen_af = ref false
+  and gen_fp = ref false
+  and gen_set = ref false
+  and gen_rc = ref false
+  and gen_tl = ref false in
+
+  let options =
+    [ "-name", Arg.String (fun x -> ac_name := Some x), "Aircraft name (mandatory)";
+      "-conf", Arg.String (fun x -> conf_xml := x), (sprintf "Configuration file (default '%s')" default_conf_xml);
+      "-target", Arg.String (fun x -> target := x), "Target to build";
+      "-airframe", Arg.Set gen_af, "Generate airframe file";
+      "-flight_plan", Arg.Set gen_fp, "Generate flight plan file";
+      "-settings", Arg.Set gen_set, "Generate settings file";
+      "-radio", Arg.Set gen_set, "Generate radio file";
+      "-telemetry", Arg.Set gen_tl, "Generate telemetry file";
+      ] in
+
+  Arg.parse
+    options
+    (fun x -> Printf.fprintf stderr "%s: Warning: Don't do anything with '%s' argument\n" Sys.argv.(0) x)
+    "Usage: ";
+
+  let aircraft =
+    match !ac_name with
+    | None -> failwith "An aircraft name is mandatory"
+    | Some ac -> ac
+  in
   try
-    if Array.length Sys.argv < 2 || Array.length Sys.argv > 3 then
-      failwith (sprintf "Usage: %s <Aircraft name> [conf.xml]" Sys.executable_name);
-    let aircraft = Sys.argv.(1) in
-    let conf_xml = if Array.length Sys.argv = 3 then Sys.argv.(2) else default_conf_xml in
-    let conf = ExtXml.parse_file conf_xml in
-    check_unique_id_and_name conf conf_xml;
+    let conf = ExtXml.parse_file !conf_xml in
+    check_unique_id_and_name conf !conf_xml;
     let aircraft_xml =
       try
         ExtXml.child conf ~select:(fun x -> Xml.attrib x "name" = aircraft) "aircraft"
       with
-        Not_found -> failwith (sprintf "Aircraft '%s' not found in '%s'" aircraft conf_xml)
+        Not_found -> failwith (sprintf "Aircraft '%s' not found in '%s'" aircraft !conf_xml)
     in
 
     let value = fun attrib -> ExtXml.attrib aircraft_xml attrib in
 
+    (* Prepare building folders *)
     let aircraft_dir = Env.paparazzi_home // "var" // "aircrafts" // aircraft in
     let aircraft_conf_dir = aircraft_dir // "conf" in
-
-    let airframe_file = value "airframe" in
-    let abs_airframe_file = paparazzi_conf // airframe_file in
-
-    let flight_plan_file = value "flight_plan" in
-    let abs_flight_plan_file = paparazzi_conf // flight_plan_file in
-
     mkdir (Env.paparazzi_home // "var");
     mkdir (Env.paparazzi_home // "var" // "aircrafts");
     mkdir aircraft_dir;
-    mkdir (aircraft_dir // "fbw");
-    mkdir (aircraft_dir // "autopilot");
-    mkdir (aircraft_dir // "sim");
+    mkdir (aircraft_dir // !target);
     mkdir aircraft_conf_dir;
     mkdir (aircraft_conf_dir // "airframes");
     mkdir (aircraft_conf_dir // "flight_plans");
     mkdir (aircraft_conf_dir // "radios");
     mkdir (aircraft_conf_dir // "settings");
     mkdir (aircraft_conf_dir // "telemetry");
+
+    (* Parse file if needed *)
+    let airframe_file = value "airframe" in
+    let abs_airframe_file = paparazzi_conf // airframe_file in
+
+    let abs_radio_file = paparazzi_conf // (value "radio") in
+    let radio_xml = ExtXml.parse_file abs_radio_file in
+    let radio =
+      if !gen_rc then Some (Radio.from_xml radio_xml)
+      else None
+    in
+    
+    let abs_radio_h = aircraft_conf_dir // "radios" // radio_h in
+    if !gen_rc && is_older abs_radio_h [abs_radio_file] then
+      match radio with Some r -> Gen_radio.generate r abs_radio_file abs_radio_h | _ -> ();
+
+
+(**
+    let flight_plan_file = value "flight_plan" in
+    let abs_flight_plan_file = paparazzi_conf // flight_plan_file in
 
     let target = try Sys.getenv "TARGET" with _ -> "" in
     let modules = Gen_common.get_modules_of_config ~target (value "ac_id") (ExtXml.parse_file abs_airframe_file) (ExtXml.parse_file abs_flight_plan_file) in
@@ -256,6 +304,7 @@ let () =
     make_opt "radio_ac_h" "RADIO" "radio";
     make_opt "flight_plan_ac_h" "FLIGHT_PLAN" "flight_plan";
     make "all_ac_h" t
+    *)
   with Failure f ->
     prerr_endline f;
     exit 1

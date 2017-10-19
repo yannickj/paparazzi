@@ -52,11 +52,11 @@ let gen_normalize_ppm_fir = fun out channels ->
     (fun c ->
       let value, min_pprz = norm1_ppm c in
       if c.average then begin
-        fprintf out "  _rc.avg_values[RADIO_%s] += _ppm[RADIO_%s];\\\n" c.name c.name
+        fprintf out "  _rc.avg_values[RADIO_%s] += _ppm[RADIO_%s];\\\n" c.cname c.cname
       end else begin
-        fprintf out "  tmp_radio = _ppm[RADIO_%s] - RC_PPM_TICKS_OF_USEC(%d);\\\n" c.name c.neutral;
-        fprintf out "  _rc.values[RADIO_%s] = %s;\\\n" c.name value;
-        fprintf out "  Bound(_rc.values[RADIO_%s], %s, MAX_PPRZ); \\\n\\\n" c.name min_pprz;
+        fprintf out "  tmp_radio = _ppm[RADIO_%s] - RC_PPM_TICKS_OF_USEC(%d);\\\n" c.cname c.neutral;
+        fprintf out "  _rc.values[RADIO_%s] = %s;\\\n" c.cname value;
+        fprintf out "  Bound(_rc.values[RADIO_%s], %s, MAX_PPRZ); \\\n\\\n" c.cname min_pprz;
       end
     )
     channels;
@@ -67,10 +67,10 @@ let gen_normalize_ppm_fir = fun out channels ->
     (fun c ->
       if c.average then begin
         let value, min_pprz = norm1_ppm c in
-        fprintf out "    tmp_radio = _rc.avg_values[RADIO_%s] / RC_AVG_PERIOD -  RC_PPM_TICKS_OF_USEC(%d);\\\n" c.name c.neutral;
-        fprintf out "    _rc.values[RADIO_%s] = %s;\\\n" c.name value;
-        fprintf out "    _rc.avg_values[RADIO_%s] = 0;\\\n" c.name;
-        fprintf out "    Bound(_rc.values[RADIO_%s], %s, MAX_PPRZ); \\\n\\\n" c.name min_pprz;
+        fprintf out "    tmp_radio = _rc.avg_values[RADIO_%s] / RC_AVG_PERIOD -  RC_PPM_TICKS_OF_USEC(%d);\\\n" c.cname c.neutral;
+        fprintf out "    _rc.values[RADIO_%s] = %s;\\\n" c.cname value;
+        fprintf out "    _rc.avg_values[RADIO_%s] = 0;\\\n" c.cname;
+        fprintf out "    Bound(_rc.values[RADIO_%s], %s, MAX_PPRZ); \\\n\\\n" c.cname min_pprz;
       end
     )
     channels;
@@ -83,20 +83,20 @@ let norm1_ppm2 = fun c ->
   else
     sprintf "(tmp_radio >=0 ? (tmp_radio *  MAX_PPRZ) / (RC_PPM_SIGNED_TICKS_OF_USEC(%d-%d)) : (tmp_radio * MIN_PPRZ) / (RC_PPM_SIGNED_TICKS_OF_USEC(%d-%d)))" c.max c.neutral c.min c.neutral, "MIN_PPRZ"
 
-let gen_normalize_ppm_iir = fun channels ->
+let gen_normalize_ppm_iir = fun out channels ->
   fprintf out "#define NormalizePpmIIR(_ppm, _rc) {\\\n";
   fprintf out "  int32_t tmp_radio;\\\n";
   fprintf out "  int32_t tmp_value;\\\n\\\n";
   List.iter
     (fun c ->
       let value, min_pprz = norm1_ppm2 c in
-      fprintf out "  tmp_radio = _ppm[RADIO_%s] - RC_PPM_TICKS_OF_USEC(%d);\\\n" c.name c.neutral;
+      fprintf out "  tmp_radio = _ppm[RADIO_%s] - RC_PPM_TICKS_OF_USEC(%d);\\\n" c.cname c.neutral;
       fprintf out "  tmp_value = %s;\\\n" value;
       fprintf out "  Bound(tmp_value, %s, MAX_PPRZ); \\\n" min_pprz;
       if c.average then
-        fprintf out "  _rc.values[RADIO_%s] = (pprz_t)((RADIO_FILTER * _rc.values[RADIO_%s] + tmp_value) / (RADIO_FILTER + 1));\\\n\\\n" c.name c.name
+        fprintf out "  _rc.values[RADIO_%s] = (pprz_t)((RADIO_FILTER * _rc.values[RADIO_%s] + tmp_value) / (RADIO_FILTER + 1));\\\n\\\n" c.cname c.cname
       else
-        fprintf out "  _rc.values[RADIO_%s] = (pprz_t)(tmp_value);\\\n\\\n" c.name
+        fprintf out "  _rc.values[RADIO_%s] = (pprz_t)(tmp_value);\\\n\\\n" c.cname
     )
     channels;
   fprintf out "}\n\n"
@@ -114,26 +114,26 @@ let generate = fun radio xml_file out_file ->
   fprintf out "#define RADIO_FILTER 7\n\n";
 
   List.iteri (fun i c ->
-    check_function_name name;
-    fprintf out "#define RADIO_%s %d\n" c.name i;
-    fprintf out "#define RADIO_%s_NEUTRAL %d\n" c.name c.neutral;
+    check_function_name c.cname;
+    fprintf out "#define RADIO_%s %d\n" c.cname i;
+    fprintf out "#define RADIO_%s_NEUTRAL %d\n" c.cname c.neutral;
     let (mini, maxi) = if c.reverse then (c.max, c.min) else (c.min, c.max) in
-    fprintf out "#define RADIO_%s_MIN %d\n" c.name mini;
-    fprintf out "#define RADIO_%s_MAX %d\n\n" c.name maxi;
+    fprintf out "#define RADIO_%s_MIN %d\n" c.cname mini;
+    fprintf out "#define RADIO_%s_MAX %d\n\n" c.cname maxi;
   ) radio.channels;
 
-  let ppm_pulse_type = match c.pulse_type with
+  let ppm_pulse_type = match radio.pulse_type with
   | PositivePulse -> "POSITIVE"
   | NegativePulse -> "NEGATIVE"
   in
   fprintf out "#define PPM_PULSE_TYPE PPM_PULSE_TYPE_%s\n" ppm_pulse_type;
-  fprintf out "#define PPM_DATA_MIN_LEN (%dul)\n" c.data_min;
-  fprintf out "#define PPM_DATA_MAX_LEN (%dul)\n" c.data_max;
-  fprintf out "#define PPM_SYNC_MIN_LEN (%dul)\n" c.sync_min;
-  fprintf out "#define PPM_SYNC_MAX_LEN (%dul)\n\n" c.sync_max;
+  fprintf out "#define PPM_DATA_MIN_LEN (%dul)\n" radio.data_min;
+  fprintf out "#define PPM_DATA_MAX_LEN (%dul)\n" radio.data_max;
+  fprintf out "#define PPM_SYNC_MIN_LEN (%dul)\n" radio.sync_min;
+  fprintf out "#define PPM_SYNC_MAX_LEN (%dul)\n\n" radio.sync_max;
 
-  gen_normalize_ppm_fir channels_params;
-  gen_normalize_ppm_iir channels_params;
+  gen_normalize_ppm_fir out radio.channels;
+  gen_normalize_ppm_iir out radio.channels;
 
   fprintf out "\n#endif // %s\n" h_name;
 
