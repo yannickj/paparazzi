@@ -1,6 +1,7 @@
 (*
  * Copyright (C) 2003-2009 Pascal Brisset, Antoine Drouin, ENAC
  * Copyright (C) 2017 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ *                    Cyril Allignol <cyril.allignol@enac.fr>
  *
  * This file is part of paparazzi.
  *
@@ -34,7 +35,12 @@ let (//) = Filename.concat
 let paparazzi_conf = Env.paparazzi_home // "conf"
 let default_conf_xml = paparazzi_conf // "conf.xml"
 
+let airframe_h = "airframe.h"
 let radio_h = "radio.h"
+let periodic_h = "periodic_telemetry.h"
+let default_periodic_freq = 60
+
+let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
 type t = {
   airframe: Airframe.t option;
@@ -67,61 +73,6 @@ let check_unique_id_and_name = fun conf conf_xml ->
     ) conf
 
 
-(*let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
-  let firmware_name = Xml.attrib firmware "name" in
-  (* get the configures, targets, subsystems and defines for this firmware *)
-  let config, rest = ExtXml.partition_tag "configure" (Xml.children firmware) in
-  let targets, rest = ExtXml.partition_tag "target" rest in
-  let mods, rest = ExtXml.partition_tag "module" rest in
-  let subsystems, rest = ExtXml.partition_tag "subsystem" rest in
-  let defines, _ = ExtXml.partition_tag "define" rest in
-  (* iter on all targets *)
-  List.iter (fun target ->
-    (* get configures, defines and subsystems for this target *)
-    let t_config, rest = ExtXml.partition_tag "configure" (Xml.children target) in
-    let t_defines, rest = ExtXml.partition_tag "define" rest in
-    let t_mods, rest = ExtXml.partition_tag "module" rest in
-    let t_subsystems, _ = ExtXml.partition_tag "subsystem" rest in
-    (* print makefile for this target *)
-    let target_name = Xml.attrib target "name" in
-    fprintf makefile_ac "\n###########\n# -target: '%s'\n" target_name;
-    fprintf makefile_ac "ifeq ($(TARGET), %s)\n" target_name;
-    let target_name = Xml.attrib target "name" in
-    let modules = modules_xml2mk makefile_ac target_name ac_id ac_xml fp in
-    begin (* Check for "processor" attribute *)
-      try
-        let proc = Xml.attrib target "processor" in
-        fprintf makefile_ac "BOARD_PROCESSOR = %s\n" proc
-      with Xml.No_attribute _ -> ()
-    end;
-    begin (* auto activation of generated autopilot if needed *)
-      try
-        let _ = Gen_common.get_autopilot_of_airframe ~target:target_name ac_xml in
-        fprintf makefile_ac "USE_GENERATED_AUTOPILOT = TRUE\n";
-      with Not_found -> ()
-    end;
-    List.iter (configure_xml2mk makefile_ac) config;
-    List.iter (configure_xml2mk makefile_ac) t_config;
-    List.iter (subsystem_configure_xml2mk makefile_ac) subsystems;
-    List.iter (subsystem_configure_xml2mk makefile_ac) t_subsystems;
-    List.iter (subsystem_configure_xml2mk makefile_ac) mods;
-    List.iter (subsystem_configure_xml2mk makefile_ac) t_mods;
-    List.iter (module_configure_xml2mk makefile_ac target_name firmware_name) modules; (* print normal configure from module xml *)
-    fprintf makefile_ac "\ninclude $(PAPARAZZI_SRC)/conf/boards/%s.makefile\n" (Xml.attrib target "board");
-    fprintf makefile_ac "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n\n" (Xml.attrib firmware "name");
-    List.iter (module_configure_xml2mk ~default_configure:true makefile_ac target_name firmware_name) modules; (* print default configure from module xml *)
-    fprintf makefile_ac "\n";
-    List.iter (fun def -> define_xml2mk makefile_ac def) defines;
-    List.iter (fun def -> define_xml2mk makefile_ac def) t_defines;
-    List.iter (module_xml2mk makefile_ac target_name firmware_name) modules;
-    List.iter (fallback_subsys_xml2mk makefile_ac (Gen_common.Var "") firmware target_name) mods;
-    List.iter (fallback_subsys_xml2mk makefile_ac (Gen_common.Var "") firmware target_name) t_mods;
-    List.iter (subsystem_xml2mk makefile_ac firmware) t_subsystems;
-    List.iter (subsystem_xml2mk makefile_ac firmware) subsystems;
-    fprintf makefile_ac "\nendif # end of target '%s'\n\n" target_name
-  ) targets
-*)
-
 let is_older = fun target_file dep_files ->
   not (Sys.file_exists target_file) ||
     let target_file_time = (U.stat target_file).U.st_mtime in
@@ -132,6 +83,33 @@ let is_older = fun target_file dep_files ->
 
 let make_element = fun t a c -> Xml.Element (t,a,c)
 
+(** Extract a configuration element from aircraft config,
+ *  returns a tuple with absolute file path and element object
+ * 
+ * [bool -> Xml.xml -> string -> (Xml.xml -> a') -> (string * a' option)]
+ *)
+let get_config_element = fun flag ac_xml elt f ->
+  if flag then
+    ("", None) (* generation is not requested *)
+  else
+    try
+      let file = Xml.attrib ac_xml elt in
+      let abs_file = paparazzi_conf // file in
+      let xml = ExtXml.parse_file abs_file in
+      (abs_file, Some (f xml))
+    with Xml.No_attribute _ -> ("", None) (* no attribute elt in conf file *)
+
+(** Generate a configuration element
+ *  Also check dependencies
+ *
+ * [a' option -> (a' -> unit) -> (string * string list) list -> unit]
+ *)
+let generate_config_element = fun elt f dep_list ->
+  match elt with
+  | None -> ()
+  | Some e ->
+      if List.exists (fun (file, dep) -> is_older file dep) dep_list then f e
+      else ()
 
 (******************************* MAIN ****************************************)
 let () =
@@ -142,7 +120,8 @@ let () =
   and gen_fp = ref false
   and gen_set = ref false
   and gen_rc = ref false
-  and gen_tl = ref false in
+  and gen_tl = ref false
+  and tl_freq = ref default_periodic_freq in
 
   let options =
     [ "-name", Arg.String (fun x -> ac_name := Some x), "Aircraft name (mandatory)";
@@ -153,6 +132,7 @@ let () =
       "-settings", Arg.Set gen_set, "Generate settings file";
       "-radio", Arg.Set gen_set, "Generate radio file";
       "-telemetry", Arg.Set gen_tl, "Generate telemetry file";
+      "-periodic_freq", Arg.Int (fun x -> tl_freq := x), (sprintf "Periodic telemetry frequency (default %d)" default_periodic_freq)
       ] in
 
   Arg.parse
@@ -180,6 +160,7 @@ let () =
     (* Prepare building folders *)
     let aircraft_dir = Env.paparazzi_home // "var" // "aircrafts" // aircraft in
     let aircraft_conf_dir = aircraft_dir // "conf" in
+    let aircraft_gen_dir = aircraft_dir // !target // "generated" in
     mkdir (Env.paparazzi_home // "var");
     mkdir (Env.paparazzi_home // "var" // "aircrafts");
     mkdir aircraft_dir;
@@ -192,19 +173,24 @@ let () =
     mkdir (aircraft_conf_dir // "telemetry");
 
     (* Parse file if needed *)
-    let airframe_file = value "airframe" in
-    let abs_airframe_file = paparazzi_conf // airframe_file in
+    let abs_airframe_file, airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_xml in
+    (*let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in*)
+    let abs_radio_file, radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_xml in
+    let abs_telemetry_file, telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_xml in
 
-    let abs_radio_file = paparazzi_conf // (value "radio") in
-    let radio_xml = ExtXml.parse_file abs_radio_file in
-    let radio =
-      if !gen_rc then Some (Radio.from_xml radio_xml)
-      else None
-    in
-    
-    let abs_radio_h = aircraft_conf_dir // "radios" // radio_h in
-    if !gen_rc && is_older abs_radio_h [abs_radio_file] then
-      match radio with Some r -> Gen_radio.generate r abs_radio_file abs_radio_h | _ -> ();
+    (* TODO extract/filter/resolve modules *)
+
+    (* Generate output files *)
+    let abs_airframe_h = aircraft_gen_dir // airframe_h in
+    generate_config_element airframe
+     (fun e -> Gen_airframe.generate e (value "ac_id") (get_string_opt !ac_name) "0x42" abs_airframe_file abs_airframe_h) (* TODO compute correct MD5SUM *)
+     [ (abs_airframe_h, [abs_airframe_file]) ]; (* TODO add dep in included files *)
+
+    let abs_radio_h = aircraft_gen_dir // radio_h in
+    generate_config_element radio (fun e -> Gen_radio.generate e abs_radio_file abs_radio_h) [ (abs_radio_h, [abs_radio_file]) ];
+
+    let abs_telemetry_h = aircraft_gen_dir // periodic_h in
+    generate_config_element telemetry (fun e -> Gen_periodic.generate e !tl_freq abs_telemetry_h) [ (abs_telemetry_h, [abs_telemetry_file]) ];
 
 
 (**

@@ -323,39 +323,35 @@ module Let = struct
 
 end
 
-module Makefile = struct
-
-  type t = { target: string option;
-             location: string option;
-             contents: string;
-             xml: Xml.xml }
-
-  let from_xml = function
-    | Xml.Element ("makefile", attrs, [Xml.PCData contents]) as xml ->
-        { target = find_opt "target" attrs;
-          location = find_opt "location" attrs;
-          contents; xml }
-    | _ -> failwith "Airframe.Makefile.from_xml: unreachable"
-
-end
-
 type ap_only_command
 type command_law
 type section
 type heli_curve
 
 type t = {
+    name: string;
     includes: Include.t list;
-    servos: Servo.t list;
+    (*servos: Servo.t list;
     commands: Axis.t list;
     rc_commands: Set.t list;
     auto_rc_commands: Set.t list;
     ap_only_commands: ap_only_command list;
     command_laws: command_law list;
-    sections: section list;
-    makefiles: Makefile.t list;
-    modules: Module.t list;
+    sections: section list;*)
+    modules: Module_af.t list;
     firmwares: Firmware.t list;
     autopilots: Autopilot.t list;
-    heli_curves: heli_curve list
+    (*heli_curves: heli_curve list;*)
+    xml: Xml.xml
   }
+
+let from_xml = function
+  | Xml.Element ("airframe", [("name", name)], children) as xml ->
+      { name;
+        includes = parse_children "include" Include.from_xml children;
+        modules = parse_children "modules" Module_af.from_xml children; (*TODO remove and warn user *)
+        firmwares = parse_children "firmware" Firmware.from_xml children;
+        autopilots = parse_children "autopilot" Autopilot.from_xml children;
+        xml }
+  | _ -> failwith "Airframe.from_xml: unreachable"
+

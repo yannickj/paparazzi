@@ -36,6 +36,14 @@ let define = fun n x ->
 let define_string = fun n x ->
   define n ("\""^x^"\"")
 
+let define_out = fun n x out ->
+  match x with
+      "" -> fprintf out "#define %s\n" n
+    | _ -> fprintf out "#define %s %s\n" n x
+
+let define_string_out = fun n x out ->
+  define_out n ("\""^x^"\"") out
+
 
 let xml_error s = failwith ("Bad XML tag: "^s^ " expected")
 
@@ -77,6 +85,9 @@ let start_and_begin_c = fun xml_file name ->
 
 let finish = fun h_name ->
   printf "\n#endif // %s\n" h_name
+
+let finish_out = fun h_name out ->
+  fprintf out "\n#endif // %s\n" h_name
 
 let warning s =
   Printf.fprintf stderr "##################################################\n";
