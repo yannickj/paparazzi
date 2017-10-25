@@ -14,7 +14,7 @@
                         SD card backside,  molex upside, power rightside) 
 -->
 
-<airframe name="FaultyZagi">
+<airframe name="FaultyZagi2">
 
   <firmware name="fixedwing">
     <define name="USE_I2C1"/>
@@ -84,9 +84,9 @@
   </firmware>
 
   <servos>
-    <servo name="MOTOR"         no="0" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_LEFT"  no="1" max="1100" neutral="1586" min="1900"/>
-    <servo name="AILEVON_RIGHT" no="2" max="1900" neutral="1416" min="1100"/>
+    <servo name="MOTOR" no="0" min="1040" neutral="1040" max="2000"/>
+    <servo name="AILEVON_LEFT" no="1" max="1100" neutral="1534" min="1900"/>
+    <servo name="AILEVON_RIGHT" no="2" max="1900" neutral="1531" min="1100"/>
   </servos>
 
   <commands>
@@ -160,7 +160,7 @@
     <define name="ACCEL_Z_SENS" value="2.45381364992" integer="16"/>
 
     <define name="BODY_TO_IMU_PHI" value="0"/>
-    <define name="BODY_TO_IMU_THETA" value="0"/>
+    <define name="BODY_TO_IMU_THETA" value="0.0349069999999"/>
     <define name="BODY_TO_IMU_PSI" value="0"/>
   </section>
 
@@ -201,12 +201,12 @@
     <define name="AUTO_CLIMB_LIMIT" value="2*V_CTL_ALTITUDE_MAX_CLIMB"/>
 
     <!-- Cruise throttle + limits -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.40"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.41"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
 
     <!-- Climb loop (throttle) -->
-    <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.088" unit="%/(m/s)"/>
+    <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.2" unit="%/(m/s)"/>
     <define name="AUTO_THROTTLE_PGAIN" value="0.004"/>
     <define name="AUTO_THROTTLE_DGAIN" value="0.0"/>
     <define name="AUTO_THROTTLE_IGAIN" value="0."/>
@@ -218,6 +218,7 @@
     <define name="AUTO_PITCH_IGAIN" value="0.0"/>
     <define name="AUTO_PITCH_MAX_PITCH" value="20" unit="deg"/>
     <define name="AUTO_PITCH_MIN_PITCH" value="-20" unit="deg"/>
+	<define name="PITCH_TRIM" value="6" unit="deg"/>
 
     <!-- airspeed control -->
     <!--XPA NOT USED />
@@ -249,7 +250,7 @@
     <define name="COURSE_PGAIN" value="0.743"/>
     <!--XPA NOT USED />
     <define name="COURSE_TAU" value="0.5"/-->
-    <define name="ROLL_MAX_SETPOINT" value="30." unit="deg"/>
+    <define name="ROLL_MAX_SETPOINT" value="40." unit="deg"/>
     <define name="PITCH_MAX_SETPOINT" value="30." unit="deg"/>
     <define name="PITCH_MIN_SETPOINT" value="-30." unit="deg"/>
 
@@ -260,7 +261,7 @@
     <define name="ROLL_KFFA" value="0"/>
     <define name="ROLL_KFFD" value="0"/-->
 
-    <define name="PITCH_PGAIN" value="10250"/>
+    <define name="PITCH_PGAIN" value="17250"/>
     <define name="PITCH_DGAIN" value="500."/>
     <define name="PITCH_IGAIN" value="400"/>
 
@@ -279,7 +280,7 @@
   </section-->
 
   <section name="CATAPULT" prefix="NAV_CATAPULT_">
-    <define name="ACCELERATION_THRESHOLD" value="0.7"/>
+    <define name="ACCELERATION_THRESHOLD" value="1.0"/>
     <define name="INITIAL_PITCH" value="20" unit="deg"/>
     <define name="CLIMB_DISTANCE" value="160"/>
   </section>
