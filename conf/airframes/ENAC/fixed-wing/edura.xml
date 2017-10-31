@@ -47,9 +47,14 @@
   <servos>
     <!-- uncomment for propelled flight -->
     <servo name="MOTOR" no="4" min="1290" neutral="1290" max="1810"/>
+    
+    <!-- elevator / black -->
     <servo name="ELEV"  no="0" min="1400" neutral="1640" max="1880"/>
+    <!-- rudder / red -->
     <servo name="RUDD"  no="1" min="1280" neutral="1640" max="2000"/>
+    <!-- aileron left / white -->
     <servo name="AILL"  no="2" min="1000" neutral="1500" max="2000"/>
+    <!-- aileron right / yellow -->
     <servo name="AILR"  no="3" min="1000" neutral="1500" max="2000"/>
   </servos>
 
