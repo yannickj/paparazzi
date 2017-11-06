@@ -56,8 +56,8 @@ let define_integer out name v n =
   let max_val = 1 lsl n in
   let (v,s) = if v >= 0. then (v, 1) else (-.v, -1) in
   let print = fun name num den ->
-    define_out (name^"_NUM") (string_of_int num) out;
-    define_out (name^"_DEN") (string_of_int den) out in
+    define_out out (name^"_NUM") (string_of_int num);
+    define_out out (name^"_DEN") (string_of_int den) in
   let rec continious_frac = fun a x num den s ->
     let x1 = 1. /. (x -. (float_of_int a)) in
     let a1 = truncate x1 in
@@ -138,7 +138,7 @@ let parse_element = fun out prefix s ->
           in
           let name = (prefix^ExtXml.attrib s "name") in
           let t = ExtXml.attrib_or_default s "type" "" in
-          define_out name (string_from_type name value t) out;
+          define_out out name (string_from_type name value t);
           define_integer out name (ExtXml.float_attrib s "value") (ExtXml.int_attrib s "integer");
         with _ -> ();
       end
@@ -171,7 +171,7 @@ let parse_servo = fun out driver c ->
   let name = "SERVO_"^shortname
   and no_servo = int_of_string (ExtXml.attrib c "no") in
 
-  define_out name (string_of_int no_servo) out;
+  define_out out name (string_of_int no_servo);
 
   let min = fos (ExtXml.attrib c "min" )
   and neutral = fos (ExtXml.attrib c "neutral")
@@ -180,17 +180,17 @@ let parse_servo = fun out driver c ->
   let travel_up = (max-.neutral) /. max_pprz
   and travel_down = (neutral-.min) /. max_pprz in
 
-  define_out (name^"_NEUTRAL") (sof neutral) out;
-  define_out (name^"_TRAVEL_UP") (sof travel_up) out;
+  define_out out (name^"_NEUTRAL") (sof neutral);
+  define_out out (name^"_TRAVEL_UP") (sof travel_up);
   define_integer out (name^"_TRAVEL_UP") travel_up 16;
-  define_out (name^"_TRAVEL_DOWN") (sof travel_down) out;
+  define_out out (name^"_TRAVEL_DOWN") (sof travel_down);
   define_integer out (name^"_TRAVEL_DOWN") travel_down 16;
 
   let min = Pervasives.min min max
   and max = Pervasives.max min max in
 
-  define_out (name^"_MAX") (sof max) out;
-  define_out (name^"_MIN") (sof min) out;
+  define_out out (name^"_MAX") (sof max);
+  define_out out (name^"_MIN") (sof min);
   fprintf out "\n";
 
   (* Memorize the associated driver (if any) and global index (insertion order) *)
@@ -214,7 +214,7 @@ let print_actuators_idx = fun out ->
     fprintf out "  Actuator%sSet(SERVO_%s, actuators[SERVO_%s_IDX]); \\\n" d s s;
     fprintf out "}\n\n"
   ) servos_drivers;
-  define_out "ACTUATORS_NB" (string_of_int (Hashtbl.length servos_drivers)) out;
+  define_out out "ACTUATORS_NB" (string_of_int (Hashtbl.length servos_drivers));
   fprintf out "\n"
 
 let parse_command_laws = fun out command ->
@@ -275,7 +275,7 @@ let parse_ap_only_commands = fun out ap_only ->
 
 let parse_command = fun out command no ->
   let command_name = "COMMAND_"^ExtXml.attrib command "name" in
-  define_out command_name (string_of_int no) out;
+  define_out out command_name (string_of_int no);
   let failsafe_value = int_of_string (ExtXml.attrib command "failsafe_value") in
   { failsafe_value = failsafe_value; foo = 0}
 
@@ -294,7 +294,7 @@ let rec parse_section = fun out ac_id s ->
   match Xml.tag s with
       "section" ->
         let prefix = ExtXml.attrib_or_default s "prefix" "" in
-        define_out ("SECTION_"^ExtXml.attrib s "name") "1" out;
+        define_out out ("SECTION_"^ExtXml.attrib s "name") "1";
         List.iter (parse_element out prefix) (Xml.children s);
         fprintf out "\n";
     | "servos" ->
@@ -302,7 +302,7 @@ let rec parse_section = fun out ac_id s ->
       let servos = Xml.children s in
       let nb_servos = List.fold_right (fun s m -> Pervasives.max (int_of_string (ExtXml.attrib s "no")) m) servos min_int + 1 in
 
-      define_out (sprintf "SERVOS_%s_NB" (Compat.bytes_uppercase driver)) (string_of_int nb_servos) out;
+      define_out out (sprintf "SERVOS_%s_NB" (Compat.bytes_uppercase driver)) (string_of_int nb_servos);
       fprintf out "#include \"subsystems/actuators/actuators_%s.h\"\n" (Compat.bytes_lowercase driver);
       fprintf out "\n";
       List.iter (parse_servo out driver) servos;
@@ -311,8 +311,8 @@ let rec parse_section = fun out ac_id s ->
     | "commands" ->
       let commands = Array.of_list (Xml.children s) in
       let commands_params = Array.mapi (fun i c -> parse_command out c i) commands in
-      define_out "COMMANDS_NB" (string_of_int (Array.length commands)) out;
-      define_out "COMMANDS_FAILSAFE" (sprint_float_array (List.map (fun x -> string_of_int x.failsafe_value) (Array.to_list commands_params))) out;
+      define_out out "COMMANDS_NB" (string_of_int (Array.length commands));
+      define_out out "COMMANDS_FAILSAFE" (sprint_float_array (List.map (fun x -> string_of_int x.failsafe_value) (Array.to_list commands_params)));
       fprintf out "\n\n"
     | "rc_commands" ->
       fprintf out "#define SetCommandsFromRC(_commands_array, _rc_array) { \\\n";
@@ -348,9 +348,9 @@ let rec parse_section = fun out ac_id s ->
       let default = ExtXml.attrib_or_default s "default" "0" in
       let curves = Xml.children s in
       let nb_points = List.fold_right (fun s m -> Pervasives.max (List.length (Str.split (Str.regexp ",") (ExtXml.attrib s "throttle"))) m) curves 0 in
-      define_out "THROTTLE_CURVE_MODE_INIT" default out;
-      define_out "THROTTLE_CURVES_NB" (string_of_int (List.length curves)) out;
-      define_out "THROTTLE_POINTS_NB" (string_of_int nb_points) out;
+      define_out out "THROTTLE_CURVE_MODE_INIT" default;
+      define_out out "THROTTLE_CURVES_NB" (string_of_int (List.length curves));
+      define_out out "THROTTLE_POINTS_NB" (string_of_int nb_points);
       fprintf out "#define THROTTLE_CURVES { \\\n";
       List.iter (parse_heli_curves out) curves;
       fprintf out "}\n\n";
@@ -383,11 +383,11 @@ let hex_to_bin = fun s ->
 let generate = fun airframe ac_id ac_name md5sum xml_file out_file ->
   let out = open_out out_file in
 
-  begin_out xml_file h_name out;
-  define_string_out "AIRFRAME_NAME" ac_name out;
-  define_out "AC_ID" ac_id out;
-  define_out "MD5SUM" (sprintf "((uint8_t*)\"%s\")" (hex_to_bin md5sum)) out;
+  begin_out out xml_file h_name;
+  define_string_out out "AIRFRAME_NAME" ac_name;
+  define_out out "AC_ID" ac_id;
+  define_out out "MD5SUM" (sprintf "((uint8_t*)\"%s\")" (hex_to_bin md5sum));
   fprintf out "\n";
   List.iter (parse_section out ac_id) (Xml.children airframe.Airframe.xml);
-  finish_out h_name out
+  finish_out out h_name
 
