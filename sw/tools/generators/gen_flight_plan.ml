@@ -122,32 +122,32 @@ let localize_waypoint = fun rel_utm_of_wgs84 waypoint ->
         waypoint
 
 
-let print_waypoint_utm = fun default_alt waypoint ->
+let print_waypoint_utm = fun out default_alt waypoint ->
   let (x, y) = (float_attrib waypoint "x", float_attrib waypoint "y")
   and alt = try sof (float_attrib waypoint "height" +. !ground_alt) with _ -> default_alt in
   let alt = try Xml.attrib waypoint "alt" with _ -> alt in
   check_altitude (float_of_string alt) waypoint;
-  printf " {%.1f, %.1f, %s},\\\n" x y alt
+  fprintf out " {%.1f, %.1f, %s},\\\n" x y alt
 
-let print_waypoint_enu = fun utm0 default_alt waypoint ->
+let print_waypoint_enu = fun out utm0 default_alt waypoint ->
   let (x, y) = (float_attrib waypoint "x", float_attrib waypoint "y")
   and alt = try sof (float_attrib waypoint "height" +. !ground_alt) with _ -> default_alt in
   let alt = try Xml.attrib waypoint "alt" with _ -> alt in
   let ecef0 = Latlong.ecef_of_geo Latlong.WGS84 (Latlong.of_utm Latlong.WGS84 utm0) !ground_alt in
   let ecef = Latlong.ecef_of_geo Latlong.WGS84 (Latlong.of_utm Latlong.WGS84 (Latlong.utm_add utm0 (x, y))) (float_of_string alt) in
   let ned = Latlong.array_of_ned (Latlong.ned_of_ecef ecef0 ecef) in
-  printf " {%.2f, %.2f, %.2f}, /* ENU in meters  */ \\\n" ned.(1) ned.(0) (-.ned.(2))
+  fprintf out " {%.2f, %.2f, %.2f}, /* ENU in meters  */ \\\n" ned.(1) ned.(0) (-.ned.(2))
 
 let convert_angle = fun rad -> Int64.of_float (1e7 *. (Rad>>Deg)rad)
 
-let print_waypoint_lla = fun utm0 default_alt waypoint ->
+let print_waypoint_lla = fun out utm0 default_alt waypoint ->
   let (x, y) = (float_attrib waypoint "x", float_attrib waypoint "y")
   and alt = try sof (float_attrib waypoint "height" +. !ground_alt) with _ -> default_alt in
   let alt = try Xml.attrib waypoint "alt" with _ -> alt in
   let wgs84 = Latlong.of_utm Latlong.WGS84 (Latlong.utm_add utm0 (x, y)) in
-  printf " {.lat=%Ld, .lon=%Ld, .alt=%.0f}, /* 1e7deg, 1e7deg, mm (above NAV_MSL0, local msl=%.2fm) */ \\\n" (convert_angle wgs84.posn_lat) (convert_angle wgs84.posn_long) (1000. *. float_of_string alt) (Egm96.of_wgs84 wgs84)
+  fprintf out " {.lat=%Ld, .lon=%Ld, .alt=%.0f}, /* 1e7deg, 1e7deg, mm (above NAV_MSL0, local msl=%.2fm) */ \\\n" (convert_angle wgs84.posn_lat) (convert_angle wgs84.posn_long) (1000. *. float_of_string alt) (Egm96.of_wgs84 wgs84)
 
-let print_waypoint_lla_wgs84 = fun utm0 default_alt waypoint ->
+let print_waypoint_lla_wgs84 = fun out utm0 default_alt waypoint ->
   let (x, y) = (float_attrib waypoint "x", float_attrib waypoint "y")
   and alt = try sof (float_attrib waypoint "height" +. !ground_alt) with _ -> default_alt in
   let alt = try Xml.attrib waypoint "alt" with _ -> alt in
@@ -155,13 +155,13 @@ let print_waypoint_lla_wgs84 = fun utm0 default_alt waypoint ->
   if Srtm.available wgs84 then
     check_altitude_srtm (float_of_string alt) waypoint wgs84;
   let alt = float_of_string alt +. Egm96.of_wgs84 wgs84 in
-  printf " {.lat=%Ld, .lon=%Ld, .alt=%.0f}, /* 1e7deg, 1e7deg, mm (above WGS84 ref ellipsoid) */ \\\n" (convert_angle wgs84.posn_lat) (convert_angle wgs84.posn_long) (1000. *. alt)
+  fprintf out " {.lat=%Ld, .lon=%Ld, .alt=%.0f}, /* 1e7deg, 1e7deg, mm (above WGS84 ref ellipsoid) */ \\\n" (convert_angle wgs84.posn_lat) (convert_angle wgs84.posn_long) (1000. *. alt)
 
-let print_waypoint_global = fun waypoint ->
+let print_waypoint_global = fun out waypoint ->
   try
     let (_, _) = (float_attrib waypoint "lat", float_attrib waypoint "lon") in
-    printf " TRUE, \\\n"
-  with _ -> printf " FALSE, \\\n"
+    fprintf out " TRUE, \\\n"
+  with _ -> fprintf out " FALSE, \\\n"
 
 let get_index_block = fun x ->
   try
@@ -169,7 +169,7 @@ let get_index_block = fun x ->
   with
       Not_found -> failwith (sprintf "Unknown block: '%s'" x)
 
-let print_exception = fun x ->
+let print_exception = fun out x ->
   let c = parsed_attrib x "cond" in
   let i = get_index_block (ExtXml.attrib x "deroute") in
   begin
@@ -190,7 +190,7 @@ let home_block = Xml.parse_string "<block name=\"HOME\"><home/></block>"
 
 let stage = ref 0
 
-let output_label l = lprintf out "Label(%s)\n" l
+let output_label out l = lprintf out "Label(%s)\n" l
 
 let get_index_waypoint = fun x l ->
   try
@@ -211,7 +211,7 @@ let pprz_throttle = fun s ->
 
 
 (********************* Vertical control ********************************************)
-let output_vmode = fun stage_xml wp last_wp ->
+let output_vmode = fun out stage_xml wp last_wp ->
   let pitch = try Xml.attrib stage_xml "pitch" with _ -> "0.0" in
   if String.lowercase (Xml.tag stage_xml) <> "manual"
   then begin
@@ -268,7 +268,7 @@ let output_vmode = fun stage_xml wp last_wp ->
   vmode
 
 (****************** Horizontal control *********************************************)
-let output_hmode x wp last_wp =
+let output_hmode out x wp last_wp =
   try
     let hmode = ExtXml.attrib x "hmode" in
     begin
@@ -319,56 +319,56 @@ let rec index_stage = fun x ->
 let inside_function = fun name -> "Inside" ^ String.capitalize name
 
 (* pre call utility function *)
-let fp_pre_call = fun x ->
+let fp_pre_call = fun out x ->
   try lprintf out "%s;\n" (ExtXml.attrib x "pre_call") with _ -> ()
 
 (* post call utility function *)
-let fp_post_call = fun x ->
+let fp_post_call = fun out x ->
   try lprintf out "%s;\n" (ExtXml.attrib x "post_call") with _ -> ()
 
 
 (* test until condition test if any, post_call before leaving *)
-let stage_until = fun x ->
+let stage_until = fun out x ->
   try
     let cond = parsed_attrib x "until" in
     lprintf out "if (%s) {\n" cond;
     right ();
-    fp_post_call x;
+    fp_post_call out x;
     lprintf out "NextStageAndBreak()\n";
     left ();
     lprintf out "}\n"
   with ExtXml.Error _ -> () (* fallback when "until" attribute doesn't exist *)
 
-let rec print_stage = fun index_of_waypoints x ->
-  let stage () = incr stage;lprintf out "Stage(%d)\n" !stage; right () in
+let rec print_stage = fun out index_of_waypoints x ->
+  let stage out = incr stage; lprintf out "Stage(%d)\n" !stage; right () in
   begin
     match String.lowercase (Xml.tag x) with
       | "return" ->
-        stage ();
+        stage out;
         lprintf out "Return(%s);\n" (ExtXml.attrib_or_default x "reset_stage" "0");
         lprintf out "break;\n"
       | "goto" ->
-        stage ();
+        stage out;
         lprintf out "Goto(%s)\n" (name_of x)
       | "deroute" ->
-        stage ();
+        stage out;
         lprintf out "GotoBlock(%d);\n" (get_index_block (ExtXml.attrib x "block"));
         lprintf out "break;\n"
       | "exit_block" ->
         lprintf out "default:\n";
-        stage ();
+        stage out;
         lprintf out "NextBlock();\n";
         lprintf out "break;\n"
       | "while" ->
         let w = gen_label "while" in
         let e = gen_label "endwhile" in
-        output_label w;
-        stage ();
+        output_label out w;
+        stage out;
         let c = try parsed_attrib x "cond" with _ -> "TRUE" in
         lprintf out "if (! (%s)) Goto(%s) else NextStageAndBreak();\n" c e;
-        List.iter (print_stage index_of_waypoints) (Xml.children x);
-        print_stage index_of_waypoints (goto w);
-        output_label e
+        List.iter (print_stage out index_of_waypoints) (Xml.children x);
+        print_stage out index_of_waypoints (goto w);
+        output_label out e
       | "for" ->
         let f = gen_label "for" in
         let e = gen_label "endfor" in
@@ -380,53 +380,53 @@ let rec print_stage = fun index_of_waypoints x ->
         lprintf out "static int8_t %s;\n" to_var;
 
         (* init *)
-        stage ();
+        stage out;
         lprintf out "%s = %s - 1;\n" v from_;
         lprintf out "%s = %s;\n" to_var to_expr;
         left ();
 
-        output_label f;
-        stage ();
+        output_label out f;
+        stage out;
         lprintf out "if (++%s > %s) Goto(%s) else NextStageAndBreak();\n" v to_var e;
-        List.iter (print_stage index_of_waypoints) (Xml.children x);
-        print_stage index_of_waypoints (goto f);
-        output_label e
+        List.iter (print_stage out index_of_waypoints) (Xml.children x);
+        print_stage out index_of_waypoints (goto f);
+        output_label out e
       | "heading" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         lprintf out "NavHeading(RadOfDeg(%s));\n" (parsed_attrib x "course");
-        ignore (output_vmode x "" "");
-        stage_until x;
-        fp_post_call x;
+        ignore (output_vmode out x "" "");
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "follow" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         let id = ExtXml.attrib x "ac_id"
         and d = ExtXml.attrib x "distance"
         and h = ExtXml.attrib x "height" in
         lprintf out "NavFollow(%s, %s, %s);\n" id d h;
-        fp_post_call x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "attitude" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         lprintf out "NavAttitude(RadOfDeg(%s));\n" (parsed_attrib x "roll");
-        ignore (output_vmode x "" "");
-        stage_until x;
-        fp_post_call x;
+        ignore (output_vmode out x "" "");
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "manual" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         lprintf out "NavSetManual(%s, %s, %s);\n" (parsed_attrib x "roll") (parsed_attrib x "pitch") (parsed_attrib x "yaw");
-        ignore (output_vmode x "" "");
-        stage_until x;
-        fp_post_call x;
+        ignore (output_vmode out x "" "");
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "go" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         let wp =
           try
             get_index_waypoint (ExtXml.attrib x "wp") index_of_waypoints
@@ -453,96 +453,96 @@ let rec print_stage = fun index_of_waypoints x ->
         else
           lprintf out "if (NavApproachingFrom(%s,%s,%s)) {\n" wp last_wp at;
         right ();
-        fp_post_call x;
+        fp_post_call out x;
         lprintf out "NextStageAndBreakFrom(%s);\n" wp;
         left ();
         lprintf out "} else {\n";
         right ();
-        let hmode = output_hmode x wp last_wp in
-        let vmode = output_vmode x wp last_wp in
+        let hmode = output_hmode out x wp last_wp in
+        let vmode = output_vmode out x wp last_wp in
         if vmode = "glide" && hmode <> "route" then
           failwith "glide vmode requires route hmode";
         left (); lprintf out "}\n";
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "stay" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         begin
           try
             let wp = get_index_waypoint (ExtXml.attrib x "wp") index_of_waypoints in
-            ignore (output_hmode x wp "");
-            ignore (output_vmode x wp "");
+            ignore (output_hmode out x wp "");
+            ignore (output_vmode out x wp "");
           with
               Xml2h.Error _ ->
                 lprintf out "NavGotoXY(last_x, last_y);\n";
-                ignore(output_vmode x "" "")
+                ignore(output_vmode out x "" "")
         end;
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "xyz" ->
-        stage ();
-        fp_pre_call x;
-        let r = try parsed_attrib  x "radius" with _ -> "100" in
+        stage out;
+        fp_pre_call out x;
+        let r = try parsed_attrib x "radius" with _ -> "100" in
         lprintf out "Goto3D(%s)\n" r;
         let x = ExtXml.subst_attrib "vmode" "xyz" x in
-        ignore (output_vmode x "" ""); (** To handle "pitch" *)
-        fp_post_call x;
+        ignore (output_vmode out x "" ""); (** To handle "pitch" *)
+        fp_post_call out x;
         lprintf out "break;\n"
       | "home" ->
-        stage ();
+        stage out;
         lprintf out "nav_home();\n";
         lprintf out "break;\n"
       | "circle" ->
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         let wp = get_index_waypoint (ExtXml.attrib x "wp") index_of_waypoints in
         let r = parsed_attrib  x "radius" in
-        let _vmode = output_vmode x wp "" in
+        let _vmode = output_vmode out x wp "" in
         lprintf out "NavCircleWaypoint(%s, %s);\n" wp r;
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "eight" ->
-        stage ();
+        stage out;
         lprintf out "nav_eight_init();\n";
         lprintf out "NextStageAndBreak();\n";
         left ();
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         let center = get_index_waypoint (ExtXml.attrib x "center") index_of_waypoints
         and turn_about = get_index_waypoint (ExtXml.attrib x "turn_around") index_of_waypoints in
-        let r = parsed_attrib  x "radius" in
-        let _vmode = output_vmode x center "" in
+        let r = parsed_attrib x "radius" in
+        let _vmode = output_vmode out x center "" in
         lprintf out "Eight(%s, %s, %s);\n" center turn_about r;
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "oval" ->
-        stage ();
+        stage out;
         lprintf out "nav_oval_init();\n";
         lprintf out "NextStageAndBreak();\n";
         left ();
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         let p1 = get_index_waypoint (ExtXml.attrib x "p1") index_of_waypoints
         and p2 = get_index_waypoint (ExtXml.attrib x "p2") index_of_waypoints in
         let r = parsed_attrib  x "radius" in
-        let _vmode = output_vmode x p1 "" in
+        let _vmode = output_vmode out x p1 "" in
         lprintf out "Oval(%s, %s, %s);\n" p1 p2 r;
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | "set" ->
-        stage ();
+        stage out;
         let var = ExtXml.attrib  x "var"
         and value = parsed_attrib  x "value" in
         lprintf out "%s = %s;\n" var value;
         lprintf out "NextStage();\n"
       | "call" ->
-        stage ();
+        stage out;
         let statement = ExtXml.attrib  x "fun" in
         (* by default, function is called while returning TRUE *)
         (* otherwise, function is called once and returned value is ignored *)
@@ -578,7 +578,7 @@ let rec print_stage = fun index_of_waypoints x ->
         end
       | "call_once" ->
         (* call_once is an alias for <call fun="x" loop="false"/> *)
-        stage ();
+        stage out;
         let statement = ExtXml.attrib  x "fun" in
         (* by default, go to next stage immediately *)
         let break = String.uppercase (ExtXml.attrib_or_default x "break" "FALSE") in
@@ -593,17 +593,17 @@ let rec print_stage = fun index_of_waypoints x ->
         and wp1 = get_index_waypoint (ExtXml.attrib x "wp1") index_of_waypoints
         and wp2 = get_index_waypoint (ExtXml.attrib x "wp2") index_of_waypoints
         and orientation = ExtXml.attrib_or_default x "orientation" "NS" in
-        stage ();
+        stage out;
         if orientation <> "NS" && orientation <> "WE" then
           failwith (sprintf "Unknown survey orientation (NS or WE): %s" orientation);
         lprintf out "NavSurveyRectangleInit(%s, %s, %s, %s);\n" wp1 wp2 grid orientation;
         lprintf out "NextStageAndBreak();\n";
         left ();
-        stage ();
-        fp_pre_call x;
+        stage out;
+        fp_pre_call out x;
         lprintf out "NavSurveyRectangle(%s, %s);\n" wp1 wp2;
-        stage_until x;
-        fp_post_call x;
+        stage_until out x;
+        fp_post_call out x;
         lprintf out "break;\n"
       | _s -> failwith "Unreachable"
   end;
@@ -651,42 +651,42 @@ let index_blocks = fun xml ->
 
 
 
-let print_block = fun index_of_waypoints (b:Xml.xml) block_num ->
+let print_block = fun out index_of_waypoints (b:Xml.xml) block_num ->
   let n = name_of b in
   (* Block entry *)
   lprintf out "Block(%d) // %s\n" block_num n;
-  fp_pre_call b;
+  fp_pre_call out b;
 
   let excpts, stages =
     List.partition (fun x -> Xml.tag x = "exception") (Xml.children b) in
 
-  List.iter print_exception excpts;
+  List.iter (print_exception out) excpts;
 
   lprintf out "switch(nav_stage) {\n";
   right ();
   stage := (-1);
-  List.iter (print_stage index_of_waypoints) stages;
+  List.iter (print_stage out index_of_waypoints) stages;
 
-  print_stage index_of_waypoints exit_block;
+  print_stage out index_of_waypoints exit_block;
 
   left ();
   lprintf out "}\n";
 
   (* Block exit *)
-  fp_post_call b;
+  fp_post_call out b;
   lprintf out "break;\n\n"
 
 
 
-let print_blocks = fun index_of_waypoints bs ->
+let print_blocks = fun out index_of_waypoints bs ->
   let block = ref (-1) in
-  List.iter (fun b -> incr block; print_block index_of_waypoints b !block) bs
+  List.iter (fun b -> incr block; print_block out index_of_waypoints b !block) bs
 
 let c_suffix =
   let r = Str.regexp "^[a-zA-Z0-9_]*$" in
   fun s -> Str.string_match r s 0
 
-let define_waypoints_indices = fun wpts ->
+let define_waypoints_indices = fun out wpts ->
   let i = ref 0 in
   List.iter (fun w ->
     let n = name_of w in
@@ -741,7 +741,7 @@ let dummy_waypoint =
                [])
 
 
-let print_inside_polygon = fun pts ->
+let print_inside_polygon = fun out pts ->
   let (_, pts) = List.split pts in
   let layers = Geometry_2d.slice_polygon (Array.of_list pts) in
   let rec f = fun i j ->
@@ -766,7 +766,7 @@ let print_inside_polygon = fun pts ->
   in
   f 0 (Array.length layers - 1);;
 
-let print_inside_polygon_global = fun pts ->
+let print_inside_polygon_global = fun out pts ->
   lprintf out "uint8_t i, j;\n";
   lprintf out "bool c = false;\n";
   (* build array of wp id *)
@@ -789,13 +789,13 @@ let print_inside_polygon_global = fun pts ->
 
 type sector_type = StaticSector | DynamicSector
 
-let print_inside_sector = fun t (s, pts) ->
+let print_inside_sector = fun out t (s, pts) ->
   lprintf out "static inline bool %s(float _x, float _y) {\n" (inside_function s);
   right ();
   begin
     match t with
-    | StaticSector -> print_inside_polygon pts
-    | DynamicSector -> print_inside_polygon_global pts
+    | StaticSector -> print_inside_polygon out pts
+    | DynamicSector -> print_inside_polygon_global out pts
   end;
   left ();
   lprintf out "}\n"
@@ -935,7 +935,7 @@ let write_settings = fun xml_file out_set variables ->
 (**
  * Print flight plan header
  *)
-let print_flight_plan_h = xml utm0 out_file ->
+let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   let out = open_out out_file in
 
   let waypoints = Xml.children (ExtXml.child xml "waypoints")
@@ -944,7 +944,7 @@ let print_flight_plan_h = xml utm0 out_file ->
   and global_exceptions = try Xml.children (ExtXml.child xml "exceptions") with _ -> [] in
 
   let h_name = "FLIGHT_PLAN_H" in
-  fprintf out "/* This file has been generated by gen_flight_plan from %s */\n" !xml_file;
+  fprintf out "/* This file has been generated by gen_flight_plan from %s */\n" xml_file;
   fprintf out "/* Version %s */\n" (Env.get_paparazzi_version ());
   fprintf out "/* Please DO NOT EDIT */\n\n";
 
@@ -1008,22 +1008,22 @@ let print_flight_plan_h = xml utm0 out_file ->
   let waypoints = dummy_waypoint :: waypoints in
   let (hx, hy) = home waypoints in
   List.iter (check_distance (hx, hy) mdfh) waypoints;
-  define_waypoints_indices waypoints;
+  define_waypoints_indices out waypoints;
 
   Xml2h.define_out out "WAYPOINTS_UTM" "{ \\";
-  List.iter (print_waypoint_utm alt) waypoints;
+  List.iter (print_waypoint_utm out alt) waypoints;
   lprintf out "};\n";
   Xml2h.define_out out "WAYPOINTS_ENU" "{ \\";
-  List.iter (print_waypoint_enu utm0 alt) waypoints;
+  List.iter (print_waypoint_enu out utm0 alt) waypoints;
   lprintf out "};\n";
   Xml2h.define_out out "WAYPOINTS_LLA" "{ \\";
-  List.iter (print_waypoint_lla utm0 alt) waypoints;
+  List.iter (print_waypoint_lla out utm0 alt) waypoints;
   lprintf out "};\n";
   Xml2h.define_out out "WAYPOINTS_LLA_WGS84" "{ \\";
-  List.iter (print_waypoint_lla_wgs84 utm0 alt) waypoints;
+  List.iter (print_waypoint_lla_wgs84 out utm0 alt) waypoints;
   lprintf out "};\n";
   Xml2h.define_out out "WAYPOINTS_GLOBAL" "{ \\";
-  List.iter print_waypoint_global waypoints;
+  List.iter (print_waypoint_global out) waypoints;
   lprintf out "};\n";
   Xml2h.define_out out "NB_WAYPOINT" (string_of_int (List.length waypoints));
 
@@ -1111,15 +1111,15 @@ let print_flight_plan_h = xml utm0 out_file ->
   let sectors = List.filter (fun x -> String.lowercase (Xml.tag x) = "sector") (Xml.children sectors_element) in
   let sectors_type = List.map (fun x -> match ExtXml.attrib_or_default x "type" "static" with "dynamic" -> DynamicSector | _ -> StaticSector) sectors in
   let sectors = List.map (parse_wpt_sector index_of_waypoints waypoints) sectors in
-  List.iter2 print_inside_sector sectors_type sectors;
+  List.iter2 (print_inside_sector out) sectors_type sectors;
 
   (* print main flight plan state machine *)
   lprintf out "\nstatic inline void auto_nav(void) {\n";
   right ();
-  List.iter print_exception global_exceptions;
+  List.iter (print_exception out) global_exceptions;
   lprintf out "switch (nav_block) {\n";
   right ();
-  print_blocks index_of_waypoints blocks;
+  print_blocks out index_of_waypoints blocks;
   lprintf out "default: break;\n";
   left ();
   lprintf out "}\n";
@@ -1136,27 +1136,27 @@ let print_flight_plan_h = xml utm0 out_file ->
         _ -> ()
   end;
 
-  Xml2h.finish_out out h_name
-  close_out out;
+  Xml2h.finish_out out h_name;
+  close_out out
 
 
 (**
  * Dump expanded version of the flight plan
  *)
-let dump_fligh_plan = xml out_file ->
+let dump_fligh_plan = fun xml out_file ->
   let out = open_out out_file in
   let blocks = Xml.children (ExtXml.child xml "blocks") in
   let xml_stages = Xml.Element ("stages", [], indexed_stages blocks) in
   let dump_xml = Xml.Element ("dump", [], [xml; xml_stages]) in
-  fprintf out "%s\n" (ExtXml.to_string_fmt dump_xml)
-  close_out out;
+  fprintf out "%s\n" (ExtXml.to_string_fmt dump_xml);
+  close_out out
 
 (**
  *
  * MAIN generation function
  *
  **)
-let generate = fun = flight_plan ?(check=false) ?(dump=false) xml_file out_fp ->
+let generate = fun flight_plan ?(check=false) ?(dump=false) xml_file out_fp ->
 
   let xml = flight_plan.Flight_plan.xml in
   fp_wgs84 := georef_of_xml xml;
@@ -1183,7 +1183,7 @@ let generate = fun = flight_plan ?(check=false) ?(dump=false) xml_file out_fp ->
   let xml = ExtXml.subst_child "waypoints" (element "waypoints" [] waypoints) xml in
 
   if dump then dump_fligh_plan xml out_fp
-  else print_flight_plan_h xml utm0 out_fp;
+  else print_flight_plan_h xml utm0 xml_file out_fp
 
 
       (* output settings file if needed  TODO move to gen_settings *)
