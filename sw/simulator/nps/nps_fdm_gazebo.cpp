@@ -31,45 +31,59 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include <sys/time.h>
 
 #include <gazebo/gazebo.hh>
 #include <gazebo/common/common.hh>
+#include <gazebo/math/gzmath.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/sensors/sensors.hh>
 #include <gazebo/gazebo_config.h>
+#include <sdf/sdf.hh>
 
 extern "C" {
-#include <sys/time.h>
-
 #include "nps_fdm.h"
-#include "math/pprz_algebra_double.h"
+#include "nps_autopilot.h"
 
 #include "generated/airframe.h"
 #include "autopilot.h"
 
-#ifdef NPS_SIMULATE_VIDEO
-#include "modules/computer_vision/cv.h"
-#include "modules/computer_vision/video_thread_nps.h"
-#include "modules/computer_vision/lib/vision/image.h"
-#include "mcu_periph/sys_time.h"
-#endif
+#include "math/pprz_isa.h"
+#include "math/pprz_algebra_double.h"
+
+#include "subsystems/actuators/motor_mixing_types.h"
 }
+
+#if defined(NPS_DEBUG_VIDEO) || defined(NPS_DEBUG_STEREOCAM)
+// Opencv tools
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#endif
 
 using namespace std;
 
 #ifndef NPS_GAZEBO_WORLD
-#define NPS_GAZEBO_WORLD "ardrone.world"
+#define NPS_GAZEBO_WORLD "empty.world"
 #endif
 #ifndef NPS_GAZEBO_AC_NAME
-#define NPS_GAZEBO_AC_NAME "paparazzi_uav"
+#define NPS_GAZEBO_AC_NAME "ardrone"
 #endif
 
 // Add video handling functions if req'd.
-#ifdef NPS_SIMULATE_VIDEO
+#if NPS_SIMULATE_VIDEO
+extern "C" {
+#include "modules/computer_vision/cv.h"
+#include "modules/computer_vision/video_thread_nps.h"
+#include "modules/computer_vision/lib/vision/image.h"
+#include "mcu_periph/sys_time.h"
+}
+
 static void init_gazebo_video(void);
 static void gazebo_read_video(void);
 static void read_image(
@@ -83,6 +97,25 @@ static struct gazebocam_t gazebo_cams[VIDEO_THREAD_MAX_CAMERAS] =
 { { NULL, 0 } };
 #endif
 
+struct gazebo_actuators_t {
+  string names[NPS_COMMANDS_NB];
+  double thrusts[NPS_COMMANDS_NB];
+  double torques[NPS_COMMANDS_NB];
+};
+
+struct gazebo_actuators_t gazebo_actuators = {NPS_ACTUATOR_NAMES, NPS_ACTUATOR_THRUSTS, NPS_ACTUATOR_THRUSTS};
+
+
+#if NPS_SIMULATE_LASER_RANGE_ARRAY
+extern "C" {
+#include "subsystems/abi.h"
+}
+
+static void gazebo_init_range_sensors(void);
+static void gazebo_read_range_sensors(void);
+
+#endif
+
 /// Holds all necessary NPS FDM state information
 struct NpsFdm fdm;
 
@@ -90,10 +123,13 @@ struct NpsFdm fdm;
 static bool gazebo_initialized = false;
 static gazebo::physics::ModelPtr model = NULL;
 
+// Get contact sensor
+static gazebo::sensors::ContactSensorPtr ct;
+
 // Helper functions
 static void init_gazebo(void);
 static void gazebo_read(void);
-static void gazebo_write(double commands[], int commands_nb);
+static void gazebo_write(double act_commands[], int commands_nb);
 
 // Conversion routines
 inline struct EcefCoor_d to_pprz_ecef(ignition::math::Vector3d ecef_i)
@@ -144,6 +180,15 @@ inline struct DoubleRates to_pprz_rates(gazebo::math::Vector3 body_g)
 inline struct DoubleEulers to_pprz_eulers(gazebo::math::Quaternion quat)
 {
   struct DoubleEulers eulers;
+  eulers.psi = -quat.GetYaw();
+  eulers.theta = -quat.GetPitch();
+  eulers.phi = quat.GetRoll();
+  return eulers;
+}
+
+inline struct DoubleEulers to_global_pprz_eulers(gazebo::math::Quaternion quat)
+{
+  struct DoubleEulers eulers;
   eulers.psi = -quat.GetYaw() - M_PI / 2;
   eulers.theta = -quat.GetPitch();
   eulers.phi = quat.GetRoll();
@@ -175,12 +220,12 @@ void nps_fdm_init(double dt)
 /**
  * Update the simulation state.
  * @param launch
- * @param commands
+ * @param act_commands
  * @param commands_nb
  */
 void nps_fdm_run_step(
   bool launch __attribute__((unused)),
-  double *commands,
+  double *act_commands,
   int commands_nb)
 {
   // Initialize Gazebo if req'd.
@@ -192,8 +237,11 @@ void nps_fdm_run_step(
   if (!gazebo_initialized) {
     init_gazebo();
     gazebo_read();
-#ifdef NPS_SIMULATE_VIDEO
+#if NPS_SIMULATE_VIDEO
     init_gazebo_video();
+#endif
+#if NPS_SIMULATE_LASER_RANGE_ARRAY
+    gazebo_init_range_sensors();
 #endif
     gazebo_initialized = true;
   }
@@ -201,11 +249,15 @@ void nps_fdm_run_step(
   // Update the simulation for a single timestep.
   gazebo::runWorld(model->GetWorld(), 1);
   gazebo::sensors::run_once();
-  gazebo_write(commands, commands_nb);
+  gazebo_write(act_commands, commands_nb);
   gazebo_read();
-#ifdef NPS_SIMULATE_VIDEO
+#if NPS_SIMULATE_VIDEO
   gazebo_read_video();
 #endif
+#if NPS_SIMULATE_LASER_RANGE_ARRAY
+  gazebo_read_range_sensors();
+#endif
+
 }
 
 // TODO Atmosphere functions have not been implemented yet.
@@ -264,9 +316,34 @@ static void init_gazebo(void)
   gazebo::common::SystemPaths::Instance()->AddModelPaths(
     gazebodir + "models/");
 
+  // get vehicles
+  cout << "Load vehicle: " << gazebodir + "models/" + NPS_GAZEBO_AC_NAME + "/" + NPS_GAZEBO_AC_NAME + ".sdf" << endl;
+  sdf::SDFPtr vehicle_sdf(new sdf::SDF());
+  sdf::init(vehicle_sdf);
+  sdf::readFile(gazebodir + "models/" + NPS_GAZEBO_AC_NAME + "/" + NPS_GAZEBO_AC_NAME + ".sdf", vehicle_sdf);
+
+  // add sensors
+#if NPS_SIMULATE_LASER_RANGE_ARRAY
+  vehicle_sdf->Root()->GetFirstElement()->AddElement("include")->GetElement("uri")->Set("model://range_sensors");
+  sdf::ElementPtr range_joint = vehicle_sdf->Root()->GetFirstElement()->AddElement("joint");
+  range_joint->GetAttribute("name")->Set("range_sensor_joint");
+  range_joint->GetAttribute("type")->Set("fixed");
+  range_joint->GetElement("parent")->Set("chassis");
+  range_joint->GetElement("child")->Set("range_sensors::base");
+#endif
+
+  // get world
   cout << "Load world: " << gazebodir + "world/" + NPS_GAZEBO_WORLD << endl;
-  gazebo::physics::WorldPtr world = gazebo::loadWorld(
-                                      gazebodir + "world/" + NPS_GAZEBO_WORLD);
+  sdf::SDFPtr world_sdf(new sdf::SDF());
+  sdf::init(world_sdf);
+  sdf::readFile(gazebodir + "world/" + NPS_GAZEBO_WORLD, world_sdf);
+
+  // add vehicles
+  world_sdf->Root()->GetFirstElement()->InsertElement(vehicle_sdf->Root()->GetFirstElement());
+
+  world_sdf->Write(pprz_home + "/var/gazebo.world");
+
+  gazebo::physics::WorldPtr world = gazebo::loadWorld(pprz_home + "/var/gazebo.world");
   if (!world) {
     cout << "Failed to open world, exiting." << endl;
     std::exit(-1);
@@ -286,6 +363,19 @@ static void init_gazebo(void)
   gazebo::runWorld(world, 1);
   cout << "Sensors initialized..." << endl;
 
+  // activate collision sensor
+  gazebo::sensors::SensorManager *mgr = gazebo::sensors::SensorManager::Instance();
+  ct = static_pointer_cast < gazebo::sensors::ContactSensor > (mgr->GetSensor("contactsensor"));
+  ct->SetActive(true);
+
+  // Overwrite motor directions as defined by motor_mixing
+#ifdef MOTOR_MIXING_YAW_COEF
+  const double yaw_coef[] = MOTOR_MIXING_YAW_COEF;
+
+  for (uint8_t i = 0; i < NPS_COMMANDS_NB; i++) {
+    gazebo_actuators.torques[i] = -fabs(gazebo_actuators.torques[i]) * yaw_coef[i] / fabs(yaw_coef[i]);
+  }
+#endif
   cout << "Gazebo initialized successfully!" << endl;
 }
 
@@ -299,10 +389,12 @@ static void init_gazebo(void)
  */
 static void gazebo_read(void)
 {
+  static gazebo::math::Vector3 vel_prev;
+  static double time_prev;
+
   gazebo::physics::WorldPtr world = model->GetWorld();
   gazebo::math::Pose pose = model->GetWorldPose(); // In LOCAL xyz frame
   gazebo::math::Vector3 vel = model->GetWorldLinearVel();
-  gazebo::math::Vector3 accel = model->GetWorldLinearAccel();
   gazebo::math::Vector3 ang_vel = model->GetWorldAngularVel();
   gazebo::common::SphericalCoordinatesPtr sphere =
     world->GetSphericalCoordinates();
@@ -311,6 +403,15 @@ static void gazebo_read(void)
 
   /* Fill FDM struct */
   fdm.time = world->GetSimTime().Double();
+
+  // Find world acceleration by differentiating velocity
+  // model->GetWorldLinearAccel() does not seem to take the velocity_decay into account!
+  // Derivation of the velocity also follows the IMU implementation of Gazebo itself:
+  // https://bitbucket.org/osrf/gazebo/src/e26144434b932b4b6a760ddaa19cfcf9f1734748/gazebo/sensors/ImuSensor.cc?at=default&fileviewer=file-view-default#ImuSensor.cc-370
+  double dt = fdm.time - time_prev;
+  gazebo::math::Vector3 accel = (vel - vel_prev) / dt;
+  vel_prev = vel;
+  time_prev = fdm.time;
 
   // init_dt: unused
   // curr_dt: unused
@@ -361,12 +462,13 @@ static void gazebo_read(void)
                              gazebo::common::SphericalCoordinates::GLOBAL)); // Note: unused
   fdm.ltpprz_ecef_accel = fdm.ltp_ecef_accel; // ???
   fdm.body_inertial_accel = fdm.body_ecef_accel; // Approximate, unused.
+
   fdm.body_accel = to_pprz_body(
                      pose.rot.RotateVectorReverse(accel.Ign() - world->Gravity()));
 
   /* attitude */
   // ecef_to_body_quat: unused
-  fdm.ltp_to_body_eulers = to_pprz_eulers(local_to_global_quat * pose.rot);
+  fdm.ltp_to_body_eulers = to_global_pprz_eulers(local_to_global_quat * pose.rot);
   double_quat_of_eulers(&(fdm.ltp_to_body_quat), &(fdm.ltp_to_body_eulers));
   fdm.ltpprz_to_body_quat = fdm.ltp_to_body_quat; // unused
   fdm.ltpprz_to_body_eulers = fdm.ltp_to_body_eulers; // unused
@@ -394,11 +496,11 @@ static void gazebo_read(void)
 #else
   // Gazebo versions < 8 do not have atmosphere or wind support
   // Use placeholder values. Valid for low altitude, low speed flights.
-  fdm.wind = {.x = 0, .y = 0, .z = 0};
+  fdm.wind = (struct DoubleVect3) {0, 0, 0};
   fdm.pressure_sl = 101325; // Pa
 
   fdm.airspeed = 0;
-  fdm.pressure = fdm.pressure_sl; // Pa
+  fdm.pressure = pprz_isa_pressure_of_height(fdm.hmsl, fdm.pressure_sl);
   fdm.dynamic_pressure = fdm.pressure_sl; // Pa
   fdm.temperature = 20.0; // C
   fdm.aoa = 0; // rad
@@ -428,27 +530,22 @@ static void gazebo_read(void)
  * NPS_ACTUATOR_NAMES. See conf/simulator/gazebo/models/ardrone/ardrone.sdf
  * for an example.
  *
- * @param commands
+ * @param act_commands
  * @param commands_nb
  */
-static void gazebo_write(double commands[], int commands_nb)
+static void gazebo_write(double act_commands[], int commands_nb)
 {
-  const string names[] = NPS_ACTUATOR_NAMES;
-  const double thrusts[] = { NPS_ACTUATOR_THRUSTS };
-  const double torques[] = { NPS_ACTUATOR_TORQUES };
-
+  // TODO simulte actuator dynamics so indi can work
   for (int i = 0; i < commands_nb; ++i) {
-    double thrust = autopilot.motors_on ? thrusts[i] * commands[i] : 0.0;
-    double torque = autopilot.motors_on ? torques[i] * commands[i] : 0.0;
-    gazebo::physics::LinkPtr link = model->GetLink(names[i]);
+    double thrust = autopilot.motors_on ? gazebo_actuators.thrusts[i] * act_commands[i] : 0.0;
+    double torque = autopilot.motors_on ? gazebo_actuators.torques[i] * act_commands[i] : 0.0;
+    gazebo::physics::LinkPtr link = model->GetLink(gazebo_actuators.names[i]);
     link->AddRelativeForce(gazebo::math::Vector3(0, 0, thrust));
     link->AddRelativeTorque(gazebo::math::Vector3(0, 0, torque));
-    // cout << "Motor '" << link->GetName() << "': thrust = " << thrust
-    //    << " N, torque = " << torque << " Nm" << endl;
   }
 }
 
-#ifdef NPS_SIMULATE_VIDEO
+#if NPS_SIMULATE_VIDEO
 /**
  * Set up cameras.
  *
@@ -526,11 +623,20 @@ static void gazebo_read_video(void)
     if (cam == NULL) { continue; }
     // Skip if not updated
     // Also skip when LastMeasurementTime() is zero (workaround)
-    if (cam->LastMeasurementTime() == gazebo_cams[i].last_measurement_time
+    if ((cam->LastMeasurementTime() - gazebo_cams[i].last_measurement_time).Float() < 0.005
         || cam->LastMeasurementTime() == 0) { continue; }
     // Grab image, convert and send to video thread
     struct image_t img;
     read_image(&img, cam);
+
+#if NPS_DEBUG_VIDEO
+    cv::Mat RGB_cam(cam->ImageHeight(), cam->ImageWidth(), CV_8UC3, (uint8_t *)cam->ImageData());
+    cv::cvtColor(RGB_cam, RGB_cam, cv::COLOR_RGB2BGR);
+    cv::namedWindow(cameras[i]->dev_name, cv::WINDOW_AUTOSIZE);  // Create a window for display.
+    cv::imshow(cameras[i]->dev_name, RGB_cam);
+    cv::waitKey(1);
+#endif
+
     cv_run_device(cameras[i], &img);
     // Free image buffer after use.
     image_free(&img);
@@ -583,6 +689,133 @@ static void read_image(
   img->pprz_ts = ts.Double() * 1e6;
   img->buf_idx = 0; // unused
 }
+#endif  // NPS_SIMULATE_VIDEO
+
+#if NPS_SIMULATE_LASER_RANGE_ARRAY
+/*
+ * Simulate range sensors:
+ *
+ * In the airframe file, set NPS_SIMULATE_LASER_RANGE_ARRAY if you want to make use of the integrated Ray sensors.
+ * These are defined in their own model which is added to the ardrone.sdf (called range_sensors). Here you can add
+ * single ray point sensors with a specified position and orientation. It is also possible add noise.
+ *
+ * Within the airframe file (see e.g ardrone2_rangesensors_gazebo.xml), the amount of sensors
+ * (LASER_RANGE_ARRAY_NUM_SENSORS) and their orientations
+ * (LASER_RANGE_ARRAY_ORIENTATIONS={phi_1,theta_1,psi_1...phi_n,theta_n,psi_n}  n = number of sensors) need to be
+ * specified as well. This is to keep it generic since this need to be done on the real platform with an external
+ * ray sensor. The function will compare the orientations from the ray sensors of gazebo, with the ones specified
+ * in the airframe, and will fill up an array to send and abi message to be used by other modules.
+ *
+ * NPS_GAZEBO_RANGE_SEND_AGL defines if the sensor that is defined as down should be used to send an AGL message.
+ * to send an OBSTACLE_DETECTION message.
+ *
+ * Functions:
+ *   gazebo_init_range_sensors() -> Finds and initializes all ray sensors in gazebo
+ *   gazebo_read_range_sensors() -> Reads and evaluates the ray sensors values, and sending it to other pprz modules
+ */
+
+struct gazebo_ray_t {
+  gazebo::sensors::RaySensorPtr sensor;
+  gazebo::common::Time last_measurement_time;
+};
+
+static struct gazebo_ray_t rays[LASER_RANGE_ARRAY_NUM_SENSORS] = {{NULL, 0}};
+static float range_orientation[] = LASER_RANGE_ARRAY_ORIENTATIONS;
+static uint8_t ray_sensor_agl_index = 255;
+
+#define VL53L0_MAX_VAL 8.191f
+
+static void gazebo_init_range_sensors(void)
+{
+  gazebo::sensors::SensorManager *mgr = gazebo::sensors::SensorManager::Instance();
+  gazebo::sensors::Sensor_V sensors = mgr->GetSensors();  // list of all sensors
+
+  uint16_t sensor_count = model->GetSensorCount();
+
+  gazebo::sensors::RaySensorPtr ray_sensor;
+  uint8_t ray_sensor_count_selected = 0;
+
+  // Loop though all sensors and only select ray sensors, which are saved within a struct
+  for (uint16_t i = 0; i < sensor_count; i++) {
+    if (ray_sensor_count_selected > LASER_RANGE_ARRAY_NUM_SENSORS) {
+      break;
+    }
+
+    if (sensors.at(i)->Type() == "ray") {
+      ray_sensor = static_pointer_cast<gazebo::sensors::RaySensor>(sensors.at(i));
+
+      if (!ray_sensor) {
+        cout << "ERROR: Could not get pointer to raysensor " << i << "!" << endl;
+        continue;
+      }
+
+      // Read out the pose from per ray sensors in gazebo relative to body
+      struct DoubleEulers pose_sensor = to_pprz_eulers(ray_sensor->Pose().Rot());
+
+      struct DoubleQuat q_ray, q_def;
+      double_quat_of_eulers(&q_ray, &pose_sensor);
+
+      /* Check the orientations of the ray sensors found in gazebo, if they are similar (within 5 deg) to the orientations
+       * given in the airframe file in LASER_RANGE_ARRAY_RANGE_ORIENTATION
+       */
+      for (int j = 0; j < LASER_RANGE_ARRAY_NUM_SENSORS; j++) {
+        struct DoubleEulers def = {0, range_orientation[j*2], range_orientation[j*2 + 1]};
+        double_quat_of_eulers(&q_def, &def);
+        // get angle between required angle and ray angle
+        double angle = acos(QUAT_DOT_PRODUCT(q_ray, q_def));
+
+        if (fabs(angle) < RadOfDeg(5)) {
+          ray_sensor_count_selected++;
+          rays[j].sensor = ray_sensor;
+          rays[j].sensor->SetActive(true);
+
+#if LASER_RANGE_ARRAY_SEND_AGL
+          // find the sensor pointing down
+          if (fabs(range_orientation[j*2] + M_PI_2) < RadOfDeg(5)) {
+            ray_sensor_agl_index = j;
+          }
 #endif
+          break;
+        }
+      }
+    }
+  }
+
+  if (ray_sensor_count_selected != LASER_RANGE_ARRAY_NUM_SENSORS) {
+    cout << "ERROR: you have defined " << LASER_RANGE_ARRAY_NUM_SENSORS << " sensors in your airframe file, but only "
+         << ray_sensor_count_selected << " sensors have been found in the gazebo simulator, "
+         "with the same orientation as in the airframe file " << endl;
+    exit(0);
+  }
+  cout << "Initialized laser range array" << endl;
+}
+
+static void gazebo_read_range_sensors(void)
+{
+  static float range;
+
+  // Loop through all ray sensors found in gazebo
+  for (int i = 0; i < LASER_RANGE_ARRAY_NUM_SENSORS; i++) {
+    if ((rays[i].sensor->LastMeasurementTime() - rays[i].last_measurement_time).Float() < 0.005
+        || rays[i].sensor->LastMeasurementTime() == 0) { continue; }
+
+    if (rays[i].sensor->Range(0) < 1e-5 || rays[i].sensor->Range(0) > VL53L0_MAX_VAL) {
+      range = VL53L0_MAX_VAL;
+    } else {
+      range = rays[i].sensor->Range(0);
+    }
+    AbiSendMsgOBSTACLE_DETECTION(OBS_DETECTION_RANGE_ARRAY_NPS_ID, range, range_orientation[i*2], range_orientation[i*2 + 1]);
+
+    if (i == ray_sensor_agl_index) {
+      float agl = rays[i].sensor->Range(0);
+      // Down range sensor as agl
+      if (agl > 1e-5 && !isinf(agl)) {
+        AbiSendMsgAGL(AGL_RAY_SENSOR_GAZEBO_ID, agl);
+      }
+    }
+    rays[i].last_measurement_time = rays[i].sensor->LastMeasurementTime();
+  }
+}
+#endif  // NPS_SIMULATE_LASER_RANGE_ARRAY
 
 #pragma GCC diagnostic pop // Ignore -Wdeprecated-declarations

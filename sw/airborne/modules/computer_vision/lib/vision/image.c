@@ -84,6 +84,8 @@ void image_copy(struct image_t *input, struct image_t *output)
   output->h = input->h;
   output->buf_size = input->buf_size;
   output->ts = input->ts;
+  output->eulers = input->eulers;
+  output->pprz_ts = input->pprz_ts;
   memcpy(output->buf, input->buf, input->buf_size);
 }
 
@@ -150,8 +152,8 @@ uint16_t image_yuv422_colorfilt(struct image_t *input, struct image_t *output, u
                                 uint8_t u_M, uint8_t v_m, uint8_t v_M)
 {
   uint16_t cnt = 0;
-  uint8_t *source = input->buf;
-  uint8_t *dest = output->buf;
+  uint8_t *source = (uint8_t *)input->buf;
+  uint8_t *dest = (uint8_t *)output->buf;
 
   // Copy the creation timestamp (stays the same)
   output->ts = input->ts;
@@ -334,7 +336,7 @@ void pyramid_next_level(struct image_t *input, struct image_t *output, uint8_t b
  * @param[in]  border_size  - amount of padding around image. Padding is made by reflecting image elements at the edge
  *                  Example: f e d c b a | a b c d e f | f e d c b a
  */
-void pyramid_build(struct image_t *input, struct image_t *output_array, uint8_t pyr_level, uint8_t border_size)
+void pyramid_build(struct image_t *input, struct image_t *output_array, uint8_t pyr_level, uint16_t border_size)
 {
   // Pad input image and save it as '0' pyramid level
   image_add_border(input, &output_array[0], border_size);
@@ -370,8 +372,8 @@ void image_subpixel_window(struct image_t *input, struct image_t *output, struct
   // Calculate the window size
   uint16_t half_window = output->w / 2;
 
-  uint32_t subpixel_w = (input->w -2) * subpixel_factor;
-  uint32_t subpixel_h = (input->h -2) * subpixel_factor;
+  uint32_t subpixel_w = (input->w - 2) * subpixel_factor;
+  uint32_t subpixel_h = (input->h - 2) * subpixel_factor;
 
   // Go through the whole window size in normal coordinates
   for (uint16_t i = 0; i < output->w; i++) {
@@ -581,14 +583,91 @@ void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t point
     // Draw a line from the original position with the flow vector
     struct point_t from = {
       vectors[i].pos.x / subpixel_factor,
-      vectors[i].pos.y / subpixel_factor
+      vectors[i].pos.y / subpixel_factor,
+      0,
+      vectors[i].pos.x % subpixel_factor,
+      vectors[i].pos.y % subpixel_factor
     };
     struct point_t to = {
       (vectors[i].pos.x + vectors[i].flow_x) / subpixel_factor,
-      (vectors[i].pos.y + vectors[i].flow_y) / subpixel_factor
+      (vectors[i].pos.y + vectors[i].flow_y) / subpixel_factor,
+      0,
+      (vectors[i].pos.x + vectors[i].flow_x) % subpixel_factor,
+      (vectors[i].pos.y + vectors[i].flow_y) % subpixel_factor
     };
     image_draw_line(img, &from, &to);
   }
+}
+
+/**
+ * Get the gradient at a pixel location
+ * @param[in,out] *img The image
+ * @param[in] loc The location at which to get the gradient
+ * @param[in] method 0 = {-1, 0, 1}, 1 = Sobel {-1, 0, 1; -2, 0, 2; -1, 0, 1}
+ * @param[in] dx The gradient in x-direction
+ * @param[in] dy The gradient in y-direction
+ */
+void image_gradient_pixel(struct image_t *img, struct point_t *loc, int method, int *dx, int* dy) {
+  // create the simple and sobel filter only once:
+
+  int gradient_x, gradient_y, index;
+  gradient_x = 0;
+  gradient_y = 0;
+
+  // get image buffer and take into account YUV vs. grayscale:
+  uint8_t *img_buf = (uint8_t *)img->buf;
+  uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;
+  uint8_t add_ind = pixel_width - 1;
+
+  // check if all pixels will fall in the image:
+  if(loc->x >= 1 && loc->x < img->w-1 && loc->y >= 1 && loc->y < img->h - 1) {
+    if(method == 0) {
+
+        // *************
+        // Simple method
+        // *************
+
+        // dx:
+        index = loc->y * img->w * pixel_width + (loc->x-1) * pixel_width;
+        gradient_x -= (int) img_buf[index+add_ind];
+        index = loc->y * img->w * pixel_width + (loc->x+1) * pixel_width;
+        gradient_x += (int) img_buf[index+add_ind];
+        // dy:
+        index = (loc->y-1) * img->w * pixel_width + loc->x * pixel_width;
+        gradient_y -= (int) img_buf[index+add_ind];
+        index = (loc->y+1) * img->w * pixel_width + loc->x * pixel_width;
+        gradient_y += (int) img_buf[index+add_ind];
+    }
+    else {
+
+        // *****
+        // Sobel
+        // *****
+        static int Sobel[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+        static int total_sobel = 8;
+
+        int filt_ind_y = 0;
+        int filt_ind_x;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                index = (loc->y + y) * img->w * pixel_width + (loc->x+x) * pixel_width;
+                if(x!=0) {
+                    filt_ind_x = (x+1)%3 + (y+1)*3;
+                    gradient_x += Sobel[filt_ind_x] * (int) img_buf[index+add_ind];
+                }
+                if(y!=0) {
+                    gradient_y += Sobel[filt_ind_y] * (int) img_buf[index+add_ind];
+                }
+                filt_ind_y++;
+            }
+        }
+        gradient_x /= total_sobel;
+    }
+  }
+
+  // TODO: more efficient would be to use dx, dy directly:
+  (*dx) = gradient_x;
+  (*dy) = gradient_y;
 }
 
 /**
@@ -597,7 +676,8 @@ void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t point
  * @param[in] *from The point to draw from
  * @param[in] *to The point to draw to
  */
-void image_draw_line(struct image_t *img, struct point_t *from, struct point_t *to) {
+void image_draw_line(struct image_t *img, struct point_t *from, struct point_t *to)
+{
   static uint8_t color[4] = {255, 255, 255, 255};
   image_draw_line_color(img, from, to, color);
 }

@@ -110,7 +110,7 @@ struct viewvideo_t viewvideo = {
  * Handles all the video streaming and saving of the image shots
  * This is a separate thread, so it needs to be thread safe!
  */
-static struct image_t *viewvideo_function(struct UdpSocket *socket, struct image_t *img, uint16_t *rtp_packet_nr, uint32_t *rtp_frame_time)
+static struct image_t *viewvideo_function(struct UdpSocket *viewvideo_socket, struct image_t *img, uint16_t *rtp_packet_nr, uint32_t *rtp_frame_time)
 {
   // Resize image if needed
   struct image_t img_small;
@@ -164,7 +164,7 @@ static struct image_t *viewvideo_function(struct UdpSocket *socket, struct image
     if (viewvideo.use_rtp) {
       // Send image with RTP
       rtp_frame_send(
-        socket,              // UDP socket
+        viewvideo_socket,         // UDP socket
         &img_jpeg,
         0,                        // Format 422
         VIEWVIDEO_QUALITY_FACTOR, // Jpeg-Quality
@@ -243,14 +243,14 @@ void viewvideo_init(void)
 #endif
 
 #ifdef VIEWVIDEO_CAMERA
-  struct video_listener *listener1 = cv_add_to_device_async(&VIEWVIDEO_CAMERA, viewvideo_function1,
-                                     VIEWVIDEO_NICE_LEVEL, VIEWVIDEO_FPS);
+  cv_add_to_device_async(&VIEWVIDEO_CAMERA, viewvideo_function1,
+                         VIEWVIDEO_NICE_LEVEL, VIEWVIDEO_FPS);
   fprintf(stderr, "[viewvideo] Added asynchronous video streamer listener for CAMERA1 at %u FPS \n", VIEWVIDEO_FPS);
 #endif
 
 #ifdef VIEWVIDEO_CAMERA2
-  struct video_listener *listener2 = cv_add_to_device_async(&VIEWVIDEO_CAMERA2, viewvideo_function2,
-                                     VIEWVIDEO_NICE_LEVEL, VIEWVIDEO_FPS);
+  cv_add_to_device_async(&VIEWVIDEO_CAMERA2, viewvideo_function2,
+                         VIEWVIDEO_NICE_LEVEL, VIEWVIDEO_FPS);
   fprintf(stderr, "[viewvideo] Added asynchronous video streamer listener for CAMERA2 at %u FPS \n", VIEWVIDEO_FPS);
 #endif
 }

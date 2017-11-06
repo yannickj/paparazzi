@@ -818,7 +818,7 @@ let parse_wpt_sector = fun indexes waypoints xml ->
 
 
 (** FP variables and ABI auto bindings *)
-type fp_var = FP_var of (string * string * string) | FP_binding of (string * string list * string)
+type fp_var = FP_var of (string * string * string) | FP_binding of (string * string list option * string * string option)
 
 (* get a Hashtbl of ABI messages (name, field_types) *)
 let extract_abi_msg = fun filename class_ ->
@@ -836,6 +836,9 @@ let extract_abi_msg = fun filename class_ ->
         Not_found -> failwith (sprintf "No msg_class '%s' found" class_)
 
 let parse_variables = fun xml ->
+  let some_attrib_or_none = fun v n cb ->
+    try Some (cb (ExtXml.attrib v n)) with _ -> None
+  in
   List.map (fun var ->
     match Xml.tag var with
     | "variable" ->
@@ -845,10 +848,13 @@ let parse_variables = fun xml ->
         FP_var (v, t, i)
     | "abi_binding" ->
         let n = ExtXml.attrib var "name"
-        and vs = ExtXml.attrib var "vars"
-        and i = ExtXml.attrib_or_default var "id" "ABI_BROADCAST" in
-        let vs = Str.split (Str.regexp "[ ]*,[ ]*") vs in
-        FP_binding (n, vs, i)
+        and vs = some_attrib_or_none var "vars" (fun x -> Str.split (Str.regexp "[ ]*,[ ]*") x)
+        and i = ExtXml.attrib_or_default var "id" "ABI_BROADCAST"
+        and h = some_attrib_or_none var "handler" (fun x -> x) in
+        begin match vs, h with
+        | Some _, Some _ | None, None -> failwith "Gen_flight_plan: either 'vars' or 'handler' should be defined, not both"
+        | _, _ -> FP_binding (n, vs, i, h)
+        end
     | _ -> failwith "Gen_flight_plan: unexpected variables tag"
   ) xml
 
@@ -858,14 +864,17 @@ let print_var_decl abi_msgs = function
 
 let print_var_impl abi_msgs = function
   | FP_var (v, t, i) -> printf "%s %s = %s;\n" t v i
-  | FP_binding (n, vs, _) ->
+  | FP_binding (n, Some vs, _, None) ->
       printf "static abi_event FP_%s_ev;\n" n;
       let field_types = Hashtbl.find abi_msgs n in
       List.iter2 (fun abi_t user -> if not (user = "_") then printf "static %s %s;\n" abi_t user) field_types vs
+  | FP_binding (n, None, _, Some _) ->
+      printf "static abi_event FP_%s_ev;\n" n
+  | _ -> ()
 
 let print_auto_init_bindings = fun abi_msgs variables ->
   let print_cb = function
-    | FP_binding (n, vs, _) ->
+    | FP_binding (n, Some vs, _, None) ->
         let field_types = Hashtbl.find abi_msgs n in
         printf "static void FP_%s_cb(uint8_t sender_id __attribute__((unused))" n;
         List.iteri (fun i v ->
@@ -880,8 +889,10 @@ let print_auto_init_bindings = fun abi_msgs variables ->
     | _ -> ()
   in
   let print_bindings = function
-    | FP_binding (n, _, i) ->
+    | FP_binding (n, _, i, None) ->
         printf "  AbiBindMsg%s(%s, &FP_%s_ev, FP_%s_cb);\n" n i n n
+    | FP_binding (n, _, i, Some h) ->
+        printf "  AbiBindMsg%s(%s, &FP_%s_ev, %s);\n" n i n h
     | _ -> ()
   in
   List.iter print_cb variables;
@@ -924,7 +935,7 @@ let write_settings = fun xml_file out_set variables ->
 (**
  * Print flight plan header
  *)
-let print_flight_plan_header = xml utm0 out_file ->
+let print_flight_plan_h = xml utm0 out_file ->
   let out = open_out out_file in
 
   let waypoints = Xml.children (ExtXml.child xml "waypoints")
@@ -945,13 +956,13 @@ let print_flight_plan_header = xml utm0 out_file ->
   fprintf out "#include \"std.h\"\n";
   fprintf out "#include \"generated/modules.h\"\n";
   fprintf out "#include \"subsystems/abi.h\"\n";
-  fprintf out "#include \"autopilot.h\"\n";
+  fprintf out "#include \"autopilot.h\"\n\n";
 
   (* add custum header part *)
   begin
     try
       let header = ExtXml.child (ExtXml.child xml "header") "0" in
-      fprintf out "%s\n" (Xml.pcdata header)
+      fprintf out "%s\n\n" (Xml.pcdata header)
   with _ -> ()
   end;
 
@@ -1172,7 +1183,7 @@ let generate = fun = flight_plan ?(check=false) ?(dump=false) xml_file out_fp ->
   let xml = ExtXml.subst_child "waypoints" (element "waypoints" [] waypoints) xml in
 
   if dump then dump_fligh_plan xml out_fp
-  else print_flight_plan_header xml utm0 out_fp;
+  else print_flight_plan_h xml utm0 out_fp;
 
 
       (* output settings file if needed  TODO move to gen_settings *)
