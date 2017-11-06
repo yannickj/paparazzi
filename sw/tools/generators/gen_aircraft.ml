@@ -174,7 +174,7 @@ let () =
 
     (* Parse file if needed *)
     let abs_airframe_file, airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_xml in
-    (*let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in*)
+    let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in
     let abs_radio_file, radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_xml in
     let abs_telemetry_file, telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_xml in
 
