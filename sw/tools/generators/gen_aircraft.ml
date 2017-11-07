@@ -36,6 +36,8 @@ let paparazzi_conf = Env.paparazzi_home // "conf"
 let default_conf_xml = paparazzi_conf // "conf.xml"
 
 let airframe_h = "airframe.h"
+let flight_plan_h = "flight_plan.h"
+let flight_plan_dump = "flight_plan.xml"
 let radio_h = "radio.h"
 let periodic_h = "periodic_telemetry.h"
 let default_periodic_freq = 60
@@ -114,8 +116,8 @@ let generate_config_element = fun elt f dep_list ->
 (******************************* MAIN ****************************************)
 let () =
   let ac_name = ref None
+  and target_name = ref None
   and conf_xml = ref default_conf_xml
-  and target = ref ""
   and gen_af = ref false
   and gen_fp = ref false
   and gen_set = ref false
@@ -125,8 +127,8 @@ let () =
 
   let options =
     [ "-name", Arg.String (fun x -> ac_name := Some x), "Aircraft name (mandatory)";
+      "-target", Arg.String (fun x -> target_name := Some x), "Target to build (mandatory)";
       "-conf", Arg.String (fun x -> conf_xml := x), (sprintf "Configuration file (default '%s')" default_conf_xml);
-      "-target", Arg.String (fun x -> target := x), "Target to build";
       "-airframe", Arg.Set gen_af, "Generate airframe file";
       "-flight_plan", Arg.Set gen_fp, "Generate flight plan file";
       "-settings", Arg.Set gen_set, "Generate settings file";
@@ -140,11 +142,18 @@ let () =
     (fun x -> Printf.fprintf stderr "%s: Warning: Don't do anything with '%s' argument\n" Sys.argv.(0) x)
     "Usage: ";
 
+  (* check aircraft and target options *)
   let aircraft =
     match !ac_name with
     | None -> failwith "An aircraft name is mandatory"
     | Some ac -> ac
   in
+  let target =
+    match !target_name with
+    | None -> failwith "A target name is mandatory"
+    | Some t -> t
+  in
+
   try
     let conf = ExtXml.parse_file !conf_xml in
     check_unique_id_and_name conf !conf_xml;
@@ -160,11 +169,11 @@ let () =
     (* Prepare building folders *)
     let aircraft_dir = Env.paparazzi_home // "var" // "aircrafts" // aircraft in
     let aircraft_conf_dir = aircraft_dir // "conf" in
-    let aircraft_gen_dir = aircraft_dir // !target // "generated" in
+    let aircraft_gen_dir = aircraft_dir // target // "generated" in
     mkdir (Env.paparazzi_home // "var");
     mkdir (Env.paparazzi_home // "var" // "aircrafts");
     mkdir aircraft_dir;
-    mkdir (aircraft_dir // !target);
+    mkdir (aircraft_dir // target);
     mkdir aircraft_conf_dir;
     mkdir (aircraft_conf_dir // "airframes");
     mkdir (aircraft_conf_dir // "flight_plans");
@@ -186,6 +195,11 @@ let () =
      (fun e -> Gen_airframe.generate e (value "ac_id") (get_string_opt !ac_name) "0x42" abs_airframe_file abs_airframe_h) (* TODO compute correct MD5SUM *)
      [ (abs_airframe_h, [abs_airframe_file]) ]; (* TODO add dep in included files *)
 
+    let abs_flight_plan_h = aircraft_gen_dir // flight_plan_h in
+    generate_config_element flight_plan (fun e -> Gen_flight_plan.generate e abs_fp_file abs_flight_plan_h) [ (abs_flight_plan_h, [abs_fp_file]) ];
+    let abs_flight_plan_dump = aircraft_gen_dir // flight_plan_dump in
+    generate_config_element flight_plan (fun e -> Gen_flight_plan.generate e ~dump:true abs_fp_file abs_flight_plan_dump) [ (abs_flight_plan_dump, [abs_fp_file]) ];
+
     let abs_radio_h = aircraft_gen_dir // radio_h in
     generate_config_element radio (fun e -> Gen_radio.generate e abs_radio_file abs_radio_h) [ (abs_radio_h, [abs_radio_file]) ];
 
@@ -194,8 +208,6 @@ let () =
 
 
 (**
-    let flight_plan_file = value "flight_plan" in
-    let abs_flight_plan_file = paparazzi_conf // flight_plan_file in
 
     let target = try Sys.getenv "TARGET" with _ -> "" in
     let modules = Gen_common.get_modules_of_config ~target (value "ac_id") (ExtXml.parse_file abs_airframe_file) (ExtXml.parse_file abs_flight_plan_file) in
