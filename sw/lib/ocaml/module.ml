@@ -23,11 +23,7 @@
  * 'Module' module for parsing XML config files
  *)
 
-let find_opt = fun l k -> try Some (List.assoc k l) with Not_found -> None
-let find_opt_map = fun l k f ->
-  try Some (f (List.assoc k l)) with Not_found -> None
-let find_default = fun l def k -> try List.assoc k l with Not_found -> def
-let find_opt_int = fun l k -> try Some (int_of_string (List.assoc k l)) with Not_found -> None
+module OT = Ocaml_tools
 
 let find_name = fun attribs ->
   try
@@ -36,21 +32,20 @@ let find_name = fun attribs ->
     else name
   with
   | Not_found ->
-      (*let msg = Printf.sprintf "Error: Attribute 'name' expected in <%a>"
+      let msg = Printf.sprintf "Error: Attribute 'name' expected in %a"
           ExtXml.sprint_fields attribs in
-      raise (Error msg)*)
-      failwith "FIXME"
+      raise (ExtXml.Error msg)
 
 type file = { filename: string; directory: string option }
 type file_arch = file
 
 let parse_file = function
   | Xml.Element ("file", attribs, []) | Xml.Element ("file_arch", attribs, []) ->
-      { filename = find_name attribs; directory = find_opt attribs "dir" }
+      { filename = find_name attribs; directory = OT.assoc_opt "dir" attribs }
   | _ -> failwith "Module.parse_file: unreachable"
 
 type configure = {
-    cvar: string;
+    cname: string;
     cvalue: string option;
     case: string option;
     default: string option;
@@ -58,12 +53,12 @@ type configure = {
   }
 
 let parse_configure = fun attribs ->
-  let get = find_opt attribs in
-  { cvar = find_name attribs; cvalue = get "value"; case = get "case";
+  let get = fun x -> OT.assoc_opt x attribs in
+  { cname = find_name attribs; cvalue = get "value"; case = get "case";
     default = get "default"; cdescription = get "description" }
 
 type define = {
-    dvar: string;
+    dname: string;
     dvalue: string option;
     integer: int option;
     dunit: string option;
@@ -73,8 +68,8 @@ type define = {
   }
 
 let parse_define = fun attribs ->
-  let get = find_opt attribs in
-  { dvar = find_name attribs; dvalue = get "value";
+  let get = fun x -> OT.assoc_opt x attribs in
+  { dname = find_name attribs; dvalue = get "value";
     integer = begin match get "integer" with
     | None -> None | Some i -> Some (int_of_string i) end;
     dunit = get "unit"; dtype = get "type";
@@ -105,9 +100,9 @@ let empty_makefile =
 
 let rec parse_makefile mkf = function
   | Xml.Element ("makefile", attribs, children) ->
-      let targets = find_opt attribs "target"
-      and firmware = find_opt attribs "firmware"
-      and condition = find_opt attribs "cond" in
+      let targets = OT.assoc_opt "target" attribs
+      and firmware = OT.assoc_opt "firmware" attribs
+      and condition = OT.assoc_opt "cond" attribs in
       List.fold_left parse_makefile { mkf with targets; firmware; condition } children
   | Xml.Element ("configure", attribs, []) ->
       { mkf with configurations = parse_configure attribs :: mkf.configurations }
@@ -115,7 +110,7 @@ let rec parse_makefile mkf = function
       { mkf with definitions = parse_define attribs :: mkf.definitions }
   | Xml.Element ("include", attribs, []) ->
       { mkf with inclusions =
-        { element = find_name attribs; condition = find_opt attribs "cond" }
+        { element = find_name attribs; condition = OT.assoc_opt "cond" attribs }
         :: mkf.inclusions }
   | Xml.Element ("flag", [("name", flag); ("value", value)], [])
   | Xml.Element ("flag", [("value", value); ("name", flag)], []) ->
@@ -142,8 +137,8 @@ type periodic = {
   }
 
 let parse_periodic = fun attribs ->
-  let get = find_opt attribs in
-  let geti = find_opt_int attribs in
+  let get = fun x -> OT.assoc_opt x attribs in
+  let geti = fun x ->  OT.assoc_opt_int x attribs in
   let call = List.find (fun a -> a = "fun") (fst (List.split attribs)) in
   let call_regexp = Str.regexp "\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\(.*\\)" in
   let fname =
@@ -226,23 +221,24 @@ type t = {
     periodics: periodic list;
     events: event list;
     datalinks: datalink list;
-    makefile: makefile list
+    makefile: makefile list;
+    xml: Xml.xml
   }
 
 let empty =
   { name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
     requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
-    makefile = [] }
+    makefile = []; xml = Xml.Element ("module", [], []) }
 
 let parse_module_list = Str.split (Str.regexp "[ \t]*,[ \t]*")
 
 let rec parse_xml m = function
-  | Xml.Element ("module", attribs, children) ->
+  | Xml.Element ("module", attribs, children) as xml ->
       let name = find_name attribs
-      and dir = find_opt attribs "dir"
-      and task = find_opt attribs "task" in
-      List.fold_left parse_xml { m with name; dir; task } children
+      and dir = OT.assoc_opt "dir" attribs
+      and task = OT.assoc_opt "task" attribs in
+      List.fold_left parse_xml { m with name; dir; task; xml } children
   | Xml.Element ("doc", _, _) as xml -> { m with doc = xml }
   (*| Xml.Element ("settings_file", [("name", name)], files) -> m (* TODO : remove unused *)*)
   | Xml.Element ("settings", _, _) as xml ->
@@ -255,7 +251,7 @@ let rec parse_xml m = function
       { m with provides = parse_module_list provides }
   | Xml.Element ("autoload", attribs, []) ->
       let name = find_name attribs
-      and atype = find_opt attribs "type" in
+      and atype = OT.assoc_opt "type" attribs in
       let module_name = match atype with None -> name | Some t -> name ^ "_" ^ t in (* CHECK *)
       { m with autoloads = module_name :: m.autoloads }
   | Xml.Element ("header", [], files) ->
@@ -272,6 +268,32 @@ let rec parse_xml m = function
   | Xml.Element ("makefile", _, _) as xml ->
       { m with makefile = parse_makefile empty_makefile xml :: m.makefile }
   | _ -> failwith "Module.parse_xml: unreachable"
+
+let from_xml = parse_xml empty
+
+(** search and parse a module xml file and return a Module.t *)
+let from_module_name = fun name mtype ->
+  (* concat module type if needed *)
+  let name = match mtype with Some t -> name ^ "_" ^ t | None -> name in
+  (* determine if name already have an extension *)
+  let name = if Filename.check_suffix name ".xml" then name else name ^ ".xml" in
+  (* determine if name is implicit
+   * if not, search for absolute name in search path
+   * may raise Not_found if no file found *)
+  let name =
+    if Filename.is_implicit name then begin
+      if Sys.file_exists name then name else raise Not_found
+    end
+    else begin
+      let rec find_abs = function
+        | [] -> raise Not_found
+        | b::bl ->
+            let full_name = Filename.concat b name in
+            if Sys.file_exists full_name then full_name else find_abs bl
+      in
+      find_abs Env.modules_paths
+    end in
+  from_xml (ExtXml.parse_file name)
 
 
 (** move to generators *)

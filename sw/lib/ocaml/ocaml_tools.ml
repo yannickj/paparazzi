@@ -92,3 +92,18 @@ let shifter = fun n default ->
     a.(!i) <- new_value;
     i := (!i + 1) mod n;
     old_value
+
+
+let assoc_opt = fun k l ->
+  try Some (List.assoc k l) with Not_found -> None
+
+let assoc_opt_map = fun k l f ->
+  try Some (f (List.assoc k l)) with Not_found -> None
+
+let assoc_opt_int = fun k l ->
+  try Some (int_of_string (List.assoc k l)) with Not_found -> None
+
+let assoc_default = fun k l def ->
+  try List.assoc k l with Not_found -> def
+
+

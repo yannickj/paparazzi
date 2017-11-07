@@ -43,8 +43,16 @@ let paparazzi_home =
 
 
 let flight_plans_path = paparazzi_home // "conf" // "flight_plans"
-
 let flight_plan_dtd = flight_plans_path // "flight_plan.dtd"
+
+let modules_paths =
+  let default_path = paparazzi_home // "conf" // "modules" in
+  try
+    let path = Sys.getenv "PAPRAZZI_MODULES_PATH" in
+    (Str.split (Str.regexp ":") path) @ [default_path]
+  with
+  | Not_found -> [default_path]
+
 
 let icon_file = paparazzi_home // "data/pictures/penguin_icon.png"
 let icon_gcs_file = paparazzi_home // "data/pictures/penguin_icon_gcs.png"

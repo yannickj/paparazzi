@@ -35,6 +35,9 @@ separator is [.]). May raise [Not_found]. *)
 val get_attrib : Xml.xml -> string -> string -> string
 (** [get_attrib xml path attrib_name] *)
 
+val sprint_fields : unit -> (string * string) list -> string
+(** [sprint_fields attribs] pretty print attribs *)
+
 val attrib : Xml.xml -> string -> string
 val int_attrib : Xml.xml -> string -> int
 val float_attrib : Xml.xml -> string -> float
