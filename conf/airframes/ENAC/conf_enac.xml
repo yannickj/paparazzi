@@ -69,11 +69,11 @@
    name="EDURA"
    ac_id="31"
    airframe="airframes/ENAC/fixed-wing/edura.xml"
-   radio="radios/cockpitSX.xml"
-   telemetry="telemetry/default_fixedwing_imu.xml"
+   radio="radios/devo10.xml"
+   telemetry="telemetry/edura_default.xml"
    flight_plan="flight_plans/mission_fw.xml"
    settings="settings/fixedwing_basic.xml [settings/control/ctl_dash_loiter_trim.xml] settings/nps.xml"
-   settings_modules="modules/gps.xml modules/nav_basic_fw.xml modules/guidance_basic_fw.xml modules/stabilization_attitude_fw.xml modules/ahrs_int_cmpl_quat.xml modules/imu_common.xml"
+   settings_modules="modules/logger_sd_spi_direct.xml modules/gps.xml modules/nav_basic_fw.xml modules/guidance_basic_fw.xml modules/stabilization_attitude_fw.xml modules/ahrs_int_cmpl_quat.xml modules/imu_common.xml"
    gui_color="red"
   />
   <aircraft

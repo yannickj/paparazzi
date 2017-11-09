@@ -18,6 +18,8 @@
     
     <configure name="USE_MAGNETOMETER" value="FALSE"/>
     
+    <!--configure name="RADIO_KILL_SWITCH" value="RADIO_ABC"/-->
+    
     <target name="ap"   board="lisa_mx_2.1"/>
     <target name="sim" 	board="pc"/>
     <target name="nps"   board="pc">
@@ -25,9 +27,19 @@
     </target>
 
     <!-- Communication -->
-    <module name="radio_control" type="datalink"/>
+    <!--module name="radio_control" type="datalink"/-->
+    <!--TX 10 (DEVO-10) : 0x13C478F7
+        connected to UART1 (PA10)    -->
+    <module name="radio_control" type="ppm">
+      <configure name="PPM_CONFIG" value="1" />
+    </module>
+    <!--module name="radio_control" type="spektrum">
+      <configure name="RADIO_CONTROL_SPEKTRUM_PRIMARY_PORT" value="UART5" />
+    </module-->
+    
     <module name="telemetry" 	 type="transparent">
-      <configure name="MODEM_PORT"  value="UART1"/>
+      <define name="REMAP_UART3" value="1"/>
+      <configure name="MODEM_PORT"  value="UART4"/>
       <configure name="MODEM_BAUD"  value="B115200"/>
     </module>
 
@@ -40,18 +52,23 @@
     <module name="gps"    type="datalink"/>
   </firmware>
 
-  <modules>
+  <modules main_freq="512">
     <module name="sys_mon"/>
+    
+    <module name="logger_sd_spi_direct">
+      <configure name="SDLOGGER_DIRECT_CONTROL_SWITCH" value="AUX2"/>
+      <configure name="LOGGER_LED" value="3"/>
+    </module>
   </modules>
 
   <servos>
     <!-- uncomment for propelled flight -->
-    <servo name="MOTOR" no="4" min="1290" neutral="1290" max="1810"/>
+    <servo name="MOTOR" no="5" min="0" neutral="0" max="9600"/>
     
     <!-- elevator / black -->
-    <servo name="ELEV"  no="0" min="1400" neutral="1640" max="1880"/>
+    <servo name="ELEV"  no="0" min="1800" neutral="1460" max="1010"/>
     <!-- rudder / red -->
-    <servo name="RUDD"  no="1" min="1280" neutral="1640" max="2000"/>
+    <servo name="RUDD"  no="1" min="1900" neutral="1640" max="1380"/>
     <!-- aileron left / white -->
     <servo name="AILL"  no="2" min="1000" neutral="1500" max="2000"/>
     <!-- aileron right / yellow -->
@@ -63,13 +80,15 @@
     <axis name="ROLL"     failsafe_value="0"/>
     <axis name="PITCH"    failsafe_value="0"/>
     <axis name="YAW"      failsafe_value="0"/>
+    <axis name="KILL"     failsafe_value="1"/>
   </commands>
 
   <rc_commands>
     <set command="THROTTLE" value="@THROTTLE"/>
     <set command="ROLL"     value="@ROLL"/>
-    <set command="PITCH"    value="@PITCH"/>
+    <set command="PITCH"    value="-@PITCH"/>
     <set command="YAW"      value="@YAW"/>
+    <set command="KILL"     value="(@AUX1 > 100)"/>
   </rc_commands>
 
   <section name="MIXER">
@@ -77,7 +96,7 @@
 
   <command_laws>
     <!-- uncomment for propelled flight -->
-    <set servo="MOTOR"      value="@THROTTLE"/>
+    <set servo="MOTOR"      value="(1-@KILL)*@THROTTLE"/>
     <set servo="ELEV"       value="@PITCH"/>
     <set servo="AILL"       value="-@ROLL"/>
     <set servo="AILR"       value="+@ROLL"/>
@@ -180,9 +199,10 @@
   <section name="MISC">
     <define name="NOMINAL_AIRSPEED" value="13." unit="m/s"/>
     <define name="CARROT" value="5." unit="s"/>
-    <define name="KILL_MODE_DISTANCE" value="(1.5*MAX_DIST_FROM_HOME)"/>
+    <define name="KILL_MODE_DISTANCE" value="(100*MAX_DIST_FROM_HOME)"/>
     <define name="CONTROL_FREQUENCY" value="60" unit="Hz"/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="80."/>
+    <define name="RC_LOST_MODE" value="PPRZ_MODE_HOME"/>
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">
