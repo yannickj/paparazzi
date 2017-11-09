@@ -49,6 +49,34 @@
 #define SERVO_HZ 40
 #endif
 
+
+// Base frequency can be adapted for each timer
+#ifndef TIM1_BASE_FREQ
+#define TIM1_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM2_BASE_FREQ
+#define TIM2_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM3_BASE_FREQ
+#define TIM3_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM4_BASE_FREQ
+#define TIM4_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM5_BASE_FREQ
+#define TIM5_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM8_BASE_FREQ
+#define TIM8_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM9_BASE_FREQ
+#define TIM9_BASE_FREQ PWM_BASE_FREQ
+#endif
+#ifndef TIM12_BASE_FREQ
+#define TIM12_BASE_FREQ PWM_BASE_FREQ
+#endif
+
+
 // Update rate can be adapted for each timer
 #ifndef TIM1_SERVO_HZ
 #define TIM1_SERVO_HZ SERVO_HZ
@@ -76,6 +104,6 @@
 #endif
 
 extern void actuators_pwm_arch_channel_init(uint32_t timer_peripheral, enum tim_oc_id oc_id);
-extern void set_servo_timer(uint32_t timer, uint32_t period, uint8_t channels_mask);
+extern void set_servo_timer(uint32_t timer, uint32_t period, uint32_t base_freq, uint8_t channels_mask);
 
 #endif /* ACTUATORS_PWM_SHARED_ARCH_H */

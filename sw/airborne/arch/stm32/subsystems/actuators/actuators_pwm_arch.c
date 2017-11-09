@@ -112,35 +112,35 @@ void actuators_pwm_arch_init(void)
 #endif
 
 #if PWM_USE_TIM1
-  set_servo_timer(TIM1, TIM1_SERVO_HZ, PWM_TIM1_CHAN_MASK);
+  set_servo_timer(TIM1, TIM1_SERVO_HZ, TIM1_BASE_FREQ, PWM_TIM1_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM2
-  set_servo_timer(TIM2, TIM2_SERVO_HZ, PWM_TIM2_CHAN_MASK);
+  set_servo_timer(TIM2, TIM2_SERVO_HZ, TIM2_BASE_FREQ, PWM_TIM2_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM3
-  set_servo_timer(TIM3, TIM3_SERVO_HZ, PWM_TIM3_CHAN_MASK);
+  set_servo_timer(TIM3, TIM3_SERVO_HZ, TIM3_BASE_FREQ, PWM_TIM3_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM4
-  set_servo_timer(TIM4, TIM4_SERVO_HZ, PWM_TIM4_CHAN_MASK);
+  set_servo_timer(TIM4, TIM4_SERVO_HZ, TIM4_BASE_FREQ, PWM_TIM4_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM5
-  set_servo_timer(TIM5, TIM5_SERVO_HZ, PWM_TIM5_CHAN_MASK);
+  set_servo_timer(TIM5, TIM5_SERVO_HZ, TIM5_BASE_FREQ, PWM_TIM5_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM8
-  set_servo_timer(TIM8, TIM8_SERVO_HZ, PWM_TIM8_CHAN_MASK);
+  set_servo_timer(TIM8, TIM8_SERVO_HZ, TIM8_BASE_FREQ, PWM_TIM8_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM9
-  set_servo_timer(TIM9, TIM9_SERVO_HZ, PWM_TIM9_CHAN_MASK);
+  set_servo_timer(TIM9, TIM9_SERVO_HZ, TIM9_BASE_FREQ, PWM_TIM9_CHAN_MASK);
 #endif
 
 #if PWM_USE_TIM12
-  set_servo_timer(TIM12, TIM12_SERVO_HZ, PWM_TIM12_CHAN_MASK);
+  set_servo_timer(TIM12, TIM12_SERVO_HZ, TIM12_BASE_FREQ, PWM_TIM12_CHAN_MASK);
 #endif
 
 }

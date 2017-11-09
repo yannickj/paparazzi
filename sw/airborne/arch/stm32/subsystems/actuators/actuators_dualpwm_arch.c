@@ -85,7 +85,7 @@ void actuators_dualpwm_arch_init(void)
 #endif
 
 #if DUAL_PWM_USE_TIM5
-  set_servo_timer(TIM5, TIM5_SERVO_HZ, PWM_TIM5_CHAN_MASK);
+  set_servo_timer(TIM5, TIM5_SERVO_HZ, TIM5_BASE_FREQ, PWM_TIM5_CHAN_MASK);
 
   nvic_set_priority(NVIC_TIM5_IRQ, 2);
   nvic_enable_irq(NVIC_TIM5_IRQ);
