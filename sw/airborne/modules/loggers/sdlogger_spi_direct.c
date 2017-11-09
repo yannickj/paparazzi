@@ -48,10 +48,15 @@
 #endif
 
 #ifndef TELEMETRY_MODE_Main_empty
+#ifndef TELEMETRY_MODE_Ap_empty
 #warning You need to define a main telemetry mode named "empty" without any \
   messages in your config file in /conf/telemetry/<your_config.xml>. \
   \
   Add <mode name="empty"></mode> to your main telemetry process.
+#else
+#define TELEMETRY_MODE_Main_empty TELEMETRY_MODE_Ap_empty
+#define telemetry_mode_Main       telemetry_mode_Ap
+#endif
 #endif
 
 #ifndef TELEMETRY_PROCESS_Logger
