@@ -50,6 +50,15 @@
     <module name="navigation"/>
     <module name="ins"    type="alt_float"/>
     <module name="gps"    type="datalink"/>
+    
+    <!-- frequencies for servos 5 & 6                     -->
+    <!-- base frequency for timer TIM5 
+         should be divisor of the internal clock, 168 MHz -->
+    <!--define name="TIM5_BASE_FREQ" value="2000000"/-->
+    <!-- servo frequency of timer TIM5
+         if we choose 1000th of the base frequence, 
+         our servos are in the range [0, 1000]            -->
+    <define name="TIM5_SERVO_HZ" value="100"/>
   </firmware>
 
   <modules main_freq="512">
@@ -63,18 +72,18 @@
 
   <servos>
     <!-- uncomment for propelled flight -->
-    <servo name="MOTOR" no="5" min="0" neutral="0" max="9600"/>
-    
+    <servo name="MOTOR" no="5" min="0" neutral="0" max="10000"/>
+
     <!-- elevator / black -->
-    <servo name="ELEV"  no="0" min="1800" neutral="1460" max="1010"/>
+    <servo name="ELEV"  no="0" min="1700" neutral="1460" max="1110"/>
     <!-- rudder / red -->
     <servo name="RUDD"  no="1" min="1900" neutral="1640" max="1380"/>
     <!-- aileron left / white -->
-    <servo name="AILL"  no="2" min="1000" neutral="1500" max="2000"/>
+    <servo name="AILL"  no="2" min="1300" neutral="1500" max="1700"/>
     <!-- aileron right / yellow -->
-    <servo name="AILR"  no="3" min="1000" neutral="1500" max="2000"/>
+    <servo name="AILR"  no="3" min="1300" neutral="1500" max="1700"/>
   </servos>
-
+  
   <commands>
     <axis name="THROTTLE" failsafe_value="0"/>
     <axis name="ROLL"     failsafe_value="0"/>
@@ -115,8 +124,8 @@
     <define name="MAG_Z_SENS" value="4.41585354498" integer="16"/>
 
     <!-- TODO : body-to-imu for autopilot position -->
-    <define name="BODY_TO_IMU_PHI"   value="95" unit="deg"/>
-    <define name="BODY_TO_IMU_THETA" value="-45" unit="deg"/>
+    <define name="BODY_TO_IMU_PHI"   value="85" unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="-33" unit="deg"/>
     <define name="BODY_TO_IMU_PSI"   value="0." unit="deg"/>
   </section>
 
