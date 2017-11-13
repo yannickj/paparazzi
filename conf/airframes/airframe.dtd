@@ -40,8 +40,7 @@ freq CDATA #IMPLIED>
 
 <!ATTLIST target
 name CDATA #REQUIRED
-board CDATA #REQUIRED
-processor CDATA #IMPLIED>
+board CDATA #REQUIRED>
 
 <!ATTLIST airframe
 name CDATA #IMPLIED>

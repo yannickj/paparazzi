@@ -205,6 +205,11 @@ type datalink = { message: string; func: string }
 let fprint_datalink = fun ch d ->
   Printf.fprintf ch "(msg_id == DL_%s) { %s; }\n" d.message d.func
 
+type autoload = {
+    aname: string;
+    atype: string option
+  }
+
 type t = {
     name: string;
     dir: string option;
@@ -214,14 +219,14 @@ type t = {
     requires: string list;
     conflicts: string list;
     provides: string list;
-    autoloads: string list;
+    autoloads: autoload list;
     settings: Settings.t list;
     headers: file list;
     inits: string list;
     periodics: periodic list;
     events: event list;
     datalinks: datalink list;
-    makefile: makefile list;
+    makefiles: makefile list;
     xml: Xml.xml
   }
 
@@ -229,7 +234,7 @@ let empty =
   { name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
     requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
-    makefile = []; xml = Xml.Element ("module", [], []) }
+    makefiles = []; xml = Xml.Element ("module", [], []) }
 
 let parse_module_list = Str.split (Str.regexp "[ \t]*,[ \t]*")
 
@@ -250,10 +255,9 @@ let rec parse_xml m = function
   | Xml.Element ("provides", _, [Xml.PCData provides]) ->
       { m with provides = parse_module_list provides }
   | Xml.Element ("autoload", attribs, []) ->
-      let name = find_name attribs
+      let aname = find_name attribs
       and atype = OT.assoc_opt "type" attribs in
-      let module_name = match atype with None -> name | Some t -> name ^ "_" ^ t in (* CHECK *)
-      { m with autoloads = module_name :: m.autoloads }
+      { m with autoloads = { aname; atype } :: m.autoloads }
   | Xml.Element ("header", [], files) ->
       { m with headers =
         List.fold_left (fun acc f -> parse_file f :: acc) m.headers files }
@@ -266,7 +270,7 @@ let rec parse_xml m = function
   | Xml.Element ("datalink", [("fun", func); ("message", message)], []) ->
       { m with datalinks = { message; func } :: m.datalinks }
   | Xml.Element ("makefile", _, _) as xml ->
-      { m with makefile = parse_makefile empty_makefile xml :: m.makefile }
+      { m with makefiles = parse_makefile empty_makefile xml :: m.makefiles }
   | _ -> failwith "Module.parse_xml: unreachable"
 
 let from_xml = parse_xml empty
@@ -294,6 +298,14 @@ let from_module_name = fun name mtype ->
       find_abs Env.modules_paths
     end in
   from_xml (ExtXml.parse_file name)
+
+(** check if a module is compatible with a target and a firmware
+ * TODO add 'board' type filter ? *)
+let check_loading = m target firmware ->
+  List.exists (fun mk ->
+    mk.firmware = firmare && 
+  ) m.makefiles
+  FIXME
 
 
 (** move to generators *)

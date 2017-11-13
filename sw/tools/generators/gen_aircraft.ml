@@ -28,7 +28,10 @@
 open Printf
 module U = Unix
 
-open Gen_common
+module GC = Gen_common
+module Af = Airframe
+module AfT = Airframe.Target
+module AfF = Airframe.Firmware
 
 let (//) = Filename.concat
 
@@ -44,13 +47,47 @@ let default_periodic_freq = 60
 
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
-type t = {
-  airframe: Airframe.t option;
-  flight_plan: Flight_plan.t option;
-  settings: Settings.t list;
-  radio: Radio.t option;
-  telemetry: Telemetry.t option;
+(* type of loading (user, auto) *)
+type load_type = UserLoad | AutoLoad
+
+type target_conf = {
+  configures: Module.configure list; (* configure variables *)
+  configures_default: Module.configure list; (* default configure options *)
+  defines: Module.define list; (* define flags *)
+  firmware_name: string;
+  board_type: string;
+  modules: (load_type * Module.t) list; (* list of modules *)
+  autopilot: Autopilot.t option; (* autopilot file if any *)
 }
+
+let init_target_conf = fun firmware_name board_type ->
+  { configures = []; configures_default = []; defines = [];
+    firmware_name; board_type; modules = []; autopilot = None }
+
+(* configuration sorted by target name: (string, target_conf) *)
+let config_by_target = Hashtbl.create 5
+
+(* sort element of an airframe type by target *)
+let sort_airframe_by_target = fun airframe ->
+  match airframe with
+  | Some a ->
+      (* build a list of pairs (target, firmware) *)
+      let l = List.fold_left (fun lf f ->
+        List.fold_left (fun lt t ->
+          lt @ [(t, f)]) lf f.Af.Firmware.targets
+        ) [] a.Af.firmwares in
+      (* iterate on each target *)
+      List.iter (fun (t, f) ->
+        let name = t.AfT.name in
+        if Hashtbl.mem config_by_target name then
+          failwith "[Error] Gen_airframe: two targets with the same name";
+        let conf = init_target_conf f.AfF.name t.AfT.board in
+        let conf = { conf with
+          configures = t.AfT.configures @ f.AfF.configures;
+          defines = t.AfT.defines @ f.AfF.defines } in
+        Hashtbl.add config_by_target name conf
+      ) l
+  | None -> ()
 
 let mkdir = fun d ->
   assert (Sys.command (sprintf "mkdir -p %s" d) = 0)
@@ -183,6 +220,7 @@ let () =
 
     (* Parse file if needed *)
     let abs_airframe_file, airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_xml in
+    sort_airframe_by_target airframe;
     let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in
     let abs_radio_file, radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_xml in
     let abs_telemetry_file, telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_xml in

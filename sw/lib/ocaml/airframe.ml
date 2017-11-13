@@ -81,7 +81,6 @@ module Target = struct
 
   type t = { name: string;
              board: string;
-             processor: string option;
              modules: Module_af.t list;
              autopilot: Autopilot.t option;
              configures: Module.configure list;
@@ -92,7 +91,6 @@ module Target = struct
     | Xml.Element ("target", attrs, children) as xml ->
         { name = List.assoc "name" attrs;
           board = List.assoc "board" attrs;
-          processor = OT.assoc_opt "processor" attrs;
           modules = parse_children "module" Module_af.from_xml children;
           autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
           configures = parse_children_attribs "configure" Module.parse_configure children;
