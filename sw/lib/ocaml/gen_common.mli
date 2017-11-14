@@ -24,6 +24,7 @@
 
 (* simple boolean expressions *)
 type bool_expr =
+  | Any
   | Var of string
   | Not of bool_expr
   | And of bool_expr * bool_expr
@@ -44,6 +45,11 @@ val modules_dir : string
 
 (** remove all duplicated elements of a list *)
 val singletonize : ?compare: ('a -> 'a -> int) -> 'a list -> 'a list
+
+(** [targets_of_string] targets
+ * Returns the targets expression of a string
+ *)
+val targets_of_string : string option -> bool_expr
 
 (** [targets_of_field] Xml node, default
  * Returns the targets expression of a makefile node in modules

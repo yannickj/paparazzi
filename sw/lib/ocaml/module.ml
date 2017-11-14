@@ -24,6 +24,7 @@
  *)
 
 module OT = Ocaml_tools
+module GC = Gen_common
 
 let find_name = fun attribs ->
   try
@@ -301,11 +302,11 @@ let from_module_name = fun name mtype ->
 
 (** check if a module is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)
-let check_loading = m target firmware ->
+let check_loading = fun m target firmware ->
   List.exists (fun mk ->
-    mk.firmware = firmare && 
+    mk.firmware = firmware && GC.test_targets target (GC.targets_of_string mk.targets)
   ) m.makefiles
-  FIXME
+  
 
 
 (** move to generators *)

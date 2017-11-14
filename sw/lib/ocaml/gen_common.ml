@@ -28,6 +28,7 @@ exception Firmware_Found of Xml.xml
 
 (** simple boolean expressions *)
 type bool_expr =
+  | Any
   | Var of string
   | Not of bool_expr
   | And of bool_expr * bool_expr
@@ -35,6 +36,7 @@ type bool_expr =
 
 (** evaluate a boolean expression for a given value *)
 let rec eval_bool v = function
+  | Any -> true
   | Var x -> v = x
   | Not e -> not (eval_bool v e)
   | And (e1, e2) -> eval_bool v e1 && eval_bool v e2
@@ -43,6 +45,7 @@ let rec eval_bool v = function
 (** pretty print boolean expression *)
 let print_bool = fun v e ->
   let rec print_b v = function
+    | Any -> eprintf "Any "
     | Var x -> eprintf "Var ( %s =? %s ) " x v
     | Not e -> eprintf "Not ( "; (print_b v e); eprintf ") "
     | And (e1, e2) -> eprintf "And ( "; print_b v e1; print_b v e2; eprintf ") "
@@ -80,6 +83,25 @@ let union = fun l1 l2 -> singletonize (l1 @ l2)
 
 (** union of a list of list *)
 let union_of_lists = fun l -> singletonize (List.flatten l)
+
+(** [targets_of_string]
+ * Returns the targets expression of a string
+ *)
+let targets_of_string =
+  let rec expr_of_targets op = function
+    | [] -> Any
+    | [e] -> Var e
+    | l::ls -> op (Var l) (expr_of_targets op ls)
+  in
+  let pipe = Str.regexp "|" in
+  fun targets ->
+    match targets with 
+    | None -> Any
+    | Some t ->
+        if Compat.bytes_length t > 0 && Compat.bytes_get t 0 = '!' then
+          Not (expr_of_targets (fun x y -> Or(x,y)) (Str.split pipe (Compat.bytes_sub t 1 ((Compat.bytes_length t) - 1))))
+        else
+          expr_of_targets (fun x y -> Or(x,y)) (Str.split pipe t)
 
 (** [targets_of_field]
  * Returns the targets expression of a makefile node in modules
