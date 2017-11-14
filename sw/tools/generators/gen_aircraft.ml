@@ -71,10 +71,17 @@ let init_target_conf = fun firmware_name board_type ->
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
   let m = Module.from_module_name name mtype in
   (* check compatibility with target *)
+  List.iter (fun autoload ->
+    let c = target_conf_add_module conf target firmware autoload.Module.aname autoload.Module.atype AutoLoad in
+    ()
+  ) m.Module.autoloads;
+  if Module.check_loading m target firmware then
+    { conf with (* TODO add configures and defines from makefile sections ? *)
+      modules = (load_type, m) :: conf.modules }
+  else
+    (* add "unloaded" module for reference *)
+    { conf with modules = (Unloaded, m) :: conf.modules }
 
-  { conf with
-    configures = conf.configures;
-    defines }
 
 (* configuration sorted by target name: (string, target_conf) *)
 let config_by_target = Hashtbl.create 5
@@ -102,6 +109,8 @@ let sort_airframe_by_target = fun airframe ->
           let c = { c with
             configures = c.configures @ m_af.AfM.configures;
             defines = c.defines @ m_af.AfM.defines } in
+          c
+        ) conf f.AfF.targets.modules in
         Hashtbl.add config_by_target name conf
       ) l
   | None -> ()
