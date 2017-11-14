@@ -32,6 +32,7 @@ module GC = Gen_common
 module Af = Airframe
 module AfT = Airframe.Target
 module AfF = Airframe.Firmware
+module AfM = Airframe.Module_af
 
 let (//) = Filename.concat
 
@@ -48,7 +49,7 @@ let default_periodic_freq = 60
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
 (* type of loading (user, auto) *)
-type load_type = UserLoad | AutoLoad
+type load_type = UserLoad | AutoLoad | Unloaded
 
 type target_conf = {
   configures: Module.configure list; (* configure variables *)
@@ -60,9 +61,20 @@ type target_conf = {
   autopilot: Autopilot.t option; (* autopilot file if any *)
 }
 
+(* init structure *)
 let init_target_conf = fun firmware_name board_type ->
   { configures = []; configures_default = []; defines = [];
     firmware_name; board_type; modules = []; autopilot = None }
+
+(* add a module if compatible with target and firmware
+ * and its autoloaded modules to a conf, return final conf *)
+let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
+  let m = Module.from_module_name name mtype in
+  (* check compatibility with target *)
+
+  { conf with
+    configures = conf.configures;
+    defines }
 
 (* configuration sorted by target name: (string, target_conf) *)
 let config_by_target = Hashtbl.create 5
@@ -74,7 +86,7 @@ let sort_airframe_by_target = fun airframe ->
       (* build a list of pairs (target, firmware) *)
       let l = List.fold_left (fun lf f ->
         List.fold_left (fun lt t ->
-          lt @ [(t, f)]) lf f.Af.Firmware.targets
+          lt @ [(t, f)]) lf f.AfF.targets
         ) [] a.Af.firmwares in
       (* iterate on each target *)
       List.iter (fun (t, f) ->
@@ -85,6 +97,11 @@ let sort_airframe_by_target = fun airframe ->
         let conf = { conf with
           configures = t.AfT.configures @ f.AfF.configures;
           defines = t.AfT.defines @ f.AfF.defines } in
+        (* iter on modules in target *)
+        let conf = List.fold_left (fun c m_af ->
+          let c = { c with
+            configures = c.configures @ m_af.AfM.configures;
+            defines = c.defines @ m_af.AfM.defines } in
         Hashtbl.add config_by_target name conf
       ) l
   | None -> ()
