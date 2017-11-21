@@ -86,8 +86,8 @@ type makefile = {
     targets: string option;
     firmware: string option;
     condition: string option;
-    configurations: configure list;
-    definitions: define list;
+    configures: configure list;
+    defines: define list;
     inclusions: incl list;
     flags: flag list;
     files: file list;
@@ -96,7 +96,7 @@ type makefile = {
   }
 
 let empty_makefile =
-  { targets = None; firmware = None; condition = None; configurations = []; definitions = [];
+  { targets = None; firmware = None; condition = None; configures = []; defines = [];
     inclusions = []; flags = []; files = []; files_arch = []; raws = [] }
 
 let rec parse_makefile mkf = function
@@ -106,9 +106,9 @@ let rec parse_makefile mkf = function
       and condition = OT.assoc_opt "cond" attribs in
       List.fold_left parse_makefile { mkf with targets; firmware; condition } children
   | Xml.Element ("configure", attribs, []) ->
-      { mkf with configurations = parse_configure attribs :: mkf.configurations }
+      { mkf with configures = parse_configure attribs :: mkf.configures }
   | Xml.Element ("define", attribs, []) ->
-      { mkf with definitions = parse_define attribs :: mkf.definitions }
+      { mkf with defines = parse_define attribs :: mkf.defines }
   | Xml.Element ("include", attribs, []) ->
       { mkf with inclusions =
         { element = find_name attribs; condition = OT.assoc_opt "cond" attribs }
@@ -277,6 +277,7 @@ let rec parse_xml m = function
 let from_xml = parse_xml empty
 
 (** search and parse a module xml file and return a Module.t *)
+(* FIXME search folder path: <PPRZ_PATH>/*/<module_name[_type]>.xml *)
 let from_module_name = fun name mtype ->
   (* concat module type if needed *)
   let name = match mtype with Some t -> name ^ "_" ^ t | None -> name in
@@ -300,12 +301,14 @@ let from_module_name = fun name mtype ->
     end in
   from_xml (ExtXml.parse_file name)
 
-(** check if a module is compatible with a target and a firmware
+(** check if a makefile node is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)
-let check_loading = fun m target firmware ->
-  List.exists (fun mk ->
-    mk.firmware = firmware && GC.test_targets target (GC.targets_of_string mk.targets)
-  ) m.makefiles
+let check_mk = fun target firmware mk ->
+  mk.firmware = (Some firmware) && GC.test_targets target (GC.targets_of_string mk.targets)
+
+(** check if a module is compatible with a target and a firmware *)
+let check_loading = fun target firmware m ->
+  List.exists (check_mk target firmware) m.makefiles
   
 
 

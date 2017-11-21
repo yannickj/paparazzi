@@ -70,17 +70,37 @@ let init_target_conf = fun firmware_name board_type ->
  * and its autoloaded modules to a conf, return final conf *)
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
   let m = Module.from_module_name name mtype in
+  (* add autoloaded modules *)
+  let conf = List.fold_left (fun c autoload ->
+    target_conf_add_module c target firmware autoload.Module.aname autoload.Module.atype AutoLoad
+  ) conf m.Module.autoloads in
   (* check compatibility with target *)
-  List.iter (fun autoload ->
-    let c = target_conf_add_module conf target firmware autoload.Module.aname autoload.Module.atype AutoLoad in
-    ()
-  ) m.Module.autoloads;
-  if Module.check_loading m target firmware then
-    { conf with (* TODO add configures and defines from makefile sections ? *)
-      modules = (load_type, m) :: conf.modules }
+  if Module.check_loading target firmware m then
+    (* add configures and defines to conf if needed *)
+    { conf with
+      configures = List.fold_left (fun cm mk ->
+        if Module.check_mk target firmware mk then
+          List.fold_left (fun cmk c ->
+            if not (c.Module.cvalue == None) then cmk @ [c]
+            else cmk
+          ) cm mk.Module.configures
+        else
+          cm) conf.configures  m.Module.makefiles;
+      configures_default = List.fold_left (fun cm mk ->
+        if Module.check_mk target firmware mk then
+          List.fold_left (fun cmk c ->
+            if not (c.Module.default == None) then cmk @ [c]
+            else cmk
+          ) cm mk.Module.configures
+        else
+          cm) conf.configures  m.Module.makefiles;
+      defines = List.fold_left (fun dm mk ->
+        if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
+      ) conf.defines  m.Module.makefiles;
+      modules = conf.modules @ [load_type, m] }
   else
     (* add "unloaded" module for reference *)
-    { conf with modules = (Unloaded, m) :: conf.modules }
+    { conf with modules = conf.modules @ [(Unloaded, m)] }
 
 
 (* configuration sorted by target name: (string, target_conf) *)
@@ -97,9 +117,10 @@ let sort_airframe_by_target = fun airframe ->
         ) [] a.Af.firmwares in
       (* iterate on each target *)
       List.iter (fun (t, f) ->
-        let name = t.AfT.name in
+        let name = t.AfT.name in (* target name *)
         if Hashtbl.mem config_by_target name then
           failwith "[Error] Gen_airframe: two targets with the same name";
+        (* init and add configure/define from airframe *)
         let conf = init_target_conf f.AfF.name t.AfT.board in
         let conf = { conf with
           configures = t.AfT.configures @ f.AfF.configures;
@@ -109,8 +130,8 @@ let sort_airframe_by_target = fun airframe ->
           let c = { c with
             configures = c.configures @ m_af.AfM.configures;
             defines = c.defines @ m_af.AfM.defines } in
-          c
-        ) conf f.AfF.targets.modules in
+          target_conf_add_module c name f.AfF.name m_af.AfM.name m_af.AfM.mtype UserLoad
+        ) conf t.AfT.modules in
         Hashtbl.add config_by_target name conf
       ) l
   | None -> ()
@@ -248,10 +269,12 @@ let () =
     let abs_airframe_file, airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_xml in
     sort_airframe_by_target airframe;
     let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in
+    (* TODO add modules from FP *)
     let abs_radio_file, radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_xml in
     let abs_telemetry_file, telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_xml in
 
-    (* TODO extract/filter/resolve modules *)
+    (* TODO filter duplicates *)
+    (* TODO resolve modules dep *)
 
     (* Generate output files *)
     let abs_airframe_h = aircraft_gen_dir // airframe_h in
