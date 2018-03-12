@@ -276,7 +276,16 @@ let rec parse_xml m = function
       { m with makefiles = parse_makefile empty_makefile xml :: m.makefiles }
   | _ -> failwith "Module.parse_xml: unreachable"
 
-let from_xml = parse_xml empty
+let from_xml = fun xml ->
+  let m = parse_xml empty xml in
+  { m with
+    settings = List.rev m.settings;
+    headers = List.rev m.headers;
+    inits = List.rev m.inits;
+    makefiles = List.rev m.makefiles
+  }
+
+let from_file = fun filename -> from_xml (Xml.parse_file filename)
 
 (** search and parse a module xml file and return a Module.t *)
 (* FIXME search folder path: <PPRZ_PATH>/*/<module_name[_type]>.xml *)
