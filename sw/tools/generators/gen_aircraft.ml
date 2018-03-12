@@ -81,7 +81,7 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
       configures = List.fold_left (fun cm mk ->
         if Module.check_mk target firmware mk then
           List.fold_left (fun cmk c ->
-            if not (c.Module.cvalue == None) then cmk @ [c]
+            if not (c.Module.cvalue = None) then cmk @ [c]
             else cmk
           ) cm mk.Module.configures
         else
@@ -89,7 +89,7 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
       configures_default = List.fold_left (fun cm mk ->
         if Module.check_mk target firmware mk then
           List.fold_left (fun cmk c ->
-            if not (c.Module.default == None) then cmk @ [c]
+            if not (c.Module.default = None) then cmk @ [c]
             else cmk
           ) cm mk.Module.configures
         else
@@ -266,10 +266,22 @@ let () =
     sort_airframe_by_target airframe;
     let flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_file in
     (* TODO add modules from FP *)
+    begin match flight_plan with
+      | None -> ()
+      | Some fp ->
+        List.iter (fun m ->
+            Hashtbl.iter
+              (fun target conf ->
+                 let conf = { conf with
+                              configures = (* deuxième tentative, en cours...*)
+                            }
+              ) config_by_target
+          ) fp.Flight_plan.modules
+    end;
     let radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_file in
     let telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_file in
 
-    (* TODO filter duplicates *)
+    (* TODO? filter duplicates: seems it's done in target_conf_add_module *)
     (* TODO resolve modules dep *)
 
     (* Generate output files *)
