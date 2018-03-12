@@ -49,6 +49,7 @@ module Module_fp = struct
 end
 
 type t = {
+  filename: string;
   settings: Settings.Dl_setting.t list;
   modules: Module_fp.t list;
   xml: Xml.xml;
@@ -85,6 +86,9 @@ let from_xml = function
         else
           m
       ) [] children in
-      { settings; modules; xml }
+      { filename = ""; settings; modules; xml }
   | _ -> failwith "Flight_plan.from_xml: unreachable"
 
+let from_file = fun filename ->
+  let fp = from_xml (Xml.parse_file filename) in
+  { fp with filename }

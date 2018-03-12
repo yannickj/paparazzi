@@ -97,15 +97,19 @@ module Process = struct
 end
 
 type t = {
+  filename: string;
   processes: Process.t list;
   xml: Xml.xml
 }
 
 let from_xml = function
   | Xml.Element ("telemetry", [], processes) as xml ->
-      {
+      { filename = "";
         processes = List.map Process.from_xml processes;
         xml
       }
   | _ -> failwith "Telemetry.from_xml: unreachable"
 
+let from_file = fun filename ->
+  let t = from_xml (Xml.parse_file filename) in
+  { t with filename }

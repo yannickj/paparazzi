@@ -50,6 +50,7 @@ let parse_channel = function
 type pulse = PositivePulse | NegativePulse
 
 type t = {
+  filename: string;
   name: string;
   data_min: int;
   data_max: int;
@@ -64,7 +65,7 @@ let from_xml = function
   | Xml.Element ("radio", attribs, channels) as xml ->
       let get = fun attrib -> List.assoc attrib attribs in
       let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
-      {
+      { filename = "";
         name = get "name";
         data_min = iget "data_min";
         data_max = iget "data_max";
@@ -80,3 +81,6 @@ let from_xml = function
       }
   | _ -> failwith "Radio.from_xml: unreachable"
 
+let from_file = fun filename ->
+  let r = from_xml (Xml.parse_file filename) in
+  { r with filename }

@@ -124,17 +124,18 @@ module Firmware = struct
 end
 
 type t = {
-    name: string;
-    includes: Include.t list;
-    modules: Module_af.t list;
-    firmwares: Firmware.t list;
-    autopilots: Autopilot.t list;
-    xml: Xml.xml
-  }
+  filename: string;
+  name: string;
+  includes: Include.t list;
+  modules: Module_af.t list;
+  firmwares: Firmware.t list;
+  autopilots: Autopilot.t list;
+  xml: Xml.xml
+}
 
 let from_xml = function
   | Xml.Element ("airframe", [("name", name)], children) as xml ->
-      { name;
+      { filename = ""; name;
         includes = parse_children "include" Include.from_xml children;
         modules = parse_children "modules" Module_af.from_xml children;
         firmwares = parse_children "firmware" Firmware.from_xml children;
@@ -142,3 +143,6 @@ let from_xml = function
         xml }
   | _ -> failwith "Airframe.from_xml: unreachable"
 
+let from_file = fun filename ->
+  let af = from_xml (Xml.parse_file filename) in
+  { af with filename }

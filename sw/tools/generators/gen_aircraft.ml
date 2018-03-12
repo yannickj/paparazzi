@@ -176,26 +176,22 @@ let make_element = fun t a c -> Xml.Element (t,a,c)
  *)
 let get_config_element = fun flag ac_xml elt f ->
   if flag then
-    ("", None) (* generation is not requested *)
+    None (* generation is not requested *)
   else
     try
       let file = Xml.attrib ac_xml elt in
       let abs_file = paparazzi_conf // file in
-      let xml = ExtXml.parse_file abs_file in
-      (abs_file, Some (f xml))
-    with Xml.No_attribute _ -> ("", None) (* no attribute elt in conf file *)
+      Some (f abs_file)
+    with Xml.No_attribute _ -> None (* no attribute elt in conf file *)
 
 (** Generate a configuration element
  *  Also check dependencies
  *
- * [a' option -> (a' -> unit) -> (string * string list) list -> unit]
+ * [a' -> (a' -> unit) -> (string * string list) list -> unit]
  *)
 let generate_config_element = fun elt f dep_list ->
-  match elt with
-  | None -> ()
-  | Some e ->
-      if List.exists (fun (file, dep) -> is_older file dep) dep_list then f e
-      else ()
+  if List.exists (fun (file, dep) -> is_older file dep) dep_list then f elt
+  else ()
 
 (******************************* MAIN ****************************************)
 let () =
@@ -266,38 +262,68 @@ let () =
     mkdir (aircraft_conf_dir // "telemetry");
 
     (* Parse file if needed *)
-    let abs_airframe_file, airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_xml in
+    let airframe = get_config_element !gen_af aircraft_xml "airframe" Airframe.from_file in
     sort_airframe_by_target airframe;
-    let abs_fp_file, flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_xml in
+    let flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_file in
     (* TODO add modules from FP *)
-    let abs_radio_file, radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_xml in
-    let abs_telemetry_file, telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_xml in
+    let radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_file in
+    let telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_file in
 
     (* TODO filter duplicates *)
     (* TODO resolve modules dep *)
 
     (* Generate output files *)
     let abs_airframe_h = aircraft_gen_dir // airframe_h in
-    generate_config_element airframe
-     (fun e -> Gen_airframe.generate e (value "ac_id") (get_string_opt !ac_name) "0x42" abs_airframe_file abs_airframe_h) (* TODO compute correct MD5SUM *)
-     [ (abs_airframe_h, [abs_airframe_file]) ]; (* TODO add dep in included files *)
+    begin match airframe with
+      | None -> ()
+      | Some airframe ->
+        generate_config_element airframe
+          (fun e ->
+             Gen_airframe.generate
+               e (value "ac_id") (get_string_opt !ac_name)
+               "0x42" airframe.Airframe.filename abs_airframe_h)
+          (* TODO compute correct MD5SUM *)
+          [ (abs_airframe_h, [airframe.Airframe.filename]) ] end;
+    (* TODO add dep in included files *)
 
     let abs_flight_plan_h = aircraft_gen_dir // flight_plan_h in
-    generate_config_element flight_plan (fun e -> Gen_flight_plan.generate e abs_fp_file abs_flight_plan_h) [ (abs_flight_plan_h, [abs_fp_file]) ];
     let abs_flight_plan_dump = aircraft_gen_dir // flight_plan_dump in
-    generate_config_element flight_plan (fun e -> Gen_flight_plan.generate e ~dump:true abs_fp_file abs_flight_plan_dump) [ (abs_flight_plan_dump, [abs_fp_file]) ];
+    begin match flight_plan with
+      | None -> ()
+      | Some flight_plan ->
+        generate_config_element flight_plan
+          (fun e ->
+             Gen_flight_plan.generate
+               e flight_plan.Flight_plan.filename abs_flight_plan_h)
+          [ (abs_flight_plan_h, [flight_plan.Flight_plan.filename]) ];
+        generate_config_element flight_plan
+          (fun e ->
+             Gen_flight_plan.generate
+               e ~dump:true flight_plan.Flight_plan.filename abs_flight_plan_dump)
+          [ (abs_flight_plan_dump, [flight_plan.Flight_plan.filename]) ]
+    end;
 
     let abs_radio_h = aircraft_gen_dir // radio_h in
-    generate_config_element radio (fun e -> Gen_radio.generate e abs_radio_file abs_radio_h) [ (abs_radio_h, [abs_radio_file]) ];
+    begin match radio with
+      | None -> ()
+      | Some radio ->
+        generate_config_element radio
+          (fun e -> Gen_radio.generate e radio.Radio.filename abs_radio_h)
+          [ (abs_radio_h, [radio.Radio.filename]) ] end;
 
     let abs_telemetry_h = aircraft_gen_dir // periodic_h in
-    generate_config_element telemetry (fun e -> Gen_periodic.generate e !tl_freq abs_telemetry_h) [ (abs_telemetry_h, [abs_telemetry_file]) ];
+    begin match telemetry with
+      | None -> ()
+      | Some telemetry ->
+        generate_config_element telemetry
+          (fun e -> Gen_periodic.generate e !tl_freq abs_telemetry_h)
+          [ (abs_telemetry_h, [telemetry.Telemetry.filename]) ] end;
 
 
 (**
 
     let target = try Sys.getenv "TARGET" with _ -> "" in
-    let modules = Gen_common.get_modules_of_config ~target (value "ac_id") (ExtXml.parse_file abs_airframe_file) (ExtXml.parse_file abs_flight_plan_file) in
+    let modules = Gen_common.get_modules_of_config ~target (value "ac_id") (ExtXml.parse_file airframe.Airframe.filename) (ExtXml.parse_file abs_flight_plan_file) in
     (* normal settings *)
     let settings = try Env.filter_settings (value "settings") with _ -> "" in
     (* remove settings if not supported for the current target *)
@@ -375,11 +401,11 @@ let () =
 
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
 
-    let () = extract_makefile (value "ac_id") abs_airframe_file abs_flight_plan_file temp_makefile_ac in
+    let () = extract_makefile (value "ac_id") airframe.Airframe.filename abs_flight_plan_file temp_makefile_ac in
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in
-    if is_older makefile_ac (abs_airframe_file ::(List.map (fun m -> m.file) modules)) then
+    if is_older makefile_ac (airframe.Airframe.filename ::(List.map (fun m -> m.file) modules)) then
       assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0);
 
     (* Get TARGET env, needed to build modules.h according to the target *)

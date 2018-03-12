@@ -212,27 +212,29 @@ type autoload = {
   }
 
 type t = {
-    name: string;
-    dir: string option;
-    task: string option;
-    path: string;
-    doc: Xml.xml;
-    requires: string list;
-    conflicts: string list;
-    provides: string list;
-    autoloads: autoload list;
-    settings: Settings.t list;
-    headers: file list;
-    inits: string list;
-    periodics: periodic list;
-    events: event list;
-    datalinks: datalink list;
-    makefiles: makefile list;
-    xml: Xml.xml
-  }
+  filename: string;
+  name: string;
+  dir: string option;
+  task: string option;
+  path: string;
+  doc: Xml.xml;
+  requires: string list;
+  conflicts: string list;
+  provides: string list;
+  autoloads: autoload list;
+  settings: Settings.t list;
+  headers: file list;
+  inits: string list;
+  periodics: periodic list;
+  events: event list;
+  datalinks: datalink list;
+  makefiles: makefile list;
+  xml: Xml.xml
+}
 
 let empty =
-  { name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
+  { filename = "";
+    name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
     requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
     makefiles = []; xml = Xml.Element ("module", [], []) }
@@ -299,7 +301,8 @@ let from_module_name = fun name mtype ->
       in
       find_abs Env.modules_paths
     end in
-  from_xml (ExtXml.parse_file name)
+  let m = from_xml (ExtXml.parse_file name) in
+  { m with filename = name }
 
 (** check if a makefile node is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)

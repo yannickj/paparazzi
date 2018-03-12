@@ -85,6 +85,7 @@ module Dl_settings = struct
 end
 
 type t = {
+  filename: string;
   name: string option; (* for modules' settings *)
   target: string option;
   dl_settings: Dl_settings.t list;
@@ -93,13 +94,17 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("settings", attribs, children) as xml ->
-      {
+      { filename = "";
         name = get_opt "name" attribs;
         target = get_opt "target" attribs;
         dl_settings = List.map Dl_settings.from_xml children;
         xml;
       }
   | _ -> failwith "Settings.from_xml: unreachable"
+
+let from_file = fun filename ->
+  let s = from_xml (Xml.parse_file filename) in
+  { s with filename }
 
 (**
  *  Get singletonized list of headers from a Settings.t
