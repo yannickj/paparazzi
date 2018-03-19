@@ -38,6 +38,21 @@
     <define name="USE_$(DW1000_ARDUINO_UART_UPPER)"/>
     <define name="DW1000_ARDUINO_DEV" value="$(DW1000_ARDUINO_UART_LOWER)"/>
     <define name="$(DW1000_ARDUINO_UART_UPPER)_BAUD" value="$(DW1000_ARDUINO_BAUD)"/>
+    <raw>
+      ifdef SECONDARY_GPS
+      ifneq (,$(findstring $(SECONDARY_GPS), dw1000))
+      # this is the secondary GPS
+      $(TARGET).CFLAGS += -DGPS_SECONDARY_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+      $(TARGET).CFLAGS += -DSECONDARY_GPS=GPS_DW1000
+      else
+      $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+      $(TARGET).CFLAGS += -DPRIMARY_GPS=GPS_DW1000
+      endif
+      else
+      # plain old single GPS usage
+      $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+      endif
+    </raw>
   </makefile>
 </module>
 

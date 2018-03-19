@@ -36,5 +36,10 @@ extern void dw1000_arduino_event(void);
  */
 extern void dw1000_reset_heading_ref(void);
 
+// when used as a GPS
+#ifndef PRIMARY_GPS
+#define PRIMARY_GPS GPS_DW1000
+#endif
+
 #endif
 

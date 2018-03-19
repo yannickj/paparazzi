@@ -176,6 +176,12 @@ static void send_gps_dw1000_small(struct DW1000 *dw)
   dw->gps_dw1000.hmsl = dw->ltp_def.hmsl + enu_pos.z * 10;
   SetBit(dw->gps_dw1000.valid_fields, GPS_VALID_HMSL_BIT);
 
+#if defined(SECONDARY_GPS) && AHRS_USE_GPS_HEADING
+  // a second GPS is used to get heading
+  // ugly hack: it is a datalink GPS
+  dw->gps_dw1000.course = gps_datalink.course;
+#endif
+
   dw->gps_dw1000.num_sv = 7;
   dw->gps_dw1000.tow = get_sys_time_msec();
   dw->gps_dw1000.fix = GPS_FIX_3D; // set 3D fix to true
