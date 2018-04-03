@@ -32,7 +32,6 @@ module GC = Gen_common
 module Af = Airframe
 module AfT = Airframe.Target
 module AfF = Airframe.Firmware
-module AfM = Airframe.Module_af
 
 let (//) = Filename.concat
 
@@ -128,9 +127,9 @@ let sort_airframe_by_target = fun airframe ->
         (* iter on modules in target *)
         let conf = List.fold_left (fun c m_af ->
           let c = { c with
-            configures = c.configures @ m_af.AfM.configures;
-            defines = c.defines @ m_af.AfM.defines } in
-          target_conf_add_module c name f.AfF.name m_af.AfM.name m_af.AfM.mtype UserLoad
+            configures = c.configures @ m_af.Module.configures;
+            defines = c.defines @ m_af.Module.defines } in
+          target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype UserLoad
         ) conf t.AfT.modules in
         Hashtbl.add config_by_target name conf
       ) l
@@ -266,18 +265,18 @@ let () =
     sort_airframe_by_target airframe;
     let flight_plan = get_config_element !gen_fp aircraft_xml "flight_plan" Flight_plan.from_file in
     (* TODO add modules from FP *)
-    begin match flight_plan with
-      | None -> ()
-      | Some fp ->
-        List.iter (fun m ->
-            Hashtbl.iter
-              (fun target conf ->
-                 let conf = { conf with
-                              configures = (* deuxième tentative, en cours...*)
-                            }
-              ) config_by_target
-          ) fp.Flight_plan.modules
-    end;
+    (* begin match flight_plan with
+     *   | None -> ()
+     *   | Some fp ->
+     *     List.iter (fun m ->
+     *         Hashtbl.iter
+     *           (fun target conf ->
+     *              let conf = { conf with
+     *                           configures = (\* deuxième tentative, en cours...*\)
+     *                         }
+     *           ) config_by_target
+     *       ) fp.Flight_plan.modules
+     * end; *)
     let radio = get_config_element !gen_rc aircraft_xml "radio" Radio.from_file in
     let telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_file in
 

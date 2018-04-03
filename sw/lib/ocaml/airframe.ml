@@ -25,14 +25,6 @@
 
 module OT = Ocaml_tools
 
-let parse_children = fun tag f children ->
-  List.fold_left (fun l x -> if Xml.tag x = tag then f x :: l else l)
-  [] children
-let parse_children_attribs = fun tag f children ->
-  List.fold_left (fun l x -> if Xml.tag x = tag then f (Xml.attribs x) :: l else l)
-  [] children
-
-
 module Autopilot = struct
 
   type t = { name: string; freq: float option; xml: Xml.xml }
@@ -56,32 +48,11 @@ module Include = struct
 
 end
 
-module Module_af = struct
-
-  type t = { name: string;
-             mtype: string option;
-             dir: string option;
-             configures: Module.configure list;
-             defines: Module.define list;
-             xml: Xml.xml }
-
-  let from_xml = function
-    | Xml.Element ("module", attrs, children) as xml ->
-        { name = List.assoc "name" attrs;
-          mtype = OT.assoc_opt "type" attrs;
-          dir = OT.assoc_opt "dir" attrs;
-          configures = parse_children_attribs "configure" Module.parse_configure children;
-          defines = parse_children_attribs "define" Module.parse_define children;
-          xml }
-    | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
-
-end
-
 module Target = struct
 
   type t = { name: string;
              board: string;
-             modules: Module_af.t list;
+             modules: Module.config list;
              autopilot: Autopilot.t option;
              configures: Module.configure list;
              defines: Module.define list;
@@ -91,10 +62,10 @@ module Target = struct
     | Xml.Element ("target", attrs, children) as xml ->
         { name = List.assoc "name" attrs;
           board = List.assoc "board" attrs;
-          modules = parse_children "module" Module_af.from_xml children;
+          modules = ExtXml.parse_children "module" Module.config_from_xml children;
           autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
-          configures = parse_children_attribs "configure" Module.parse_configure children;
-          defines = parse_children_attribs "define" Module.parse_define children;
+          configures = ExtXml.parse_children_attribs "configure" Module.parse_configure children;
+          defines = ExtXml.parse_children_attribs "define" Module.parse_define children;
           xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 
@@ -104,7 +75,7 @@ module Firmware = struct
 
   type t = { name: string;
              targets: Target.t list;
-             modules: Module_af.t list;
+             modules: Module.config list;
              autopilot: Autopilot.t option;
              configures: Module.configure list;
              defines: Module.define list;
@@ -113,11 +84,11 @@ module Firmware = struct
   let from_xml = function
     | Xml.Element ("firmware", [("name", name)], children) as xml ->
         { name;
-          targets = parse_children "targets" Target.from_xml children;
-          modules = parse_children "module" Module_af.from_xml children;
+          targets = ExtXml.parse_children "targets" Target.from_xml children;
+          modules = ExtXml.parse_children "module" Module.config_from_xml children;
           autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
-          configures = parse_children_attribs "configure" Module.parse_configure children;
-          defines = parse_children_attribs "define" Module.parse_define children;
+          configures = ExtXml.parse_children_attribs "configure" Module.parse_configure children;
+          defines = ExtXml.parse_children_attribs "define" Module.parse_define children;
           xml }
     | _ -> failwith "Airframe.Firmware.from_xml: unreachable"
 
@@ -127,7 +98,7 @@ type t = {
   filename: string;
   name: string;
   includes: Include.t list;
-  modules: Module_af.t list;
+  modules: Module.config list;
   firmwares: Firmware.t list;
   autopilots: Autopilot.t list;
   xml: Xml.xml
@@ -136,10 +107,10 @@ type t = {
 let from_xml = function
   | Xml.Element ("airframe", [("name", name)], children) as xml ->
       { filename = ""; name;
-        includes = parse_children "include" Include.from_xml children;
-        modules = parse_children "modules" Module_af.from_xml children;
-        firmwares = parse_children "firmware" Firmware.from_xml children;
-        autopilots = parse_children "autopilot" Autopilot.from_xml children;
+        includes = ExtXml.parse_children "include" Include.from_xml children;
+        modules = ExtXml.parse_children "modules" Module.config_from_xml children;
+        firmwares = ExtXml.parse_children "firmware" Firmware.from_xml children;
+        autopilots = ExtXml.parse_children "autopilot" Autopilot.from_xml children;
         xml }
   | _ -> failwith "Airframe.from_xml: unreachable"
 

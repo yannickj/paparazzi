@@ -211,6 +211,23 @@ type autoload = {
     atype: string option
   }
 
+type config = { name: string;
+                mtype: string option;
+                dir: string option;
+                configures: configure list;
+                defines: define list;
+                xml: Xml.xml }
+
+let config_from_xml = function
+  | Xml.Element ("module", attrs, children) as xml ->
+     { name = List.assoc "name" attrs;
+       mtype = OT.assoc_opt "type" attrs;
+       dir = OT.assoc_opt "dir" attrs;
+       configures = ExtXml.parse_children_attribs "configure" parse_configure children;
+       defines = ExtXml.parse_children_attribs "define" parse_define children;
+       xml }
+  | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
+
 type t = {
   filename: string;
   name: string;

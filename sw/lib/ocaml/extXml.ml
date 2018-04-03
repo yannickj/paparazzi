@@ -204,6 +204,15 @@ let remove_child = fun ?(select= fun _ -> true) t xml ->
                    List.fold_right (fun xml rest -> if tag_is xml t && select xml then rest else xml::rest) children [])
   | Xml.PCData _ -> xml
 
+let parse_children = fun tag f children ->
+  List.fold_left (fun l x -> if Xml.tag x = tag then f x :: l else l)
+    [] children
+
+let parse_children_attribs = fun tag f children ->
+  List.fold_left
+    (fun l x -> if Xml.tag x = tag then f (Xml.attribs x) :: l else l)
+    [] children
+
 
 let float_attrib = fun xml a ->
   let v = attrib xml a in

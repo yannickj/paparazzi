@@ -70,6 +70,13 @@ val remove_child :
     ?select:(Xml.xml -> bool) -> string -> Xml.xml -> Xml.xml
 (** [delete_child ?select child_tag xml] Returns [xml] if not found *)
 
+val parse_children : string -> (Xml.xml -> 'a) -> Xml.xml list -> 'a list
+(** [parse_children tag f children] *)
+
+val parse_children_attribs :
+  string -> ((string * string) list -> 'a) -> Xml.xml list -> 'a list
+(** [parse_children_attribs tag f children] *)
+
 val iter_tag : string -> (Xml.xml -> unit) -> Xml.xml -> unit
 (** [iter_tag f tag xml] applies function [f] to every child of [xml] with
     tag [tag]  *)

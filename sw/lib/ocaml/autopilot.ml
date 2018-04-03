@@ -25,31 +25,8 @@
 
 module OT = Ocaml_tools
 
-let parse_children_attribs = fun tag f children ->
-  List.fold_left (fun l x -> if Xml.tag x = tag then f (Xml.attribs x) :: l else l)
-  [] children
-
-module Module_fp = struct
-
-  type t = { name: string;
-             mtype: string option;
-             configures: Module.configure list;
-             defines: Module.define list;
-             xml: Xml.xml }
-
-  let from_xml = function
-    | Xml.Element ("module", attrs, children) as xml ->
-        { name = List.assoc "name" attrs;
-          mtype = OT.assoc_opt "type" attrs;
-          configures = parse_children_attribs "configure" Module.parse_configure children;
-          defines = parse_children_attribs "define" Module.parse_define children;
-          xml }
-    | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
-
-end
-
 type t = {
-  modules: Module_fp.t list;
+  modules: Module.config list;
   xml: Xml.xml;
 }
 
@@ -57,7 +34,7 @@ let from_xml = function
   | Xml.Element ("autopilot", _, children) as xml ->
       let modules = List.fold_left (fun m el ->
         if Xml.tag el = "modules" then
-          m @ List.map Module_fp.from_xml (Xml.children el)
+          m @ List.map Module.config_from_xml (Xml.children el)
         else
           m
       ) [] children in
