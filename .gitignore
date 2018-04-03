@@ -1,6 +1,7 @@
 # ignore html dir for github pages
 /doc/generated
 /doc/manual/generated
+/doc/sphinx/build
 
 *.so
 *.[oa]
