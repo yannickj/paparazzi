@@ -177,7 +177,7 @@
     <define name="EFF_SCHED_USE_FUNCTION" value="TRUE"/>
 
     <define name="ARRIVED_AT_WAYPOINT" value="0.50"/>
-    <define name="DEFAULT_CIRCLE_RADIUS" value="1.7"/>
+    <define name="DEFAULT_CIRCLE_RADIUS" value="1.7"/> <!-- AKA: NAV_RADIUS -->
   </section>
 
   <modules main_freq="512">
