@@ -142,7 +142,7 @@
     <!--<define name="H_Y" value="0.00019"/>-->
     <!--<define name="H_Z" value="0.8578"/>-->
     <!--<define name="GRAVITY_HEURISTIC_FACTOR" value="0"/>-->
-    <define name="USE_GPS_HEADING" value="1"/>
+    <define name="USE_GPS_HEADING" value="TRUE"/>
     <define name="HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
   </section>
 
@@ -155,8 +155,8 @@
   <!-- Gains for horizontal navigation-->
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <define name="PGAIN" value="139"/> <!-- 100 for CYFOAM-->
-    <define name="DGAIN" value="200"/> <!-- 100 for CYFOAM--> 
-    <define name="IGAIN" value="0"/>  <!-- 0 for CYFOAM-->
+    <define name="DGAIN" value="230"/> <!-- 100 for CYFOAM--> 
+    <define name="IGAIN" value="40"/>  <!-- 0 for CYFOAM-->
     <define name="GUIDANCE_H_REF_MAX_SPEED" value="0.8" /> <!-- For mini cyclone inside ENAC Voliere-->
   </section>
 
@@ -284,7 +284,7 @@
     </module>
     <module name="gps" type="datalink"/>
     <module name="stabilization" type="indi"/>
-
+    <!-- <module name="guidance" type="indi"/> -->
 
     <!--<module name="ahrs"          type="int_cmpl_quat">-->
       <!--<configure name="USE_MAGNETOMETER" value="TRUE"/>-->
