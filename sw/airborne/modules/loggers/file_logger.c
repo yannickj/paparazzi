@@ -32,7 +32,6 @@
 #include "std.h"
 
 #include "subsystems/imu.h"
-#include "firmwares/rotorcraft/stabilization.h"
 #include "state.h"
 
 /** Set the default File logger path to the USB drive */
@@ -102,7 +101,7 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -113,10 +112,6 @@ void file_logger_periodic(void)
           imu.mag_unscaled.x,
           imu.mag_unscaled.y,
           imu.mag_unscaled.z,
-          stabilization_cmd[COMMAND_THRUST],
-          stabilization_cmd[COMMAND_ROLL],
-          stabilization_cmd[COMMAND_PITCH],
-          stabilization_cmd[COMMAND_YAW],
           quat->qi,
           quat->qx,
           quat->qy,
