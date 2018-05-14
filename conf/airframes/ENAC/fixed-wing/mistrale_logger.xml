@@ -184,7 +184,7 @@
     <define name="MAG_Z_SIGN"   value="-1"/-->
     <!-- 2) APOGEE board IMU orientation Transversal USB UP -->
     <!--   2A) Power Right --> 
-    <define name="GYRO_P_SIGN"  value="-1"/>
+    <!--define name="GYRO_P_SIGN"  value="-1"/>
     <define name="GYRO_Q_SIGN"  value="-1"/>
     <define name="GYRO_R_SIGN"  value="1" />
     <define name="ACCEL_X_SIGN" value="-1"/>
@@ -192,8 +192,8 @@
     <define name="ACCEL_Z_SIGN" value="1" />
     <define name="MAG_X_SIGN"   value="-1"/>
     <define name="MAG_Y_SIGN"   value="-1"/>
-    <define name="MAG_Z_SIGN"   value="1" />
-    <!--   2B) Power Left > 
+    <define name="MAG_Z_SIGN"   value="1" /-->
+    <!--   2B) Power Left --> 
     <define name="GYRO_P_SIGN"  value="1"/>
     <define name="GYRO_Q_SIGN"  value="1"/>
     <define name="GYRO_R_SIGN"  value="1" />
@@ -202,7 +202,7 @@
     <define name="ACCEL_Z_SIGN" value="1" />
     <define name="MAG_X_SIGN"   value="1"/>
     <define name="MAG_Y_SIGN"   value="1"/>
-    <define name="MAG_Z_SIGN"   value="1" /-->
+    <define name="MAG_Z_SIGN"   value="1" />
 
 
 
