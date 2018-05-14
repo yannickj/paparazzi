@@ -84,6 +84,14 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
                    uint32_t stamp __attribute__((unused)),
                    struct GpsState *gps_s)
 {
+#ifdef INS_GP_USE_GPS_ACCEL
+  struct NedCoor_i ltp_last_speed = ins_gp.ltp_speed;
+  static uint32_t last_stamp = 0;
+  if (last_stamp == 0) {
+    last_stamp = stamp;
+  }
+#endif
+
   if (gps_s->fix < GPS_FIX_3D) {
     return;
   }
@@ -103,6 +111,21 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
   INT32_VECT3_SCALE_2(ins_gp.ltp_speed, gps_speed_cm_s_ned,
                       INT32_SPEED_OF_CM_S_NUM, INT32_SPEED_OF_CM_S_DEN);
   stateSetSpeedNed_i(&ins_gp.ltp_speed);
+
+#ifdef INS_GP_USE_GPS_ACCEL
+  if (stamp != last_stamp) {
+    struct NedCoor_f diff = { 0.f, 0.f, 0.f };
+    float dt = (float)(stamp - last_stamp) / 1e6f; // stamp in usec
+    if (dt > 0.05) { // assume that if dt is too small, there is a problem somewhere
+      VECT3_DIFF(diff, ins_gp.ltp_speed, ltp_last_speed);
+      VECT3_SDIV(ins_gp.ltp_accel, diff, dt);
+      INT32_VECT3_RSHIFT(ins_gp.ltp_accel, ins_gp.ltp_accel, INT32_SPEED_FRAC - INT32_ACCEL_FRAC);
+      stateSetAccelNed_i(&ins_gp.ltp_accel);
+      VECT3_COPY(ltp_last_speed, ins_gp.ltp_speed);
+      last_stamp = stamp;
+    }
+  }
+#endif
 }
 
 
@@ -197,8 +220,9 @@ void ins_reset_altitude_ref(void)
 
 static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
-                     struct Int32Vect3 *accel)
+                     struct Int32Vect3 *accel __attribute__((unused)))
 {
+#ifndef INS_GP_USE_GPS_ACCEL
   // untilt accel and remove gravity
   struct Int32Vect3 accel_body, accel_ned;
   struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&body_to_imu);
@@ -208,6 +232,7 @@ static void accel_cb(uint8_t sender_id __attribute__((unused)),
   accel_ned.z += ACCEL_BFP_OF_REAL(9.81);
   stateSetAccelNed_i((struct NedCoor_i *)&accel_ned);
   VECT3_COPY(ins_gp.ltp_accel, accel_ned);
+#endif
 }
 
 static void body_to_imu_cb(uint8_t sender_id __attribute__((unused)),
