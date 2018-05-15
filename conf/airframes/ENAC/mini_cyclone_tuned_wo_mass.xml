@@ -157,7 +157,7 @@
     <define name="PGAIN" value="139"/> <!-- 100 for CYFOAM-->
     <define name="DGAIN" value="230"/> <!-- 100 for CYFOAM--> 
     <define name="IGAIN" value="40"/>  <!-- 0 for CYFOAM-->
-    <define name="GUIDANCE_H_REF_MAX_SPEED" value="0.8" /> <!-- For mini cyclone inside ENAC Voliere-->
+    <define name="REF_MAX_SPEED" value="0.8" /> <!-- For mini cyclone inside ENAC Voliere-->
   </section>
 
   <section name="MISC">
