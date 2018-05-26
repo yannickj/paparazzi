@@ -11,6 +11,8 @@
     </description>
     <configure name="DW1000_ARDUINO_UART" value="UARTX" description="UART on which arduino and its DW1000 module is connected"/>
     <configure name="DW1000_ARDUINO_BAUD" value="B115200" description="UART Baudrate, default to 115200"/>
+    <configure name="DW100_USE_HAS_LOCAL_POS" value="FALSE|TRUE" description="use as a local positioning system (default: TRUE)"/>
+    <configure name="DW100_USE_HAS_GPS" value="FALSE|TRUE" description="use as a fake GPS positioning system (default: FALSE)"/>
     <section name="DW1000" prefix="DW1000_">
       <define name="ANCHORS_IDS" value="1, 2, 3" type="int[]" description="Comma separated list of anchors ID"/>
       <define name="ANCHORS_POS_X" value="0., 0., 5." type="float[]" description="Comma separated list of anchors ID over X axis"/>
@@ -33,26 +35,34 @@
   <makefile>
     <configure name="DW1000_ARDUINO_UART" case="upper|lower"/>
     <configure name="DW1000_ARDUINO_BAUD" default="B115200"/>
+    <configure name="DW100_USE_HAS_LOCAL_POS" default="TRUE"/>
+    <configure name="DW100_USE_HAS_GPS" default="FALSE"/>
     <file name="dw1000_arduino.c"/>
     <file name="trilateration.c"/>
+    <define name="DW100_USE_HAS_LOCAL_POS" value="$(DW100_USE_HAS_LOCAL_POS)"/>
+    <define name="DW100_USE_HAS_GPS" value="$(DW100_USE_HAS_GPS)"/>
+    <raw>
+      ifeq (,$(findstring $(DW100_USE_HAS_GPS),0 FALSE))
+        ifdef SECONDARY_GPS
+          ifneq (,$(findstring $(SECONDARY_GPS), dw1000))
+            # this is the secondary GPS
+            $(TARGET).CFLAGS += -DGPS_SECONDARY_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+            $(TARGET).CFLAGS += -DSECONDARY_GPS=GPS_DW1000
+          else
+            $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+            $(TARGET).CFLAGS += -DPRIMARY_GPS=GPS_DW1000
+          endif
+        else
+          # plain old single GPS usage
+          $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
+        endif
+      endif
+    </raw>
+  </makefile>
+  <makefile target="ap">
     <define name="USE_$(DW1000_ARDUINO_UART_UPPER)"/>
     <define name="DW1000_ARDUINO_DEV" value="$(DW1000_ARDUINO_UART_LOWER)"/>
     <define name="$(DW1000_ARDUINO_UART_UPPER)_BAUD" value="$(DW1000_ARDUINO_BAUD)"/>
-    <raw>
-      ifdef SECONDARY_GPS
-      ifneq (,$(findstring $(SECONDARY_GPS), dw1000))
-      # this is the secondary GPS
-      $(TARGET).CFLAGS += -DGPS_SECONDARY_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
-      $(TARGET).CFLAGS += -DSECONDARY_GPS=GPS_DW1000
-      else
-      $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
-      $(TARGET).CFLAGS += -DPRIMARY_GPS=GPS_DW1000
-      endif
-      else
-      # plain old single GPS usage
-      $(TARGET).CFLAGS += -DGPS_TYPE_H=\"modules/decawave/dw1000_arduino.h\"
-      endif
-    </raw>
   </makefile>
 </module>
 

@@ -39,6 +39,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** TRUE if dw1000 are used as local position estimate */
+#ifndef DW1000_USE_HAS_LOCAL_POS
+#define DW1000_USE_HAS_LOCAL_POS TRUE
+#endif
+
+/** TRUE if dw1000 are used as GPS */
+#ifndef DW1000_USE_HAS_GPS
+#define DW1000_USE_HAS_GPS FALSE
+#endif
+
 /** Number of anchors
  *
  * using standard trilateration algorithm, only 3 anchors are required/supported
@@ -49,12 +59,12 @@
 #define DW1000_NB_ANCHORS 3
 #endif
 
-/** default offset, applied to final result not to individual distances */
+/** default offset, applied to individual distances */
 #ifndef DW1000_OFFSET
 #define DW1000_OFFSET { 0.f, 0.f, 0.f }
 #endif
 
-/** default scale factor, applied to final result not to individual distances */
+/** default scale factor, applied to individual distances */
 #ifndef DW1000_SCALE
 #define DW1000_SCALE { 1.f, 1.f, 1.f }
 #endif
@@ -67,6 +77,27 @@
 /** default timeout (in ms) */
 #ifndef DW1000_TIMEOUT
 #define DW1000_TIMEOUT 500
+#endif
+
+/** DW1000 Noise */
+#ifndef DW1000_NOISE_X
+#define DW1000_NOISE_X 0.1
+#endif
+
+#ifndef DW1000_NOISE_Y
+#define DW1000_NOISE_Y 0.1
+#endif
+
+#ifndef DW1000_NOISE_Z
+#define DW1000_NOISE_Z 0.1
+#endif
+
+/** waypoints to use as anchors in simulation
+ */
+#if SITL
+#ifndef DW1000_ANCHOR_SIM_WP
+#define DW1000_ANCHOR_SIM_WP { WP_ANCHOR_1, WP_ANCHOR_2, WP_ANCHOR_3 }
+#endif
 #endif
 
 /** frame sync byte */
@@ -91,11 +122,22 @@ struct DW1000 {
   struct GpsState gps_dw1000; ///< "fake" gps structure
   struct LtpDef_i ltp_def;    ///< ltp reference
   bool updated;               ///< new anchor data available
+#if SITL
+  uint8_t anchor_sim_wp[DW1000_NB_ANCHORS];   ///< WP index for simulation
+#endif
 };
 
 static struct DW1000 dw1000;
 
+/// init arrays from airframe file
+static const uint16_t ids[] = DW1000_ANCHORS_IDS;
+static const float pos_x[] = DW1000_ANCHORS_POS_X;
+static const float pos_y[] = DW1000_ANCHORS_POS_Y;
+static const float pos_z[] = DW1000_ANCHORS_POS_Z;
+static const float offset[] = DW1000_OFFSET;
+static const float scale[] = DW1000_SCALE;
 
+#if !SITL
 /** Utility function to get float from buffer */
 static inline float float_from_buf(uint8_t* b) {
   float f;
@@ -153,18 +195,23 @@ static void dw1000_arduino_parse(struct DW1000 *dw, uint8_t c)
       }
       dw->state = DW_WAIT_STX;
       break;
+
+    default:
+      dw->state = DW_WAIT_STX;
   }
 }
+#endif
 
+#if DW1000_USE_HAS_GPS
 static void send_gps_dw1000_small(struct DW1000 *dw)
 {
   // rotate and convert to cm integer
   float x = dw->pos.x * cosf(dw->initial_heading) - dw->pos.y * sinf(dw->initial_heading);
   float y = dw->pos.x * sinf(dw->initial_heading) + dw->pos.y * cosf(dw->initial_heading);
   struct EnuCoor_i enu_pos;
-  enu_pos.x = (int32_t) (x * 100);
-  enu_pos.y = (int32_t) (y * 100);
-  enu_pos.z = (int32_t) (dw->pos.z * 100);
+  enu_pos.x = (int32_t) (x * 100.f);
+  enu_pos.y = (int32_t) (y * 100.f);
+  enu_pos.z = (int32_t) (dw->pos.z * 100.f);
 
   // Convert the ENU coordinates to ECEF
   ecef_of_enu_point_i(&(dw->gps_dw1000.ecef_pos), &(dw->ltp_def), &enu_pos);
@@ -196,6 +243,61 @@ static void send_gps_dw1000_small(struct DW1000 *dw)
   uint32_t now_ts = get_sys_time_usec();
   AbiSendMsgGPS(GPS_DW1000_ID, now_ts, &(dw->gps_dw1000));
 }
+#endif
+
+#if DW1000_USE_HAS_LOCAL_POS
+static void send_pos_estimate(struct DW1000 *dw)
+{
+  uint32_t now_ts = get_sys_time_usec();
+  // send POSITION_ESTIMATE type message
+  AbiSendMsgPOSITION_ESTIMATE(GPS_DW1000_ID, now_ts,
+      dw->pos.x, dw->pos.y, dw->pos.z,
+      DW1000_NOISE_X, DW1000_NOISE_Y, DW1000_NOISE_Z);
+}
+#endif
+
+static void scale_distances(struct Anchor *anchors)
+{
+  anchors[0].distance = scale[0] * (anchors[0].distance - offset[0]);
+  anchors[1].distance = scale[1] * (anchors[1].distance - offset[1]);
+  anchors[2].distance = scale[2] * (anchors[2].distance - offset[2]);
+}
+
+/** check timeout for each anchor
+ * @return true if one has reach timeout
+ */
+static bool check_anchor_timeout(struct DW1000 *dw)
+{
+  const float now = get_sys_time_float();
+  const float timeout = (float)DW1000_TIMEOUT / 1000.;
+  for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
+    if (now - dw->anchors[i].time > timeout) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void process_data(struct DW1000 *dw) {
+  // process if new data
+  if (dw->updated) {
+    // apply scale and neutral corrections
+    scale_distances(dw->anchors);
+    // if no timeout on anchors, run trilateration algorithm
+    if (check_anchor_timeout(dw) == false &&
+        trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
+#if DW1000_USE_HAS_GPS
+      // send fake GPS message for INS filters
+      send_gps_dw1000_small(dw);
+#endif
+#if DW1000_USE_HAS_LOCAL_POS
+      // send a local postion estimate
+      send_pos_estimate(dw);
+#endif
+    }
+    dw->updated = false;
+  }
+}
 
 void dw1000_reset_heading_ref(void)
 {
@@ -204,22 +306,31 @@ void dw1000_reset_heading_ref(void)
   dw1000_arduino_dw1000_reset_heading_ref_status = MODULES_STOP;
 }
 
-/// init arrays from airframe file
-static const uint16_t ids[] = DW1000_ANCHORS_IDS;
-static const float pos_x[] = DW1000_ANCHORS_POS_X;
-static const float pos_y[] = DW1000_ANCHORS_POS_Y;
-static const float pos_z[] = DW1000_ANCHORS_POS_Z;
-static const float offset[] = DW1000_OFFSET;
-static const float scale[] = DW1000_SCALE;
+#if SITL
+static const uint8_t wp_ids[] = DW1000_ANCHOR_SIM_WP;
 
-static void scale_position(struct DW1000 *dw)
+static void compute_anchors_dist_from_wp(struct DW1000 *dw)
 {
-  dw->pos.x = scale[0] * (dw->raw_pos.x - offset[0]);
-  dw->pos.y = scale[1] * (dw->raw_pos.y - offset[1]);
-  dw->pos.z = scale[2] * (dw->raw_pos.z - offset[2]);
+  // position of the aircraft
+  struct FloatVect3 *pos = (struct FloatVect3 *) (stateGetPositionEnu_f());
+  float time = get_sys_time_float();
+  // compute distance to each WP/anchor
+  for (uint8_t i = 0; i < DW1000_NB_ANCHORS; i++) {
+    struct FloatVect3 a_pos = {
+      WaypointX(wp_ids[i]),
+      WaypointY(wp_ids[i]),
+      WaypointAlt(wp_ids[i])
+    };
+    struct FloatVect3 diff;
+    VECT3_DIFF(diff, (*pos), a_pos);
+    dw->anchors[i].distance = float_vect3_norm(&diff);
+    dw->anchors[i].time = time;
+    dw->updated = true;
+  }
 }
+#endif
 
-void dw1000_arduino_init()
+void dw1000_arduino_init(void)
 {
   // init DW1000 structure
   dw1000.idx = 0;
@@ -259,13 +370,20 @@ void dw1000_arduino_init()
 
 }
 
-void dw1000_arduino_periodic()
+void dw1000_arduino_periodic(void)
 {
-  // Check for timeout
+#if SITL
+  // compute position from WP for simulation
+  compute_anchors_dist_from_wp(&dw1000);
+  process_data(&dw1000);
+#endif
+#if DW1000_USE_AS_GPS
+  // Check for GPS timeout
   gps_periodic_check(&(dw1000.gps_dw1000));
+#endif
 }
 
-void dw1000_arduino_report()
+void dw1000_arduino_report(void)
 {
   float buf[9];
   buf[0] = dw1000.anchors[0].distance;
@@ -280,40 +398,16 @@ void dw1000_arduino_report()
   DOWNLINK_SEND_PAYLOAD_FLOAT(DefaultChannel, DefaultDevice, 9, buf);
 }
 
-/** check timeout for each anchor
- * @return true if one has reach timeout
- */
-static bool check_anchor_timeout(struct DW1000 *dw)
+void dw1000_arduino_event(void)
 {
-  const float now = get_sys_time_float();
-  const float timeout = (float)DW1000_TIMEOUT / 1000.;
-  for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
-    if (now - dw->anchors[i].time > timeout) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void dw1000_arduino_event()
-{
+#if !SITL
   // Look for data on serial link and send to parser
   while (uart_char_available(&DW1000_ARDUINO_DEV)) {
     uint8_t ch = uart_getch(&DW1000_ARDUINO_DEV);
     dw1000_arduino_parse(&dw1000, ch);
-    // process if new data
-    if (dw1000.updated) {
-      // if no timeout on anchors, run trilateration algorithm
-      if (check_anchor_timeout(&dw1000) == false &&
-          trilateration_compute(dw1000.anchors, &dw1000.raw_pos) == 0) {
-        // apply scale and neutral corrections
-        scale_position(&dw1000);
-        // send fake GPS message for INS filters
-        send_gps_dw1000_small(&dw1000);
-      }
-      dw1000.updated = false;
-    }
+    process_data(&dw1000);
   }
+#endif
 }
 
 
