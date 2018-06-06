@@ -149,8 +149,12 @@ class FormationControl:
             if msg['button2'] == '1' and not self.joystick.button2:
                 self.scale = max(self.scale - self.sens['scale'], self.sens['scale_min'])
             if msg['button4'] == '1' and not self.joystick.button4:
+                print("Formation Disabled")
+                sys.stdout.flush()
                 self.enabled = False
             if msg['button3'] == '1' and not self.joystick.button3:
+                print("Formation Enabled")
+                sys.stdout.flush()
                 self.enabled = True
             self.joystick.button1 = (msg['button1'] == '1')
             self.joystick.button2 = (msg['button2'] == '1')
