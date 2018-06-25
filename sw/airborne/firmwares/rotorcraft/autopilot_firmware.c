@@ -123,7 +123,7 @@ static void send_fp(struct transport_tx *trans, struct link_device *dev)
 {
   int32_t carrot_up = -guidance_v_z_sp;
   int32_t carrot_heading = ANGLE_BFP_OF_REAL(guidance_h.sp.heading);
-#if HYBRID_NAVIGATION
+#if GUIDANCE_INDI_HYBRID
   struct FloatEulers eulers_zxy;
   float_eulers_of_quat_zxy(&eulers_zxy, stateGetNedToBodyQuat_f());
   int32_t state_psi = ANGLE_BFP_OF_REAL(eulers_zxy.psi);

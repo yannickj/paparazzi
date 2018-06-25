@@ -92,6 +92,15 @@ void file_logger_stop(void)
   }
 }
 
+#include "state.h"
+#include "stabilization.h"
+#include "subsystems/actuators.h"
+#include "firmwares/rotorcraft/stabilization/stabilization_indi.h"
+#include "firmwares/rotorcraft/guidance/guidance_h.h"
+#include "firmwares/rotorcraft/guidance/guidance_indi_hybrid.h"
+#include "firmwares/rotorcraft/guidance/guidance_v.h"
+#include "subsystems/radio_control.h"
+
 /** Log the values to a csv file */
 void file_logger_periodic(void)
 {
@@ -99,23 +108,49 @@ void file_logger_periodic(void)
     return;
   }
   static uint32_t counter;
-  struct Int32Quat *quat = stateGetNedToBodyQuat_i();
+  struct FloatQuat *quat = stateGetNedToBodyQuat_f();
+  struct FloatRates *rates = stateGetBodyRates_f();
+  struct Int32Vect3 *accel = stateGetAccelBody_i();
+  float rc_x = -(radio_control.values[RADIO_PITCH]/9600.0)*20.0;
+  float rc_y = (radio_control.values[RADIO_ROLL]/9600.0)*9.0;
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  fprintf(file_logger, "%d,%f,%f,%f,%d,%d,%d,%d,%f,%f,%f,%f,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
           counter,
-          imu.gyro_unscaled.p,
-          imu.gyro_unscaled.q,
-          imu.gyro_unscaled.r,
-          imu.accel_unscaled.x,
-          imu.accel_unscaled.y,
-          imu.accel_unscaled.z,
-          imu.mag_unscaled.x,
-          imu.mag_unscaled.y,
-          imu.mag_unscaled.z,
+          rates->p,
+          rates->q,
+          rates->r,
+          actuators_pprz[0],
+          actuators_pprz[1],
+          actuators_pprz[2],
+          actuators_pprz[3],
           quat->qi,
           quat->qx,
           quat->qy,
-          quat->qz
+          quat->qz,
+          stab_att_sp_quat.qi,
+          stab_att_sp_quat.qx,
+          stab_att_sp_quat.qy,
+          stab_att_sp_quat.qz,
+          accel->x,
+          accel->y,
+          accel->z,
+          stateGetPositionNed_f()->x,
+          stateGetPositionNed_f()->y,
+          stateGetPositionNed_f()->z,
+          stateGetSpeedNed_f()->x,
+          stateGetSpeedNed_f()->y,
+          stateGetSpeedNed_f()->z,
+          guidance_v_z_ref,
+          sp_accel.x,
+          sp_accel.y,
+          sp_accel.z,
+          speed_sp.x,
+          speed_sp.y,
+          speed_sp.z,
+          rc_x,
+          rc_y,
+          desired_airspeed.x,
+          desired_airspeed.y
          );
   counter++;
 }
