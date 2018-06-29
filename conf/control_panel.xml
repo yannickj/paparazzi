@@ -92,8 +92,8 @@
         <arg flag="-zoom" constant="40"/>
       </program>
       <program name="NatNet3">
-        <arg flag="-ac" constant="211"/>
-        <arg flag="211"/>
+        <arg flag="-ac" constant="210"/>
+        <arg flag="210"/>
         <arg flag="-ac" constant="212"/>
         <arg flag="212"/>
         <arg flag="-s" constant="192.168.1.230"/>
@@ -106,7 +106,7 @@
       </program>
       <program name="FC Rotorcraft">
         <arg flag="-gr"/>
-        <arg flag="conf_2uav_rot.json"/>
+        <arg flag="conf_2uav_rot_210_212.json"/>
       </program>
     </session>
     <session name="Flight UDP/WiFi Bebop2 211">
@@ -156,8 +156,8 @@
         <arg flag="-zoom" constant="40"/>
       </program>
       <program name="NatNet3">
-        <arg flag="-ac" constant="1"/>
-        <arg flag="1"/>
+        <arg flag="-ac" constant="5"/>
+        <arg flag="5"/>
         <arg flag="-s" constant="192.168.1.230"/>
         <arg flag="-f" constant="5"/>
       </program>

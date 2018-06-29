@@ -35,12 +35,12 @@
   <aircraft
    name="BEBOP2_210"
    ac_id="210"
-   airframe="airframes/ENAC/quadrotor/bebop2_optitrack.xml"
+   airframe="airframes/ENAC/quadrotor/bebop2_optitrack_swarm.xml"
    radio="radios/cockpitSX.xml"
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/rotorcraft_optitrack_survey_enac.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/nav_survey_rectangle_rotorcraft.xml modules/air_data.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_indi_simple.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_common.xml modules/ins_extended.xml"
+   settings_modules="modules/nav_survey_rectangle_rotorcraft.xml modules/air_data.xml modules/guidance_indi.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_indi_simple.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_common.xml"
    gui_color="#3e25c9283404"
   />
   <aircraft
@@ -119,6 +119,17 @@
    settings="settings/rotorcraft_basic.xml"
    settings_modules="modules/airspeed_ms45xx_i2c.xml modules/guidance_indi.xml modules/stabilization_indi.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/air_data.xml modules/imu_common.xml"
    gui_color="#ffff7f7f0000"
+  />
+  <aircraft
+   name="Carpet"
+   ac_id="115"
+   airframe="airframes/ENAC/quadrotor/carpet.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/rotorcraft_optitrack_survey_enac.xml"
+   settings="settings/rotorcraft_basic.xml"
+   settings_modules="modules/nav_survey_rectangle_rotorcraft.xml modules/air_data.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_int_quat.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_common.xml"
+   gui_color="blue"
   />
   <aircraft
    name="DarkoVTOL"
