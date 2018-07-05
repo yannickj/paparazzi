@@ -35,6 +35,8 @@
       <configure name="SECONDARY_GPS" value="datalink"/>
     </module>
     <module name="dw1000_arduino">
+      <configure name="DW1000_USE_HAS_GPS" value="TRUE"/>
+      <configure name="DW1000_USE_HAS_LOCAL_POS" value="FALSE"/>
       <configure name="DW1000_ARDUINO_UART" value="uart1"/>
     </module>
     <module name="stabilization" type="int_quat"/>
@@ -52,9 +54,9 @@
   </firmware>
 
   <!-- include common control -->
-  <include href="conf/airframes/ENAC/parrot/ard2_base_control_optitrack.xml"/>
+  <include href="conf/airframes/ENAC/quadrotor/ard2_base_control_optitrack.xml"/>
   <!-- include arframe calibration -->
-  <include href="conf/airframes/ENAC/parrot/ard2_$AC_ID.xml"/>
+  <include href="conf/airframes/ENAC/quadrotor/ard2_$AC_ID.xml"/>
 
   <!-- local magnetic field -->
   <!-- http://paparazzi.enac.fr/wiki/Subsystem/ahrs#Local_Magnetic_Field -->
@@ -94,8 +96,8 @@
     <define name="ANCHORS_POS_X" value="0., 2.5, -2.5" type="float[]"/>
     <define name="ANCHORS_POS_Y" value="5., 0., 0." type="float[]"/>
     <define name="ANCHORS_POS_Z" value="0., 0., 0." type="float[]"/>
-    <define name="OFFSET" value="0.0244, -0.1749, -2.84" type="float[]"/>
-    <define name="SCALE" value="0.81637, 0.88060, 1.556112" type="float[]"/>
+    <define name="OFFSET" value="0.64, 0.9, 0.85" type="float[]"/>
+    <define name="SCALE" value="1.0, 1.0, 1.0" type="float[]"/>
   </section>
 
 </airframe>

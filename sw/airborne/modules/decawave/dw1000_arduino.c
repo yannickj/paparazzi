@@ -116,9 +116,9 @@ struct DW1000 {
   uint8_t ck;                 ///< checksum
   uint8_t state;              ///< parser state
   float initial_heading;      ///< initial heading correction
-  struct Anchor anchors[DW1000_NB_ANCHORS];   ///<anchors data
+  struct Anchor anchors[DW1000_NB_ANCHORS];   ///< anchors data
+  float raw_dist[DW1000_NB_ANCHORS];          ///< raw distance from anchors
   struct EnuCoor_f pos;       ///< local pos in anchors frame
-  struct EnuCoor_f raw_pos;   ///< unscaled local pos in anchors frame
   struct GpsState gps_dw1000; ///< "fake" gps structure
   struct LtpDef_i ltp_def;    ///< ltp reference
   bool updated;               ///< new anchor data available
@@ -157,7 +157,9 @@ static void fill_anchor(struct DW1000 *dw) {
   for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
     uint16_t id = uint16_from_buf(dw->buf);
     if (dw->anchors[i].id == id) {
-      dw->anchors[i].distance = float_from_buf(dw->buf + 2);
+      dw->raw_dist[i] = float_from_buf(dw->buf + 2);
+      // store scaled distance
+      dw->anchors[i].distance = scale[i] * (dw->raw_dist[i] - offset[i]);
       dw->anchors[i].time = get_sys_time_float();
       dw->updated = true;
       break;
@@ -256,13 +258,6 @@ static void send_pos_estimate(struct DW1000 *dw)
 }
 #endif
 
-static void scale_distances(struct Anchor *anchors)
-{
-  anchors[0].distance = scale[0] * (anchors[0].distance - offset[0]);
-  anchors[1].distance = scale[1] * (anchors[1].distance - offset[1]);
-  anchors[2].distance = scale[2] * (anchors[2].distance - offset[2]);
-}
-
 /** check timeout for each anchor
  * @return true if one has reach timeout
  */
@@ -281,8 +276,6 @@ static bool check_anchor_timeout(struct DW1000 *dw)
 static void process_data(struct DW1000 *dw) {
   // process if new data
   if (dw->updated) {
-    // apply scale and neutral corrections
-    scale_distances(dw->anchors);
     // if no timeout on anchors, run trilateration algorithm
     if (check_anchor_timeout(dw) == false &&
         trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
@@ -342,6 +335,7 @@ void dw1000_arduino_init(void)
   dw1000.pos.z = 0.f;
   dw1000.updated = false;
   for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
+    dw1000.raw_dist[i] = 0.f;
     dw1000.anchors[i].distance = 0.f;
     dw1000.anchors[i].time = 0.f;
     dw1000.anchors[i].id = ids[i];
@@ -389,9 +383,9 @@ void dw1000_arduino_report(void)
   buf[0] = dw1000.anchors[0].distance;
   buf[1] = dw1000.anchors[1].distance;
   buf[2] = dw1000.anchors[2].distance;
-  buf[3] = dw1000.raw_pos.x;
-  buf[4] = dw1000.raw_pos.y;
-  buf[5] = dw1000.raw_pos.z;
+  buf[3] = dw1000.raw_dist[0];
+  buf[4] = dw1000.raw_dist[1];
+  buf[5] = dw1000.raw_dist[2];
   buf[6] = dw1000.pos.x;
   buf[7] = dw1000.pos.y;
   buf[8] = dw1000.pos.z;
