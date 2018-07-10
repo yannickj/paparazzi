@@ -34,6 +34,8 @@
 #include "math/pprz_algebra_float.h"
 #include "generated/airframe.h"
 
+#include "filters/pid.h"
+
 // ABI message binding ID
 #ifndef SHIFT_TRACKING_ID
 #define SHIFT_TRACKING_ID ABI_BROADCAST
@@ -70,10 +72,6 @@
 #define SHIFT_TRACKING_MAXSHIFT 30.f
 #endif
 
-#ifndef SHIFT_TRACKING_MAXSUM
-#define SHIFT_TRACKING_MAXSUM 30.f
-#endif
-
 struct shift_tracking_t shift_tracking;
 
 // base time on NAV freq
@@ -83,9 +81,7 @@ static const float nav_dt = 1.f / NAVIGATION_FREQUENCY;
 struct shift_tracking_private {
   struct FloatVect3 pos;  ///< last position report
   struct FloatVect3 dir;  ///< tracking direction
-  float value;
-  float last_value;
-  float sum;
+  struct PID_f pid;       ///< PID controller
   float *shift;           ///< keep track of the shift variable to change
   abi_event pos_ev;
 };
@@ -121,9 +117,7 @@ void shift_tracking_init(void)
   stp.dir.y = dir[1];
   stp.dir.z = dir[2];
   float_vect3_normalize(&stp.dir); // normalize direction
-  stp.value = 0.f;
-  stp.last_value = 0.f;
-  stp.sum = 0.f;
+  init_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki, nav_dt);
   stp.shift = NULL;
 
   // Bind to position message
@@ -132,7 +126,7 @@ void shift_tracking_init(void)
 
 void shift_tracking_reset(void)
 {
-  stp.sum = 0.f;
+  //stp.sum = 0.f;
   shift_tracking.shift = 0.f;
   if (stp.shift) {
     *stp.shift = 0.f;
@@ -154,16 +148,10 @@ void shift_tracking_run(float *shift)
   //
   // normal to dir = (-dir.y, dir.x) where dir is normalized
   // offset is scalar between pos and normal
-  stp.value = (- stp.dir.y * stp.pos.x) + (stp.dir.x * stp.pos.y);
-  stp.sum += stp.value * nav_dt;
-  BoundAbs(stp.sum, SHIFT_TRACKING_MAXSUM);
+  float value = (- stp.dir.y * stp.pos.x) + (stp.dir.x * stp.pos.y);
 
   // shift calculation
-  shift_tracking.shift = - (
-    shift_tracking.kp * stp.value +
-    shift_tracking.ki * stp.sum +
-    shift_tracking.kd * (stp.value - stp.last_value) / nav_dt);
-  stp.last_value = stp.value;
+  shift_tracking.shift = update_pid_f(&stp.pid, value);
   BoundAbs(shift_tracking.shift, SHIFT_TRACKING_MAXSHIFT);
 
   // pilot actual value
@@ -172,3 +160,7 @@ void shift_tracking_run(float *shift)
   }
 }
 
+void shift_tracking_update_gains(void)
+{
+  set_gains_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki, nav_dt);
+}

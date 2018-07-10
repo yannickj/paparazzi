@@ -58,5 +58,12 @@ extern void shift_tracking_run(float *shift);
  */
 extern void shift_tracking_reset(void);
 
+/** hndlers for gains update
+ */
+#define shift_tracking_SetKp(_v) { shift_tracking.kp = _v; shift_tracking_update_gains(); }
+#define shift_tracking_SetKd(_v) { shift_tracking.kd = _v; shift_tracking_update_gains(); }
+#define shift_tracking_SetKi(_v) { shift_tracking.ki = _v; shift_tracking_update_gains(); }
+extern void shift_tracking_update_gains(void);
+
 #endif
 
