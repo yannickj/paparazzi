@@ -100,6 +100,12 @@
 #endif
 #endif
 
+/** ChibiOS SD logger */
+#if DW1000_LOG
+#include "modules/loggers/sdlog_chibios.h"
+static bool log_started;
+#endif
+
 /** frame sync byte */
 #define DW_STX 0xFE
 
@@ -288,6 +294,24 @@ static void process_data(struct DW1000 *dw) {
       send_pos_estimate(dw);
 #endif
     }
+#if DW1000_LOG
+    if (log_started) {
+      struct EnuCoor_f pos = *stateGetPositionEnu_f();
+      sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %3.f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f\n",
+          dw1000.anchors[0].distance,
+          dw1000.anchors[0].time,
+          dw1000.anchors[1].distance,
+          dw1000.anchors[1].time,
+          dw1000.anchors[2].distance,
+          dw1000.anchors[2].time,
+          dw1000.pos.x,
+          dw1000.pos.y,
+          dw1000.pos.z,
+          pos.x,
+          pos.y,
+          pos.z);
+    }
+#endif
     dw->updated = false;
   }
 }
@@ -374,6 +398,15 @@ void dw1000_arduino_periodic(void)
 #if DW1000_USE_AS_GPS
   // Check for GPS timeout
   gps_periodic_check(&(dw1000.gps_dw1000));
+#endif
+#if DW1000_LOG
+  if (pprzLogFile != -1) {
+    if (!log_started) {
+      sdLogWriteLog(pprzLogFile,
+                    "d1 t1 d2 t2 d3 t3 x y z gps_x gps_y gps_z\n");
+      log_started = true;
+    }
+  }
 #endif
 }
 
