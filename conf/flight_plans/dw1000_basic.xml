@@ -16,9 +16,9 @@
     <waypoint alt="185.0" name="TD" x="-22.6" y="45.1"/>
     <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
     <waypoint name="CLIMB" x="-114.5" y="162.3"/>
-    <waypoint name="ANCHOR_1" x="-25" y="37.5"/>
-    <waypoint name="ANCHOR_2" x="-20" y="40."/>
-    <waypoint name="ANCHOR_3" x="-20" y="35."/>
+    <waypoint name="ANCHOR_1" x="-15" y="37.5"/>
+    <waypoint name="ANCHOR_2" x="-20" y="35."/>
+    <waypoint name="ANCHOR_3" x="-20" y="40."/>
   </waypoints>
   <modules>
     <module name="shift_tracking"/>
@@ -53,7 +53,7 @@
       <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
     </block>
     <block name="Run Shift Tracking" pre_call="shift_tracking_run(&nav_shift)">
-      <go approaching_time="0" from="AF" hmode="route" wp="TD"/>
+      <go approaching_time="0" from="AF" hmode="route" wp="TD" alt="WaypointAlt(WP_AF)"/>
       <deroute block="Start Shift Tracking"/>
     </block>
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
@@ -76,6 +76,18 @@
     <block name="flare">
       <go approaching_time="0" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
       <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Set Anchor 1">
+      <call_once fun="NavSetWaypointHere(WP_ANCHOR_1)"/>
+      <deroute block="Holding point"/>
+    </block>
+    <block name="Set Anchor 2">
+      <call_once fun="NavSetWaypointHere(WP_ANCHOR_2)"/>
+      <deroute block="Holding point"/>
+    </block>
+    <block name="Set Anchor 3">
+      <call_once fun="NavSetWaypointHere(WP_ANCHOR_3)"/>
+      <deroute block="Holding point"/>
     </block>
   </blocks>
 </flight_plan>
