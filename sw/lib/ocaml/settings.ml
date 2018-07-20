@@ -23,9 +23,6 @@
  * Settings module for parsing XML config files
  *)
 
-let get_opt attrib attribs = try Some (List.assoc attrib attribs) with _ -> None
-
-
 module Dl_setting = struct
 
   type t = {
@@ -37,21 +34,20 @@ module Dl_setting = struct
 
   let from_xml = function
     | Xml.Element ("dl_setting", attribs, _) as xml ->
-        let test attrib = List.mem_assoc attrib attribs in
-        {
-          var = List.assoc "var" attribs;
-          shortname = get_opt "shortname" attribs;
-          handler = get_opt "handler" attribs;
-          header = begin
-            match test "module", test "header" with
-            | true, _ ->
-                Printf.eprintf "Warning: please rename 'module' attribute in settings with 'header'";
-                Some (List.assoc "module" attribs)
-            | false, true -> Some (List.assoc "header" attribs)
-            | false, false -> None
-          end;
-          xml;
-        }
+      { var = Xml.attrib xml "var";
+        shortname = ExtXml.attrib_opt xml "shortname";
+        handler = ExtXml.attrib_opt xml "handler";
+        header = begin
+          match ExtXml.attrib_opt xml "module",
+                ExtXml.attrib_opt xml "header" with
+          | Some m, _ ->
+            Printf.eprintf "Warning: please rename 'module' attribute in settings with 'header'";
+            Some m
+          | None, Some h -> Some h
+          | None, None -> None
+        end;
+        xml;
+      }
     | _ -> failwith "Settings.Dl_setting.from_xml: unreachable"
 
 end
@@ -67,17 +63,15 @@ module Dl_settings = struct
 
   let rec iter_xml s = function
     | Xml.Element ("dl_settings", attribs, children) as xml ->
-        {
-          name = get_opt "name" attribs;
-          dl_settings = List.map (iter_xml s) children;
-          dl_setting = [];
-          headers = [];
-          xml;
-        }
+      { name = ExtXml.attrib_opt xml "name";
+        dl_settings = List.map (iter_xml s) children;
+        dl_setting = [];
+        headers = [];
+        xml }
     | Xml.Element ("dl_setting", attribs, _) as xml ->
-        { s with dl_setting = Dl_setting.from_xml xml :: s.dl_setting }
+      { s with dl_setting = Dl_setting.from_xml xml :: s.dl_setting }
     | Xml.Element ("include", [("header", name)], _) ->
-        { s with headers = name :: s.headers }
+      { s with headers = name :: s.headers }
     | _ -> failwith "Settings.Dl_settings.iter_xml: unreachable"
 
   let from_xml = iter_xml { name = None; dl_settings = []; dl_setting = []; headers = []; xml = Xml.Element ("dl_settings", [], []) }
@@ -94,12 +88,11 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("settings", attribs, children) as xml ->
-      { filename = "";
-        name = get_opt "name" attribs;
-        target = get_opt "target" attribs;
-        dl_settings = List.map Dl_settings.from_xml children;
-        xml;
-      }
+    { filename = "";
+      name = ExtXml.attrib_opt xml "name";
+      target = ExtXml.attrib_opt xml "target";
+      dl_settings = List.map Dl_settings.from_xml children;
+      xml }
   | _ -> failwith "Settings.from_xml: unreachable"
 
 let from_file = fun filename ->
@@ -112,18 +105,16 @@ let from_file = fun filename ->
 let get_headers = fun settings ->
   let rec iter = fun headers s ->
     let headers = List.fold_left (fun hl dl_s ->
-      match dl_s.Dl_setting.header with
-      | Some x -> if List.mem x hl then hl else x :: hl
-      | None -> hl
-    ) headers s.Dl_settings.dl_setting in
+        match dl_s.Dl_setting.header with
+        | Some x -> if List.mem x hl then hl else x :: hl
+        | None -> hl
+      ) headers s.Dl_settings.dl_setting in
     let headers = List.fold_left (fun hl h ->
-      if List.mem h hl then hl else h :: hl
-    ) headers s.Dl_settings.headers in
+        if List.mem h hl then hl else h :: hl
+      ) headers s.Dl_settings.headers in
     let headers = List.fold_left (fun hl dl_ss ->
-      iter hl dl_ss
-    ) headers s.Dl_settings.dl_settings in
+        iter hl dl_ss
+      ) headers s.Dl_settings.dl_settings in
     headers
   in
   List.fold_left iter [] settings.dl_settings
-
-

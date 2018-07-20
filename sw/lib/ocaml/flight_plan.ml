@@ -34,36 +34,33 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("flight_plan", _, children) as xml ->
-      let settings = List.fold_left (fun s el ->
+    let settings = List.fold_left (fun s el ->
         if Xml.tag el = "variables" then
           s @ List.fold_left (fun s e -> 
-            if Xml.tag el = "variable" then
-              let attribs = Xml.attribs e in
-              let test attrib = List.mem_assoc attrib attribs in
-              let get_opt attrib = try Some (List.assoc attrib attribs) with _ -> None in
-              if test "min" && test "max" && test "step" then
-                [{
-                  Settings.Dl_setting.var = List.assoc "var" attribs;
-                  shortname = get_opt "shortname";
-                  handler = None;
-                  header = None;
-                  xml = Xml.Element ("dl_setting", attribs, []);
-                }] @ s
-              else
-                s
-            else
-              s
-          ) [] (Xml.children el)
+              if Xml.tag el = "variable" then
+                let test = fun attrib ->
+                  match ExtXml.attrib_opt e attrib with
+                  | Some _ -> true | None -> false in
+                let get_opt = fun attrib -> ExtXml.attrib_opt e attrib in
+                if test "min" && test "max" && test "step" then
+                  [{ Settings.Dl_setting.var = Xml.attrib e "var";
+                     shortname = get_opt "shortname";
+                     handler = None;
+                     header = None;
+                     xml = Xml.Element ("dl_setting", Xml.attribs e, []);
+                   }] @ s
+                else s
+              else s
+            ) [] (Xml.children el)
         else
           s
       ) [] children in
-      let modules = List.fold_left (fun m el ->
+    let modules = List.fold_left (fun m el ->
         if Xml.tag el = "modules" then
           m @ List.map Module.config_from_xml (Xml.children el)
-        else
-          m
+        else m
       ) [] children in
-      { filename = ""; settings; modules; xml }
+    { filename = ""; settings; modules; xml }
   | _ -> failwith "Flight_plan.from_xml: unreachable"
 
 let from_file = fun filename ->

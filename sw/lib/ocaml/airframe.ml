@@ -31,8 +31,8 @@ module Autopilot = struct
 
   let from_xml = function
     | Xml.Element ("autopilot", attrs, []) as xml ->
-        { name = List.assoc "name" attrs;
-          freq = OT.assoc_opt_map "freq" attrs float_of_string;
+        { name = Xml.attrib xml "name";
+          freq = ExtXml.attrib_opt_map xml "freq" float_of_string;
           xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 
@@ -43,7 +43,8 @@ module Include = struct
   type t = { href: string; xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("include", [("href", href)], []) as xml -> { href; xml }
+    | Xml.Element ("include", _, []) as xml ->
+      { href = Xml.attrib xml "href"; xml }
     | _ -> failwith "Airframe.Include.from_xml: unreachable"
 
 end
@@ -59,14 +60,16 @@ module Target = struct
              xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("target", attrs, children) as xml ->
-        { name = List.assoc "name" attrs;
-          board = List.assoc "board" attrs;
-          modules = ExtXml.parse_children "module" Module.config_from_xml children;
-          autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
-          configures = ExtXml.parse_children_attribs "configure" Module.parse_configure children;
-          defines = ExtXml.parse_children_attribs "define" Module.parse_define children;
-          xml }
+    | Xml.Element ("target", _, children) as xml ->
+      { name = Xml.attrib xml "name";
+        board = Xml.attrib xml "board";
+        modules = ExtXml.parse_children "module" Module.config_from_xml children;
+        autopilot = begin
+          try Some (Autopilot.from_xml (ExtXml.child xml "autopilot"))
+          with _ -> None end;
+        configures = ExtXml.parse_children "configure" Module.parse_configure children;
+        defines = ExtXml.parse_children "define" Module.parse_define children;
+        xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 
 end
@@ -82,14 +85,16 @@ module Firmware = struct
              xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("firmware", [("name", name)], children) as xml ->
-        { name;
-          targets = ExtXml.parse_children "targets" Target.from_xml children;
-          modules = ExtXml.parse_children "module" Module.config_from_xml children;
-          autopilot = begin try Some (Autopilot.from_xml (ExtXml.child xml "autopilot")) with _ -> None end;
-          configures = ExtXml.parse_children_attribs "configure" Module.parse_configure children;
-          defines = ExtXml.parse_children_attribs "define" Module.parse_define children;
-          xml }
+    | Xml.Element ("firmware", _, children) as xml ->
+      { name = Xml.attrib xml "name";
+        targets = ExtXml.parse_children "target" Target.from_xml children;
+        modules = ExtXml.parse_children "module" Module.config_from_xml children;
+        autopilot = begin
+          try Some (Autopilot.from_xml (ExtXml.child xml "autopilot"))
+          with _ -> None end;
+        configures = ExtXml.parse_children "configure" Module.parse_configure children;
+        defines = ExtXml.parse_children "define" Module.parse_define children;
+        xml }
     | _ -> failwith "Airframe.Firmware.from_xml: unreachable"
 
 end
@@ -105,8 +110,8 @@ type t = {
 }
 
 let from_xml = function
-  | Xml.Element ("airframe", [("name", name)], children) as xml ->
-      { filename = ""; name;
+  | Xml.Element ("airframe", _, children) as xml ->
+      { filename = ""; name = Xml.attrib xml "name";
         includes = ExtXml.parse_children "include" Include.from_xml children;
         modules = ExtXml.parse_children "modules" Module.config_from_xml children;
         firmwares = ExtXml.parse_children "firmware" Firmware.from_xml children;

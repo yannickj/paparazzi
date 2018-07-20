@@ -71,9 +71,16 @@ let attrib = fun xml attr ->
 	attr sprint_fields (Xml.attribs xml) in
     raise (Error msg)
 
-let attrib_option = fun xml attr ->
+let attrib_opt = fun xml attr ->
   try Some (Xml.attrib xml attr)
   with Xml.No_attribute _ -> None
+
+let attrib_opt_map = fun xml attr f ->
+  try Some (f (Xml.attrib xml attr))
+  with Xml.No_attribute _ -> None
+
+let attrib_opt_int = fun xml attr -> attrib_opt_map xml attr int_of_string
+let attrib_opt_float = fun xml attr -> attrib_opt_map xml attr float_of_string
 
 let tag_is = fun x v -> Compat.bytes_lowercase (Xml.tag x) = Compat.bytes_lowercase v
 
@@ -145,16 +152,14 @@ let my_to_string_fmt = fun tab_attribs x ->
   Buffer.reset tmp;
   s
 
-
-
 let to_string_fmt = fun ?(tab_attribs = false) xml ->
   let l = Compat.bytes_lowercase in
   let rec lower = function
     | Xml.PCData _ as x -> x
     | Xml.Element (t, ats, cs) ->
-	Xml.Element(l t,
-                    List.map (fun (a,v) -> (l a, v)) ats,
-                    List.map lower cs) in
+      Xml.Element(l t,
+                  List.map (fun (a, v) -> (l a, v)) ats,
+                  List.map lower cs) in
   my_to_string_fmt tab_attribs (lower xml)
 
 

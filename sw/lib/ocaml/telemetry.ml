@@ -23,9 +23,6 @@
  * Periodic telemetry module for parsing XML config files
  *)
 
-let find_opt = fun k l -> try Some (List.assoc k l) with Not_found -> None
-let find_opt_int = fun k l -> try Some (int_of_string (List.assoc k l)) with Not_found -> None
-
 type msg_period = MsgPeriod of float | MsgFreq of float
 
 module Message = struct
@@ -37,21 +34,19 @@ module Message = struct
     xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("message", attribs, []) as xml ->
-        let test attrib = List.mem_assoc attrib attribs in
-        let fget attrib = float_of_string (List.assoc attrib attribs) in
-        {
-          name = List.assoc "message" attribs;
-          period = begin
-            match test "period", test "freq" with
-            | true, false -> MsgPeriod (fget "period")
-            | false, true -> MsgFreq (fget "period")
-            | true, true -> failwith "Telemetry.Message.from_xml: either specify 'period' or 'freq' attribute, not both"
-            | false, false -> failwith "Telemetry.Message.from_xml: specify 'period' or 'freq' attribute"
-          end;
-          phase = find_opt_int "phase" attribs;
-          xml
-        }
+    | Xml.Element ("message", _, []) as xml ->
+      { name = Xml.attrib xml "name";
+        period = begin
+          match ExtXml.attrib_opt_float xml "period",
+                ExtXml.attrib_opt_float xml "freq" with
+          | Some t, None -> MsgPeriod t
+          | None, Some f -> MsgFreq f
+          | Some _, Some _ -> failwith "Telemetry.Message.from_xml: either specify 'period' or 'freq' attribute, not both"
+          | None, None -> failwith "Telemetry.Message.from_xml: specify 'period' or 'freq' attribute"
+        end;
+        phase = ExtXml.attrib_opt_int xml "phase";
+        xml
+      }
     | _ -> failwith "Telemetry.Message.from_xml: unreachable"
 
 end
@@ -65,13 +60,11 @@ module Mode = struct
     xml: Xml.xml }
 
   let from_xml = function
-    | Xml.Element ("mode", attribs, messages) as xml ->
-        {
-          name = List.assoc "name" attribs;
-          key_press = find_opt "key_press" attribs;
-          messages = List.map Message.from_xml messages;
-          xml
-        }
+    | Xml.Element ("mode", _, messages) as xml ->
+      { name = Xml.attrib xml "name";
+        key_press = ExtXml.attrib_opt xml "key_press";
+        messages = List.map Message.from_xml messages;
+        xml }
     | _ -> failwith "Telemetry.Mode.from_xml: unreachable"
 
 end
@@ -86,12 +79,10 @@ module Process = struct
 
   let from_xml = function
     | Xml.Element ("process", attribs, modes) as xml ->
-        {
-          name = List.assoc "name" attribs;
-          proc_type = find_opt "type" attribs;
-          modes = List.map Mode.from_xml modes;
-          xml
-        }
+      { name = Xml.attrib xml "name";
+        proc_type = ExtXml.attrib_opt xml "type";
+        modes = List.map Mode.from_xml modes;
+        xml }
     | _ -> failwith "Telemetry.Process.from_xml: unreachable"
 
 end
@@ -104,10 +95,10 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("telemetry", [], processes) as xml ->
-      { filename = "";
-        processes = List.map Process.from_xml processes;
-        xml
-      }
+    { filename = "";
+      processes = List.map Process.from_xml processes;
+      xml
+    }
   | _ -> failwith "Telemetry.from_xml: unreachable"
 
 let from_file = fun filename ->

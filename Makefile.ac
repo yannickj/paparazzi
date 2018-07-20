@@ -262,7 +262,7 @@ $(SETTINGS_FLIGHTPLAN) : $(FLIGHT_PLAN_H)
 	@echo "#######################################"
 	@echo "# BUILD AIRCRAFT=$(AIRCRAFT), TARGET $*"
 	@echo "#######################################"
-	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) PAPARAZZI_QT_GEN=$(PAPARAZZI_QT_GEN) TARGET=$* Q=$(Q) $(GENERATORS)/gen_aircraft.out $(AIRCRAFT) $(CONF_XML)
+	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) PAPARAZZI_QT_GEN=$(PAPARAZZI_QT_GEN) TARGET=$* Q=$(Q) $(GENERATORS)/gen_aircraft.out -name $(AIRCRAFT) -target $* -conf $(CONF_XML)
 
 %.qt: %.ac_h
 	@echo "GENERATED Qt project"

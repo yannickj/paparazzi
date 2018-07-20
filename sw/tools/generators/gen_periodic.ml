@@ -161,7 +161,7 @@ let print_message_table = fun out_h xml ->
     (* Print ID *)
     fprintf out_h "/* Periodic telemetry messages of type %s */\n" telem_type;
     let nb = Hashtbl.fold (fun n _ i ->
-      Xml2h.define (sprintf "TELEMETRY_%s_MSG_%s_IDX" telem_type n) (sprintf "%d" i);
+      Xml2h.define_out out_h (sprintf "TELEMETRY_%s_MSG_%s_IDX" telem_type n) (sprintf "%d" i);
       i+1
     ) messages 0 in
     fprintf out_h "#define TELEMETRY_%s_NB_MSG %d\n" telem_type nb;
@@ -184,19 +184,19 @@ let print_process_send = fun out_h xml freq ->
 
       fprintf out_h "\n/* Periodic telemetry (type %s): %s process */\n" telem_type process_name;
       let p_id = ref 0 in
-      Xml2h.define (sprintf "TELEMETRY_PROCESS_%s" process_name) (string_of_int !p_id);
+      Xml2h.define_out out_h (sprintf "TELEMETRY_PROCESS_%s" process_name) (string_of_int !p_id);
       incr p_id;
 
       (** For each mode of this process *)
       let _ = List.fold_left (fun i mode ->
         let name = ExtXml.attrib mode "name" in
-        Xml2h.define (sprintf "TELEMETRY_MODE_%s_%s" process_name name) (string_of_int i);
+        Xml2h.define_out out_h (sprintf "TELEMETRY_MODE_%s_%s" process_name name) (string_of_int i);
         (* Output the periods of the messages *)
         List.iter (fun x ->
           let p = ExtXml.attrib x "period"
           and n = ExtXml.attrib x "name" in
           (* FIXME really needed ? *)
-          Xml2h.define (sprintf "PERIOD_%s_%s_%d" n process_name i) (sprintf "(%s)" p)
+          Xml2h.define_out out_h (sprintf "PERIOD_%s_%s_%d" n process_name i) (sprintf "(%s)" p)
         ) (Xml.children mode);
         i + 1
       ) 0 modes in

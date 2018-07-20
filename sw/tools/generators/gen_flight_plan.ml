@@ -858,47 +858,47 @@ let parse_variables = fun xml ->
     | _ -> failwith "Gen_flight_plan: unexpected variables tag"
   ) xml
 
-let print_var_decl abi_msgs = function
-  | FP_var (v, t, _) -> printf "extern %s %s;\n" t v
+let print_var_decl out abi_msgs = function
+  | FP_var (v, t, _) -> lprintf out "extern %s %s;\n" t v
   | _ -> () (* ABI variables are not public *)
 
-let print_var_impl abi_msgs = function
-  | FP_var (v, t, i) -> printf "%s %s = %s;\n" t v i
+let print_var_impl out abi_msgs = function
+  | FP_var (v, t, i) -> lprintf out "%s %s = %s;\n" t v i
   | FP_binding (n, Some vs, _, None) ->
-      printf "static abi_event FP_%s_ev;\n" n;
+      lprintf out "static abi_event FP_%s_ev;\n" n;
       let field_types = Hashtbl.find abi_msgs n in
-      List.iter2 (fun abi_t user -> if not (user = "_") then printf "static %s %s;\n" abi_t user) field_types vs
+      List.iter2 (fun abi_t user -> if not (user = "_") then lprintf out "static %s %s;\n" abi_t user) field_types vs
   | FP_binding (n, None, _, Some _) ->
-      printf "static abi_event FP_%s_ev;\n" n
+      lprintf out "static abi_event FP_%s_ev;\n" n
   | _ -> ()
 
-let print_auto_init_bindings = fun abi_msgs variables ->
+let print_auto_init_bindings = fun out abi_msgs variables ->
   let print_cb = function
     | FP_binding (n, Some vs, _, None) ->
         let field_types = Hashtbl.find abi_msgs n in
-        printf "static void FP_%s_cb(uint8_t sender_id __attribute__((unused))" n;
+        lprintf out "static void FP_%s_cb(uint8_t sender_id __attribute__((unused))" n;
         List.iteri (fun i v ->
-          if v = "_" then printf ", %s _unused_%d __attribute__((unused))" (List.nth field_types i) i
-          else printf ", %s _%s" (List.nth field_types i) v
+          if v = "_" then lprintf out ", %s _unused_%d __attribute__((unused))" (List.nth field_types i) i
+          else lprintf out ", %s _%s" (List.nth field_types i) v
         ) vs;
-        printf ") {\n";
+        lprintf out ") {\n";
         List.iter (fun v ->
-          if not (v = "_") then printf "  %s = _%s;\n" v v
+          if not (v = "_") then lprintf out "  %s = _%s;\n" v v
         ) vs;
-        printf "}\n\n"
+        lprintf out "}\n\n"
     | _ -> ()
   in
   let print_bindings = function
     | FP_binding (n, _, i, None) ->
-        printf "  AbiBindMsg%s(%s, &FP_%s_ev, FP_%s_cb);\n" n i n n
+        lprintf out "  AbiBindMsg%s(%s, &FP_%s_ev, FP_%s_cb);\n" n i n n
     | FP_binding (n, _, i, Some h) ->
-        printf "  AbiBindMsg%s(%s, &FP_%s_ev, %s);\n" n i n h
+        lprintf out "  AbiBindMsg%s(%s, &FP_%s_ev, %s);\n" n i n h
     | _ -> ()
   in
   List.iter print_cb variables;
-  printf "static inline void auto_nav_init(void) {\n";
+  lprintf out "static inline void auto_nav_init(void) {\n";
   List.iter print_bindings variables;
-  printf "}\n\n"
+  lprintf out "}\n\n"
 
 (*** TODO move to gen_settings
 let write_settings = fun xml_file out_set variables ->
@@ -1091,15 +1091,15 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   lprintf out "\n";
   let variables = parse_variables variables in
   let abi_msgs = extract_abi_msg (Env.paparazzi_home ^ "/conf/abi.xml") "airborne" in
-  List.iter (fun v -> print_var_decl abi_msgs v) variables;
+  List.iter (fun v -> print_var_decl out abi_msgs v) variables;
 
   (* start "C" part *)
   lprintf out "\n#ifdef NAV_C\n\n";
 
   (* print variables and ABI initialization *)
-  List.iter (fun v -> print_var_impl abi_msgs v) variables;
+  List.iter (fun v -> print_var_impl out abi_msgs v) variables;
   lprintf out "\n";
-  print_auto_init_bindings abi_msgs variables;
+  print_auto_init_bindings out abi_msgs variables;
 
   (* index of waypoints *)
   let index_of_waypoints =
@@ -1156,8 +1156,16 @@ let dump_fligh_plan = fun xml out_file ->
  * MAIN generation function
  *
  **)
+(* FIXME: for later, get rid of those references? *)
+let reinit = fun () ->
+  index_of_blocks := [];
+  check_expressions := false;
+  margin := 0;
+  stage := 0
+
 let generate = fun flight_plan ?(check=false) ?(dump=false) xml_file out_fp ->
 
+  reinit ();
   let xml = flight_plan.Flight_plan.xml in
   fp_wgs84 := georef_of_xml xml;
   let xml = check_geo_ref !fp_wgs84 xml in

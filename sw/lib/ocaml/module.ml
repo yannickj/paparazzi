@@ -26,23 +26,24 @@
 module OT = Ocaml_tools
 module GC = Gen_common
 
-let find_name = fun attribs ->
+let find_name = fun xml ->
   try
-    let name = List.assoc "name" attribs in
+    let name = Xml.attrib xml "name" in
     if Filename.check_suffix name ".xml" then Filename.chop_extension name
     else name
   with
   | Not_found ->
-      let msg = Printf.sprintf "Error: Attribute 'name' expected in %a"
-          ExtXml.sprint_fields attribs in
-      raise (ExtXml.Error msg)
+    let msg = Printf.sprintf "Error: Attribute 'name' expected in %a"
+        ExtXml.sprint_fields (Xml.attribs xml) in
+    raise (ExtXml.Error msg)
 
 type file = { filename: string; directory: string option }
 type file_arch = file
 
-let parse_file = function
-  | Xml.Element ("file", attribs, []) | Xml.Element ("file_arch", attribs, []) ->
-      { filename = find_name attribs; directory = OT.assoc_opt "dir" attribs }
+let parse_file = fun xml ->
+  match xml with
+  | Xml.Element ("file", _, []) | Xml.Element ("file_arch", _, []) ->
+      { filename = find_name xml; directory = ExtXml.attrib_opt xml "dir" }
   | _ -> failwith "Module.parse_file: unreachable"
 
 type configure = {
@@ -53,9 +54,9 @@ type configure = {
     cdescription: string option
   }
 
-let parse_configure = fun attribs ->
-  let get = fun x -> OT.assoc_opt x attribs in
-  { cname = find_name attribs; cvalue = get "value"; case = get "case";
+let parse_configure = fun xml ->
+  let get = fun x -> ExtXml.attrib_opt xml x in
+  { cname = find_name xml; cvalue = get "value"; case = get "case";
     default = get "default"; cdescription = get "description" }
 
 type define = {
@@ -68,11 +69,11 @@ type define = {
     cond: string option
   }
 
-let parse_define = fun attribs ->
-  let get = fun x -> OT.assoc_opt x attribs in
-  { dname = find_name attribs; dvalue = get "value";
+let parse_define = fun xml ->
+  let get = fun x -> ExtXml.attrib_opt xml x in
+  { dname = find_name xml; dvalue = get "value";
     integer = begin match get "integer" with
-    | None -> None | Some i -> Some (int_of_string i) end;
+      | None -> None | Some i -> Some (int_of_string i) end;
     dunit = get "unit"; dtype = get "type";
     ddescription = get "description"; cond = get "cond" }
 
@@ -96,31 +97,35 @@ type makefile = {
   }
 
 let empty_makefile =
-  { targets = None; firmware = None; condition = None; configures = []; defines = [];
+  { targets = None; firmware = None; condition = None;
+    configures = []; defines = [];
     inclusions = []; flags = []; files = []; files_arch = []; raws = [] }
 
 let rec parse_makefile mkf = function
-  | Xml.Element ("makefile", attribs, children) ->
-      let targets = OT.assoc_opt "target" attribs
-      and firmware = OT.assoc_opt "firmware" attribs
-      and condition = OT.assoc_opt "cond" attribs in
-      List.fold_left parse_makefile { mkf with targets; firmware; condition } children
-  | Xml.Element ("configure", attribs, []) ->
-      { mkf with configures = parse_configure attribs :: mkf.configures }
-  | Xml.Element ("define", attribs, []) ->
-      { mkf with defines = parse_define attribs :: mkf.defines }
-  | Xml.Element ("include", attribs, []) ->
-      { mkf with inclusions =
-        { element = find_name attribs; condition = OT.assoc_opt "cond" attribs }
-        :: mkf.inclusions }
-  | Xml.Element ("flag", [("name", flag); ("value", value)], [])
-  | Xml.Element ("flag", [("value", value); ("name", flag)], []) ->
-      { mkf with flags = { flag; value } :: mkf.flags }
+  | Xml.Element ("makefile", _, children) as xml ->
+    let targets = ExtXml.attrib_opt xml "target"
+    and firmware = ExtXml.attrib_opt xml "firmware"
+    and condition = ExtXml.attrib_opt xml "cond" in
+    List.fold_left parse_makefile
+      { mkf with targets; firmware; condition } children
+  | Xml.Element ("configure", _, []) as xml ->
+    { mkf with configures = parse_configure xml :: mkf.configures }
+  | Xml.Element ("define", _, []) as xml ->
+    { mkf with defines = parse_define xml :: mkf.defines }
+  | Xml.Element ("include", _, []) as xml ->
+    { mkf with inclusions =
+                 { element = find_name xml;
+                   condition = ExtXml.attrib_opt xml "cond" }
+                 :: mkf.inclusions }
+  | Xml.Element ("flag", _, []) as xml ->
+    let flag = Xml.attrib xml "name" and value = Xml.attrib xml "value" in
+    { mkf with flags = { flag; value } :: mkf.flags }
   | Xml.Element ("file", _, []) as xml ->
-      { mkf with files = parse_file xml :: mkf.files }
+    { mkf with files = parse_file xml :: mkf.files }
   | Xml.Element ("file_arch", _, []) as xml ->
-      { mkf with files_arch = parse_file xml :: mkf.files_arch }
-  | Xml.Element ("raw", [], [Xml.PCData raw]) -> {mkf with raws = raw :: mkf.raws}
+    { mkf with files_arch = parse_file xml :: mkf.files_arch }
+  | Xml.Element ("raw", [], [Xml.PCData raw]) ->
+    {mkf with raws = raw :: mkf.raws}
   | _ -> failwith "Module.parse_makefile: unreachable"
 
 type autorun = True | False | Lock
@@ -137,10 +142,11 @@ type periodic = {
     autorun: autorun
   }
 
-let parse_periodic = fun attribs ->
-  let get = fun x -> OT.assoc_opt x attribs in
-  let geti = fun x ->  OT.assoc_opt_int x attribs in
-  let call = List.find (fun a -> a = "fun") (fst (List.split attribs)) in
+let parse_periodic = fun xml ->
+  let get = fun x -> ExtXml.attrib_opt xml x in
+  let geti = fun x ->  ExtXml.attrib_opt_int xml x in
+  let call = List.find (fun a -> Compat.bytes_lowercase a = "fun")
+      (fst (List.split (Xml.attribs xml))) in
   let call_regexp = Str.regexp "\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\(.*\\)" in
   let fname =
     if Str.string_match call_regexp call 0 then
@@ -149,27 +155,27 @@ let parse_periodic = fun attribs ->
       else failwith ("Module.parse_periodic: invalid function call: " ^ call)
     else failwith ("Module.parse_periodic: invalid function name: " ^ call) in
   let period_freq = match get "period", get "freq" with
-  | None, None -> Unset
-  | None, Some f -> let f = float_of_string f in Set (1. /. f, f)
-  | Some p, None -> let p = float_of_string p in Set (p, 1. /. p)
-  | Some p, Some _ ->
+    | None, None -> Unset
+    | None, Some f -> let f = float_of_string f in Set (1. /. f, f)
+    | Some p, None -> let p = float_of_string p in Set (p, 1. /. p)
+    | Some p, Some _ ->
       Printf.eprintf "Warning: both period and freq are defined ";
       Printf.eprintf "but only period is used for function %s\n%!" fname;
       let p = float_of_string p in Set (p, 1. /. p) in
   { call; fname; period_freq; delay = geti "delay";
     start = get "start"; stop = get "stop";
     autorun = match get "autorun" with
-    | None -> Lock
-    | Some "TRUE" | Some "true" -> True
-    | Some "FALSE" | Some "false" -> False
-    | Some "LOCK" | Some "lock" -> Lock
-    | Some _ -> failwith "Module.parse_periodic: unreachable" }
+      | None -> Lock
+      | Some "TRUE" | Some "true" -> True
+      | Some "FALSE" | Some "false" -> False
+      | Some "LOCK" | Some "lock" -> Lock
+      | Some _ -> failwith "Module.parse_periodic: unreachable" }
 
 let fprint_period_freq = fun ch max_freq p ->
   let period, freq = match p.period_freq with
-  | Unset -> 1. /. max_freq, max_freq
-  | Set (p, f) -> p, f in
-  let cap_fname = String.uppercase p.fname in (* TODO: deprecated function *)
+    | Unset -> 1. /. max_freq, max_freq
+    | Set (p, f) -> p, f in
+  let cap_fname = Compat.bytes_uppercase p.fname in
   Printf.fprintf ch "#define %s_PERIOD %f\n" cap_fname period;
   Printf.fprintf ch "#define %s_FREQ %f\n" cap_fname freq
 
@@ -178,7 +184,7 @@ let status_name = fun mod_name p -> mod_name ^ "_" ^ p.fname ^ "_status"
 let fprint_status = fun ch mod_name p ->
   match p.autorun with
   | True | False ->
-      Printf.fprintf ch "EXTERN_MODULES uint8_t %s;\n" (status_name mod_name p)
+    Printf.fprintf ch "EXTERN_MODULES uint8_t %s;\n" (status_name mod_name p)
   | Lock -> ()
 
 let fprint_periodic_init = fun ch mod_name p ->
@@ -195,7 +201,7 @@ let make_event = fun f handlers ->
   { ev = f;
     handlers = List.map
       (function
-        | Xml.Element ("handler", [("fun", f)], []) -> f
+        | Xml.Element ("handler", _, []) as xml -> Xml.attrib xml "fun"
         | _ -> failwith "Module.make_event: unreachable"
       ) handlers }
 
@@ -219,12 +225,12 @@ type config = { name: string;
                 xml: Xml.xml }
 
 let config_from_xml = function
-  | Xml.Element ("module", attrs, children) as xml ->
-     { name = List.assoc "name" attrs;
-       mtype = OT.assoc_opt "type" attrs;
-       dir = OT.assoc_opt "dir" attrs;
-       configures = ExtXml.parse_children_attribs "configure" parse_configure children;
-       defines = ExtXml.parse_children_attribs "define" parse_define children;
+  | Xml.Element ("module", _, children) as xml ->
+     { name = Xml.attrib xml "name";
+       mtype = ExtXml.attrib_opt xml "type";
+       dir = ExtXml.attrib_opt xml "dir";
+       configures = ExtXml.parse_children "configure" parse_configure children;
+       defines = ExtXml.parse_children "define" parse_define children;
        xml }
   | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
 
@@ -250,8 +256,8 @@ type t = {
 }
 
 let empty =
-  { filename = "";
-    name = ""; dir = None; task = None; path = ""; doc = Xml.Element ("doc", [], []);
+  { filename = ""; name = ""; dir = None;
+    task = None; path = ""; doc = Xml.Element ("doc", [], []);
     requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
     makefiles = []; xml = Xml.Element ("module", [], []) }
@@ -259,38 +265,42 @@ let empty =
 let parse_module_list = Str.split (Str.regexp "[ \t]*,[ \t]*")
 
 let rec parse_xml m = function
-  | Xml.Element ("module", attribs, children) as xml ->
-      let name = find_name attribs
-      and dir = OT.assoc_opt "dir" attribs
-      and task = OT.assoc_opt "task" attribs in
-      List.fold_left parse_xml { m with name; dir; task; xml } children
+  | Xml.Element ("module", _, children) as xml ->
+    let name = find_name xml
+    and dir = ExtXml.attrib_opt xml "dir"
+    and task = ExtXml.attrib_opt xml "task" in
+    List.fold_left parse_xml { m with name; dir; task; xml } children
   | Xml.Element ("doc", _, _) as xml -> { m with doc = xml }
   (*| Xml.Element ("settings_file", [("name", name)], files) -> m (* TODO : remove unused *)*)
   | Xml.Element ("settings", _, _) as xml ->
-      { m with settings = Settings.from_xml xml :: m.settings }
+    { m with settings = Settings.from_xml xml :: m.settings }
   | Xml.Element ("depends", _, [Xml.PCData depends]) ->
-      { m with requires = parse_module_list depends }
+    { m with requires = parse_module_list depends }
   | Xml.Element ("conflicts", _, [Xml.PCData conflicts]) ->
-      { m with conflicts = parse_module_list conflicts }
+    { m with conflicts = parse_module_list conflicts }
   | Xml.Element ("provides", _, [Xml.PCData provides]) ->
-      { m with provides = parse_module_list provides }
-  | Xml.Element ("autoload", attribs, []) ->
-      let aname = find_name attribs
-      and atype = OT.assoc_opt "type" attribs in
-      { m with autoloads = { aname; atype } :: m.autoloads }
+    { m with provides = parse_module_list provides }
+  | Xml.Element ("autoload", _, []) as xml ->
+    let aname = find_name xml
+    and atype = ExtXml.attrib_opt xml "type" in
+    { m with autoloads = { aname; atype } :: m.autoloads }
   | Xml.Element ("header", [], files) ->
-      { m with headers =
-        List.fold_left (fun acc f -> parse_file f :: acc) m.headers files }
-  | Xml.Element ("init", [("fun", f)], []) -> { m with inits = f :: m.inits }
-  | Xml.Element ("periodic", attribs, []) ->
-      { m with periodics = parse_periodic attribs :: m.periodics }
-  | Xml.Element ("event", [("fun", f)], handlers) ->
-      { m with events = make_event f handlers :: m.events }
-  | Xml.Element ("datalink", [("message", message); ("fun", func)], [])
-  | Xml.Element ("datalink", [("fun", func); ("message", message)], []) ->
-      { m with datalinks = { message; func } :: m.datalinks }
+    { m with headers =
+               List.fold_left (fun acc f -> parse_file f :: acc) m.headers files
+    }
+  | Xml.Element ("init", _, []) as xml ->
+    { m with inits = Xml.attrib xml "fun" :: m.inits }
+  | Xml.Element ("periodic", _, []) as xml ->
+    { m with periodics = parse_periodic xml :: m.periodics }
+  | Xml.Element ("event", _, handlers) as xml ->
+    let f = Xml.attrib xml "fun" in
+    { m with events = make_event f handlers :: m.events }
+  | Xml.Element ("datalink", _, []) as xml ->
+    let message = Xml.attrib xml "message"
+    and func = Xml.attrib xml "fun" in
+    { m with datalinks = { message; func } :: m.datalinks }
   | Xml.Element ("makefile", _, _) as xml ->
-      { m with makefiles = parse_makefile empty_makefile xml :: m.makefiles }
+    { m with makefiles = parse_makefile empty_makefile xml :: m.makefiles }
   | _ -> failwith "Module.parse_xml: unreachable"
 
 let from_xml = fun xml ->
@@ -306,6 +316,7 @@ let from_file = fun filename -> from_xml (Xml.parse_file filename)
 
 (** search and parse a module xml file and return a Module.t *)
 (* FIXME search folder path: <PPRZ_PATH>/*/<module_name[_type]>.xml *)
+exception Module_not_found of string
 let from_module_name = fun name mtype ->
   (* concat module type if needed *)
   let name = match mtype with Some t -> name ^ "_" ^ t | None -> name in
@@ -313,20 +324,18 @@ let from_module_name = fun name mtype ->
   let name = if Filename.check_suffix name ".xml" then name else name ^ ".xml" in
   (* determine if name is implicit
    * if not, search for absolute name in search path
-   * may raise Not_found if no file found *)
+   * may raise Module_not_found if no file found *)
   let name =
-    if Filename.is_implicit name then begin
-      if Sys.file_exists name then name else raise Not_found
-    end
-    else begin
+    if Filename.is_implicit name then
       let rec find_abs = function
-        | [] -> raise Not_found
-        | b::bl ->
-            let full_name = Filename.concat b name in
-            if Sys.file_exists full_name then full_name else find_abs bl
-      in
-      find_abs Env.modules_paths
-    end in
+        | [] -> raise (Module_not_found name)
+        | b :: bl ->
+          let full_name = Filename.concat b name in
+          if Sys.file_exists full_name then full_name else find_abs bl
+      in find_abs Env.modules_paths
+    else if Sys.file_exists name then name
+    else raise (Module_not_found name)
+  in
   let m = from_xml (ExtXml.parse_file name) in
   { m with filename = name }
 
@@ -338,8 +347,6 @@ let check_mk = fun target firmware mk ->
 (** check if a module is compatible with a target and a firmware *)
 let check_loading = fun target firmware m ->
   List.exists (check_mk target firmware) m.makefiles
-  
-
 
 (** move to generators *)
 let fprint_headers = fun ch m ->

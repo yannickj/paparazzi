@@ -33,16 +33,16 @@ type channel = {
 }
 
 let parse_channel = function
-  | Xml.Element ("channel", attribs, []) ->
-      let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
-      let bget = fun attrib -> try List.assoc attrib attribs <> "0" with Not_found -> false in
-      {
-        cname = List.assoc "name" attribs;
-        min = iget "min";
-        max = iget "max";
-        neutral = iget "netral";
-        average = bget "average";
-        reverse = bget "reverse";
+  | Xml.Element ("channel", attribs, []) as xml ->
+    let bget = fun attrib ->
+      try Xml.attrib xml attrib <> "0"
+      with Xml.No_attribute _ -> false in
+    { cname = Xml.attrib xml "function";
+      min = ExtXml.int_attrib xml "min";
+      max = ExtXml.int_attrib xml "max";
+      neutral = ExtXml.int_attrib xml "neutral";
+      average = bget "average";
+      reverse = bget "reverse";
       }
   | _ -> failwith "Radio.parse_channel: unreachable"
 
@@ -63,22 +63,21 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("radio", attribs, channels) as xml ->
-      let get = fun attrib -> List.assoc attrib attribs in
-      let iget = fun attrib -> int_of_string (List.assoc attrib attribs) in
-      { filename = "";
-        name = get "name";
-        data_min = iget "data_min";
-        data_max = iget "data_max";
-        sync_min = iget "sync_min";
-        sync_max = iget "sync_max";
-        pulse_type = begin match get "name" with
-          | "POSITIVE" -> PositivePulse
-          | "NEGATIVE" -> NegativePulse
-          | _ -> failwith "Radio.from_xml: unknown pulse type"
-        end;
-        channels = List.map parse_channel channels;
-        xml;
-      }
+    let name = Xml.attrib xml "name" in
+    { filename = "";
+      name;
+      data_min = ExtXml.int_attrib xml "data_min";
+      data_max = ExtXml.int_attrib xml "data_max";
+      sync_min = ExtXml.int_attrib xml "sync_min";
+      sync_max = ExtXml.int_attrib xml "sync_max";
+      pulse_type = begin match Xml.attrib xml "pulse_type" with
+        | "POSITIVE" -> PositivePulse
+        | "NEGATIVE" -> NegativePulse
+        | _ -> failwith "Radio.from_xml: unknown pulse type"
+      end;
+      channels = List.map parse_channel channels;
+      xml;
+    }
   | _ -> failwith "Radio.from_xml: unreachable"
 
 let from_file = fun filename ->
