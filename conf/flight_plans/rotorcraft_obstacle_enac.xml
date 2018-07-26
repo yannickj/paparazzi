@@ -19,7 +19,6 @@ static inline void jevois_msg_cb(uint8_t sender_id UNUSED, uint8_t type, char *i
     optical_div_filtered = obstacle_alpha*optical_div_filtered + (1.f-obstacle_alpha)*(float)optical_div;
   }
   if(type == JEVOIS_MSG_F2) {
-    n_bins = nb;
     if(id[0] == '0') {
       n_bins = nb;
       int i;
@@ -69,8 +68,8 @@ static inline void FlowAvoidance(void)
   const float dy = POS_FLOAT_OF_BFP(navigation_target.y) - GetPosY();
   const float cp = cosf(obstacle_dpsi);
   const float sp = sinf(obstacle_dpsi);
-  navigation_carrot.x = POS_BFP_OF_REAL(  cp * dx + sp * dy );
-  navigation_carrot.y = POS_BFP_OF_REAL( -sp * dx + cp * dy );
+  navigation_target.x = POS_BFP_OF_REAL( cp * dx - sp * dy ) + GetPosX();
+  navigation_target.y = POS_BFP_OF_REAL( sp * dx + cp * dy ) + GetPosY();
   if (LessThan(0.01f,fabsf(obstacle_dpsi))) {
     obstacle_dpsi -= obstacle_tau * obstacle_dpsi;
   } else {
@@ -117,7 +116,7 @@ static inline void FlowAvoidance(void)
 	  <variable var="obstacle_k1" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
 	  <variable var="obstacle_k2" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
 	  <variable var="obstacle_dpsi" init="0." type="float" min="-3.14" max="3.14" step="0.01"/>
-	  <variable var="n_bins" init="-2" type="int16_t" min="-1" max="30" step="1"/>
+	  <variable var="n_bins" init="-1" type="int16_t" min="-1" max="30" step="1"/>
     <abi_binding name="JEVOIS_MSG" handler="jevois_msg_cb"/>
 	</variables>
 
