@@ -1,0 +1,191 @@
+<!DOCTYPE flight_plan SYSTEM "flight_plan.dtd">
+
+<flight_plan alt="148.8" ground_alt="148" lat0="43.5640917" lon0="1.4829201" max_dist_from_home="20" name="Rotorcraft Optitrack (ENAC)" security_height="0.3">
+  <header>
+#ifdef NAV_C
+static int16_t optical_div = 0;
+static float optical_div_filtered = 0;
+//static float obstacle_dpsi = 0.f;
+
+#define MAX_BINS 30
+static float divergence_bins[MAX_BINS];
+static float x_coordinates[MAX_BINS];
+static float n_points_bins[MAX_BINS];
+//static int n_bins = -1;
+static inline void jevois_msg_cb(uint8_t sender_id UNUSED, uint8_t type, char *id, uint8_t nb, int16_t *coord, uint16_t *dim UNUSED, struct FloatQuat q UNUSED, char *extra UNUSED)
+{
+  if (type == JEVOIS_MSG_T1) {
+    optical_div = coord[0];
+    optical_div_filtered = obstacle_alpha*optical_div_filtered + (1.f-obstacle_alpha)*(float)optical_div;
+  }
+  if(type == JEVOIS_MSG_F2) {
+    n_bins = nb;
+    if(id[0] == '0') {
+      n_bins = nb;
+      int i;
+      for(i = 0; LessThan(i,nb) ; i++) {
+      divergence_bins[i] = coord[i*2+1] / 1000.f;
+        x_coordinates[i] = coord[i*2];
+      }
+    }
+    else if(id[0] == '1') {
+      n_bins = nb;
+      int i;
+      for(i = 0; LessThan(i,nb); i++) {
+        n_points_bins[i] = coord[i*2+1];
+      }
+    }
+  }
+}
+
+static inline void FlowAvoidance(void)
+{
+  if(n_bins == -1) {
+    return;
+  }
+  // compute dpsi
+  float sum_right = 0.f;
+  float sum_left = 0.f;
+  int middle_bin = n_bins / 2;
+  for(int j = 0; LessThan(j,middle_bin); j++) {
+    sum_left += divergence_bins[j];
+  } 
+  if(n_bins % 2 == 0) {
+    for(int j = middle_bin; LessThan(j,n_bins); j++) {
+      sum_right += divergence_bins[j];
+    }
+    obstacle_dpsi += obstacle_k1 * (sum_left - sum_right) / n_bins; 
+  }
+  else {
+    for(int j = middle_bin+1; LessThan(j,n_bins); j++) {
+      sum_right += divergence_bins[j];
+    }
+    float sgn = (LessThan(sum_right, sum_left)) ? 1.f : -1.f;
+    obstacle_dpsi += (obstacle_k2 * sgn * divergence_bins[middle_bin] + obstacle_k1 * (sum_left - sum_right)) / n_bins; 
+  }
+
+  // compute target offset
+  const float dx = POS_FLOAT_OF_BFP(navigation_target.x) - GetPosX();
+  const float dy = POS_FLOAT_OF_BFP(navigation_target.y) - GetPosY();
+  const float cp = cosf(obstacle_dpsi);
+  const float sp = sinf(obstacle_dpsi);
+  navigation_carrot.x = POS_BFP_OF_REAL(  cp * dx + sp * dy );
+  navigation_carrot.y = POS_BFP_OF_REAL( -sp * dx + cp * dy );
+  if (LessThan(0.01f,fabsf(obstacle_dpsi))) {
+    obstacle_dpsi -= obstacle_tau * obstacle_dpsi;
+  } else {
+    obstacle_dpsi = 0.f;
+  }
+  nav_set_heading_towards(navigation_carrot.x, navigation_carrot.y);
+}
+
+#endif
+  </header>
+  <waypoints>
+    <waypoint name="HOME" x="0.0" y="0.0"/>
+    <waypoint name="STDBY" x="-1.0" y="-2.0"/>
+    <waypoint name="TD" x="0.8" y="-1.7"/>
+    <waypoint name="START" x="-3.5" y="0.0"/>
+    <waypoint name="GOAL" x="3.5" y="0.0"/>
+    <waypoint name="S1" x="3" y="4"/>
+    <waypoint name="S2" x="3" y="-4"/>
+    <waypoint name="S3" x="-3" y="-4"/>
+    <waypoint name="S4" x="-3" y="4"/>
+    <waypoint name="_N1" x="4.5" y="5.2"/>
+    <waypoint name="_N2" x="4.5" y="-5.2"/>
+    <waypoint name="_N3" x="-4.5" y="-5.2"/>
+    <waypoint name="_N4" x="-4.5" y="5.2"/>
+  </waypoints>
+  <sectors>
+    <sector name="Net" color="red">
+      <corner name="_N1"/>
+      <corner name="_N2"/>
+      <corner name="_N3"/>
+      <corner name="_N4"/>
+    </sector>
+    <sector name="Survey" color="green" type="dynamic">
+      <corner name="S1"/>
+      <corner name="S2"/>
+      <corner name="S3"/>
+      <corner name="S4"/>
+    </sector>
+  </sectors>
+  <variables>
+	  <variable var="obstacle_max_div" init="800" type="int16_t" min="-1000" max="1000" step="1"/>
+	  <variable var="obstacle_alpha" init="0.1" type="float" min="0." max="1." step="0.01"/>
+	  <variable var="obstacle_tau" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
+	  <variable var="obstacle_k1" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
+	  <variable var="obstacle_k2" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
+	  <variable var="obstacle_dpsi" init="0." type="float" min="-3.14" max="3.14" step="0.01"/>
+	  <variable var="n_bins" init="-2" type="int16_t" min="-1" max="30" step="1"/>
+    <abi_binding name="JEVOIS_MSG" handler="jevois_msg_cb"/>
+	</variables>
+
+  <blocks>
+    <block name="Wait GPS">
+      <call_once fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Holding point">
+      <call_once fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Start Engine">
+      <call_once fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+      <exception cond="stateGetPositionEnu_f()->z > 0.5" deroute="Standby"/>
+      <call_once fun="NavSetWaypointHere(WP_STDBY)"/>
+      <stay climb="nav_climb_vspeed" vmode="climb" wp="STDBY"/>
+    </block>
+    <block name="Standby" strip_button="Standby" strip_icon="home.png">
+      <call_once fun="nav_set_heading_deg(0)"/>
+      <stay wp="STDBY"/>
+    </block>
+    <block name="Line Stop" strip_button="Line Stop">
+      <exception cond="optical_div > obstacle_max_div" deroute="Stop"/>
+      <call_once fun="nav_set_heading_deg(90)"/>
+      <go wp="START"/>
+      <go from="START" hmode="route" wp="GOAL"/>
+      <call_once fun="nav_set_heading_deg(-90)"/>
+      <stay wp="GOAL" until="stage_time>3"/>
+      <go from="GOAL" hmode="route" wp="START"/>
+      <stay wp="START" until="stage_time>3"/>
+      <deroute block="Standby"/>
+    </block>
+    <block name="Line Avoid" strip_button="Line Avoid">
+      <exception cond="optical_div > obstacle_max_div" deroute="Stop"/>
+      <go wp="START"/>
+      <for var="i" from="1" to="3">
+        <call_once fun="nav_set_heading_deg(90)"/>
+        <go from="START" hmode="route" wp="GOAL" post_call="FlowAvoidance()"/>
+        <call_once fun="nav_set_heading_deg(-90)"/>
+        <stay wp="GOAL" until="stage_time>3"/>
+        <go from="GOAL" hmode="route" wp="START" post_call="FlowAvoidance()"/>
+        <stay wp="START" until="stage_time>3"/>
+      </for>
+      <deroute block="Standby"/>
+    </block>
+    <block name="Stop">
+      <call_once fun="NavSetWaypointHere(WP_TD)"/>
+      <stay wp="TD"/>
+    </block>
+    <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
+      <call_once fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land">
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <exception cond="NavDetectGround()" deroute="Holding point"/>
+      <exception cond="!nav_is_in_flight()" deroute="landed"/>
+      <call_once fun="NavStartDetectGround()"/>
+      <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+    </block>
+    <block name="landed">
+      <call_once fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
