@@ -168,13 +168,14 @@ static void jevois_parse(struct jevois_t *jv, char c)
       break;
     case JV_ID:
       if (JEVOIS_CHECK_DELIM(c)) {
-        jv->buf[jv->idx] = '\0'; // end string
+        jv->msg.id[jv->idx] = '\0'; // end string
         if (jv->msg.type == JEVOIS_MSG_F2 ||
             jv->msg.type == JEVOIS_MSG_F3) {
           jv->state = JV_SIZE; // parse n before coordinates
         } else {
           jv->state = JV_COORD; // parse directly coordinates
         }
+        jv->idx = 0;
         break;
       }
       else {
@@ -286,11 +287,12 @@ static void jevois_parse(struct jevois_t *jv, char c)
       break;
     case JV_EXTRA:
       if (JEVOIS_CHECK_DELIM(c)) {
-        jv->buf[jv->idx] = '\0'; // end string
+        jv->extra[jv->idx] = '\0'; // end string
         jv->state = JV_SEND_MSG;
+        jv->idx = 0; // reset index
       }
       else {
-        jv->msg.id[jv->idx++] = c; // store extra string
+        jv->msg.extra[jv->idx++] = c; // store extra string
         if (jv->idx > JEVOIS_MAX_LEN - 1) {
           jv->state = JV_SYNC; // too long, return to sync
         }
