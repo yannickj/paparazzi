@@ -200,7 +200,7 @@ static void jevois_parse(struct jevois_t *jv, char c)
       if (JEVOIS_CHECK_DELIM(c)) {
         jv->buf[jv->idx] = '\0'; // end string
         jv->msg.coord[jv->n++] = (int16_t)atoi(jv->buf); // store value
-        if (jv->n == jv->msg.nb) {
+        if (jv->n == 2 * jv->msg.nb) {
           // got all coordinates, go to next state
           jv->n = 0; // reset number of received elements
           jv->idx = 0; // reset index
