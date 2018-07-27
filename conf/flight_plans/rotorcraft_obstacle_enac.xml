@@ -39,6 +39,7 @@ static inline void jevois_msg_cb(uint8_t sender_id UNUSED, uint8_t type, char *i
 
 static inline void FlowAvoidance(void)
 {
+#ifndef SITL
   if(n_bins == -1) {
     return;
   }
@@ -62,14 +63,15 @@ static inline void FlowAvoidance(void)
     float sgn = (LessThan(sum_right, sum_left)) ? 1.f : -1.f;
     obstacle_dpsi += (obstacle_k2 * sgn * divergence_bins[middle_bin] + obstacle_k1 * (sum_left - sum_right)) / n_bins; 
   }
+#endif
 
   // compute target offset
   const float dx = POS_FLOAT_OF_BFP(navigation_target.x) - GetPosX();
   const float dy = POS_FLOAT_OF_BFP(navigation_target.y) - GetPosY();
   const float cp = cosf(obstacle_dpsi);
   const float sp = sinf(obstacle_dpsi);
-  navigation_target.x = POS_BFP_OF_REAL( cp * dx - sp * dy ) + GetPosX();
-  navigation_target.y = POS_BFP_OF_REAL( sp * dx + cp * dy ) + GetPosY();
+  navigation_target.x = POS_BFP_OF_REAL( cp * dx - sp * dy + GetPosX() );
+  navigation_target.y = POS_BFP_OF_REAL( sp * dx + cp * dy + GetPosY() );
   if (LessThan(0.01f,fabsf(obstacle_dpsi))) {
     obstacle_dpsi -= obstacle_tau * obstacle_dpsi;
   } else {
@@ -112,7 +114,7 @@ static inline void FlowAvoidance(void)
   <variables>
 	  <variable var="obstacle_max_div" init="800" type="int16_t" min="-1000" max="1000" step="1"/>
 	  <variable var="obstacle_alpha" init="0.1" type="float" min="0." max="1." step="0.01"/>
-	  <variable var="obstacle_tau" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
+	  <variable var="obstacle_tau" init="0.01" type="float" min="0." max="0.05" step="0.001"/>
 	  <variable var="obstacle_k1" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
 	  <variable var="obstacle_k2" init="0.1" type="float" min="0." max="0.5" step="0.01"/>
 	  <variable var="obstacle_dpsi" init="0." type="float" min="-3.14" max="3.14" step="0.01"/>
