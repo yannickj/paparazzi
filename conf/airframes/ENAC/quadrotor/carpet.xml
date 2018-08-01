@@ -16,8 +16,15 @@
     <module name="telemetry" type="xbee_api"/>
 
     <module name="motor_mixing"/>
+
     <module name="actuators" type="pwm">
-      <define name="SERVO_HZ" value="400"/>
+      <!-- PWM /-->
+      <!-- define name="SERVO_HZ" value="400"/-->
+
+      <!-- ONE SHOT 125 -->
+      <!-- Setting the PWM interval to 4 KHz -->
+      <define name="PWM_FREQUENCY" value="1000000"/>
+      <define name="SERVO_HZ"      value="1000"/>
     </module>
 
     <module name="telemetry" type="xbee_api"/>
@@ -40,8 +47,8 @@
     </module>
 
     <module name="stabilization" type="int_quat"/>
-    <module name="ahrs" type="int_cmpl_quat"/>
-    <module name="ins" type="gps_passthrough"/>
+    <module name="ahrs" 	type="int_cmpl_quat"/>
+    <module name="ins" 		type="gps_passthrough"/>
 
     <module name="air_data"/>
 
@@ -50,16 +57,23 @@
 
   <!-- Servo order -->
   <servos driver="Pwm">
-    <servo name="BACK_LEFT" no="2" min="1000" neutral="1100" max="1400"/>
-    <servo name="FRONT_LEFT" no="3" min="1000" neutral="1100" max="1400"/>
-    <servo name="FRONT_RIGHT" no="4" min="1000" neutral="1100" max="1400"/>
-    <servo name="BACK_RIGHT" no="5" min="1000" neutral="1100" max="1400"/>
+    <!-- PWM >
+    <servo name="BACK_LEFT"    no="2" min="1000" neutral="1100" max="1200"/>
+    <servo name="FRONT_LEFT"   no="3" min="1000" neutral="1100" max="1200"/>
+    <servo name="FRONT_RIGHT"  no="4" min="1000" neutral="1100" max="1200"/>
+    <servo name="BACK_RIGHT"   no="5" min="1000" neutral="1100" max="1200"/-->
+
+    <!-- ONE SHOT 125 -->
+    <servo name="BACK_LEFT"    no="2" min="125" neutral="134" max="250"/>
+    <servo name="FRONT_LEFT"   no="3" min="125" neutral="134" max="250"/>
+    <servo name="FRONT_RIGHT"  no="4" min="125" neutral="134" max="250"/>
+    <servo name="BACK_RIGHT"   no="5" min="125" neutral="134" max="250"/>
   </servos>
 
   <commands>
-    <axis name="ROLL" failsafe_value="0"/>
-    <axis name="PITCH" failsafe_value="0"/>
-    <axis name="YAW" failsafe_value="0"/>
+    <axis name="ROLL"   failsafe_value="0"/>
+    <axis name="PITCH"  failsafe_value="0"/>
+    <axis name="YAW"    failsafe_value="0"/>
     <axis name="THRUST" failsafe_value="0"/>
   </commands>
 
@@ -181,22 +195,22 @@
     <define name="REF_MAX_RDOT" value="RadOfDeg(900.)"/>
 
    <!-- feedback -->
-    <define name="PHI_PGAIN" value="429"/>
-    <define name="PHI_DGAIN" value="202"/>
+    <define name="PHI_PGAIN" value="199"/>
+    <define name="PHI_DGAIN" value="85"/>
     <define name="PHI_IGAIN" value="56"/>
 
-    <define name="THETA_PGAIN" value="429"/>
-    <define name="THETA_DGAIN" value="202"/>
+    <define name="THETA_PGAIN" value="199"/>
+    <define name="THETA_DGAIN" value="85"/>
     <define name="THETA_IGAIN" value="56"/>
 
-    <define name="PSI_PGAIN" value="1925"/>
-    <define name="PSI_DGAIN" value="881"/>
-    <define name="PSI_IGAIN" value="32"/>
+    <define name="PSI_PGAIN" value="806"/>
+    <define name="PSI_DGAIN" value="350"/>
+    <define name="PSI_IGAIN" value="20"/>
 
     <!-- feedforward -->
-    <define name="PHI_DDGAIN" value="77"/>
-    <define name="THETA_DDGAIN" value="77"/>
-    <define name="PSI_DDGAIN" value="177"/>
+    <define name="PHI_DDGAIN" value="69"/>
+    <define name="THETA_DDGAIN" value="69"/>
+    <define name="PSI_DDGAIN" value="170"/>
 
     <define name="PHI_AGAIN" value="0"/>
     <define name="THETA_AGAIN" value="0"/>
@@ -206,16 +220,16 @@
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
    <define name="HOVER_KP" value="400"/>
    <define name="HOVER_KD" value="40"/>
-   <define name="HOVER_KI" value="40"/>
-   <define name="NOMINAL_HOVER_THROTTLE" value="0.67"/>
+   <define name="HOVER_KI" value="30"/>
+   <define name="NOMINAL_HOVER_THROTTLE" value="0.40"/>
   </section>
 
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
    <define name="MAX_BANK" value="20" unit="deg"/>
-   <define name="PGAIN" value="146"/>
-   <define name="DGAIN" value="179"/>
-   <define name="IGAIN" value="87"/>
+   <define name="PGAIN" value="41"/>
+   <define name="DGAIN" value="108"/>
+   <define name="IGAIN" value="20"/>
    <define name="NGAIN" value="0"/>
    <!-- feedforward -->
    <define name="AGAIN" value="0"/>
