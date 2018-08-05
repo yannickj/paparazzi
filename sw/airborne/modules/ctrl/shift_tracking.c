@@ -53,7 +53,7 @@
 #endif
 
 #ifndef SHIFT_TRACKING_DIR
-#define SHIFT_TRACKING_DIR { 1.0f, 0.f, 0.f }
+#define SHIFT_TRACKING_DIR { -1.0f, 0.f, 0.f }
 #endif
 
 #ifndef SHIFT_TRACKING_KP

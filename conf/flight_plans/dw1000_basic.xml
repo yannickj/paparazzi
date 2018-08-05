@@ -15,8 +15,8 @@
     <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
     <waypoint name="CLIMB" x="-114.5" y="162.3"/>
     <waypoint name="ANCHOR_1" x="-15" y="37.5"/>
-    <waypoint name="ANCHOR_2" x="-20" y="35."/>
-    <waypoint name="ANCHOR_3" x="-20" y="40."/>
+    <waypoint name="ANCHOR_2" x="-20" y="40."/>
+    <waypoint name="ANCHOR_3" x="-20" y="35."/>
   </waypoints>
   <modules>
     <module name="shift_tracking"/>
