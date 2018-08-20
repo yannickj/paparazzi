@@ -24,6 +24,7 @@ class UavDetector:
         self.x = 0.
         self.y = 0.
         self.area = 0.
+        self.threshold = 200
         
 
     # ###################################################################
@@ -41,7 +42,7 @@ class UavDetector:
         cv2.line(img,(int(self.width*0.1),int(self.height/2)), (int(self.width*0.9),int(self.height/2)), (0,0,255),1)
 
         blur = cv2.GaussianBlur(gray,(5,5),0)
-        ret,th = cv2.threshold(blur,200,255,cv2.THRESH_BINARY)
+        ret,th = cv2.threshold(blur,self.threshold,255,cv2.THRESH_BINARY)
         if self.set_mask:
             self.mask = cv2.dilate(th, np.ones((10,10), np.uint8), iterations=1)
             self.mask = cv2.bitwise_not(self.mask)
@@ -83,6 +84,7 @@ class UavDetector:
     # This function is optional and only needed if you want your module to handle custom commands. Delete if not needed.
     def parseSerial(self, str):
         print("parseserial received command [{}]".format(str))
+        str_list = str.split(' ')
         if str == "set_mask":
             self.set_mask = True
             return("Mask set")
@@ -90,6 +92,9 @@ class UavDetector:
             self.mask = np.zeros((self.height, self.width), np.uint8)
             self.mask = cv2.bitwise_not(self.mask)
             return("Mask cleared")
+        elif len(str_list) == 2 and str_list[0] == "set_thres" and str_list[1].isdigit():
+            self.threshold = max(0, min(255, int(str_list[1])))
+            return("Threshold set")
         return "ERR: Unsupported command"
     
     # ##########################################################################
@@ -156,6 +161,7 @@ if __name__ == '__main__':
     cv2.createTrackbar('I vert','out',int(ctrl.pid_vert.Ki*100),1000,lambda x: ctrl.pid_vert.setKi(x/100.))
     cv2.createTrackbar('D vert','out',int(ctrl.pid_vert.Kd*100),1000,lambda x: ctrl.pid_vert.setKd(x/100.))
     cv2.createTrackbar('Speed','out',ctrl.speed,255,ctrl.set_speed)
+    cv2.createTrackbar('Thres','out',detector.threshold,255,lambda x: detector.parseSerial("set_thres {}".format(x)))
 
 
     cap = cv2.VideoCapture(0)
