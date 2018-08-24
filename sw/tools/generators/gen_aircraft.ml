@@ -108,6 +108,7 @@ let config_by_target = Hashtbl.create 5
 (* sort element of an airframe type by target *)
 let sort_airframe_by_target = fun airframe ->
   match airframe with
+  | None -> ()
   | Some a ->
     (* build a list of pairs (target, firmware) *)
     let l = List.fold_left (fun lf f ->
@@ -134,7 +135,6 @@ let sort_airframe_by_target = fun airframe ->
           ) conf t.AfT.modules in
         Hashtbl.add config_by_target name conf
       ) l
-  | None -> ()
 
 let mkdir = fun d ->
   assert (Sys.command (sprintf "mkdir -p %s" d) = 0)
@@ -175,8 +175,7 @@ let make_element = fun t a c -> Xml.Element (t,a,c)
  * [bool -> Xml.xml -> string -> (Xml.xml -> a') -> (string * a' option)]
  *)
 let get_config_element = fun flag ac_xml elt f ->
-  if flag then
-    None (* generation is not requested *)
+  if flag then None (* generation is not requested *)
   else
     (* try *) (* TODO: uncomment? *)
       let file = Xml.attrib ac_xml elt in
@@ -233,6 +232,7 @@ let () =
     | None -> failwith "A target name is mandatory"
     | Some t -> t
   in
+  Printf.printf "Target: %s\n%!" target;
 
   try
     let conf = ExtXml.parse_file !conf_xml in
@@ -350,9 +350,7 @@ let () =
           [ (abs_telemetry_h, [telemetry.Telemetry.filename]) ] end;
     Printf.printf " done\n%!";
 
-    (* Already known
-       let target = try Sys.getenv "TARGET" with _ -> "" in *)
-
+    Printf.printf "target->firmware: ";
     Hashtbl.iter (fun tgt cfg -> Printf.printf "(%s -> %s) " tgt cfg.firmware_name) config_by_target;
     Printf.printf "\n%!";
 
@@ -361,30 +359,44 @@ let () =
     Printf.printf "Modules: ";
     List.iter (fun (_, m) -> Printf.printf "%s " m.Module.name) modules;
     Printf.printf "\n%!";
-(**
-
-    let modules = Gen_common.get_modules_of_config ~target (value "ac_id") (ExtXml.parse_file airframe.Airframe.filename) (ExtXml.parse_file abs_flight_plan_file) in
     (* normal settings *)
     let settings = try Env.filter_settings (value "settings") with _ -> "" in
-    (* remove settings if not supported for the current target *)
-    let settings = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target modules s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings) in
-    (* update aircraft_xml *)
-    let aircraft_xml = ExtXml.subst_attrib "settings" (Compat.bytes_concat " " settings) aircraft_xml in
-    (* add modules settings *)
-    let settings_modules = try Env.filter_settings (value "settings_modules") with _ -> "" in
-    (* remove settings if not supported for the current target *)
-    let settings_modules = List.fold_left (fun l s -> if Gen_common.is_element_unselected ~verbose:true target modules s then l else l @ [s]) [] (Str.split (Str.regexp " ") settings_modules) in
-    (* update aircraft_xml *)
-    let aircraft_xml = ExtXml.subst_attrib "settings_modules" (Compat.bytes_concat " " settings_modules) aircraft_xml in
-    (* finally, concat all settings *)
-    let settings = settings @ settings_modules in
+    let settings_files = Str.split (Str.regexp " ") settings in
+    let settings = List.map
+        (fun f -> Settings.from_file (paparazzi_conf // f)) settings_files in
+    (* modules settings *)
+    let settings_modules =
+      try Env.filter_settings (value "settings_modules")
+      with _ -> "" in
+    let settings_modules_files = Str.split (Str.regexp " ") settings_modules in
+    let settings_modules = List.fold_left
+        (fun acc f ->
+           let mods = Module.from_file (paparazzi_conf // f) in
+           acc @ mods.Module.settings
+        ) [] settings_modules_files in
+
+    (* TODO: update aircraft with all above settings *)
+    (* finally, concat all settings and filter on target *)
+    let settings = List.fold_left (fun acc s ->
+        if Gen_common.test_targets target
+            (Gen_common.targets_of_string s.Settings.target)
+        then acc @ [s] else acc) [] (settings @ settings_modules) in
     let settings = if List.length settings = 0 then
       begin
-        fprintf stderr "\nInfo: No 'settings' attribute specified for A/C '%s', using 'settings/dummy.xml'\n\n%!" aircraft;
-        "settings/dummy.xml"
+        Printf.eprintf "\nInfo: No 'settings' attribute specified for A/C '%s', using 'settings/dummy.xml'\n\n%!" aircraft;
+        [Settings.from_file "settings/dummy.xml"]
       end
-      else Compat.bytes_concat " " settings
+      else settings
     in
+    Printf.printf "Settings: ";
+    List.iter
+      (fun s -> Printf.printf "%s(%s) "
+          (match s.Settings.name with None -> s.Settings.filename | Some s -> s)
+          (match s.Settings.target with None -> "all tagets" | Some t -> t))
+      settings;
+    Printf.printf "\n%!";
+
+(**
 
     (** Expands the configuration of the A/C into one single file *)
     let conf_aircraft = Env.expand_ac_xml aircraft_xml in
@@ -438,16 +450,26 @@ let () =
         let value = Xml.attrib aircraft_xml attr in
         make target (sprintf "%s=%s" var value)
       with Xml.No_attribute _ -> () in
+*)
 
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
 
+(*
     let () = extract_makefile (value "ac_id") airframe.Airframe.filename abs_flight_plan_file temp_makefile_ac in
+*)
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in
-    if is_older makefile_ac (airframe.Airframe.filename ::(List.map (fun m -> m.file) modules)) then
-      assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0);
+    match airframe with
+    | None -> ()
+    | Some airframe ->
+      let module_files = List.map (fun (_, m) -> m.Module.filename) modules in
+      if is_older makefile_ac (airframe.Airframe.filename :: module_files)
+      then
+        assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0)
+      ;
 
+(*
     (* Get TARGET env, needed to build modules.h according to the target *)
     let t = try Printf.sprintf "TARGET=%s" (Sys.getenv "TARGET") with _ -> "" in
     (* Get FLIGHT_PLAN attribute, needed to build modules.h as well FIXME *)
