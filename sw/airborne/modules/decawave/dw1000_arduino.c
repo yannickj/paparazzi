@@ -40,13 +40,18 @@
 #include <string.h>
 
 /** TRUE if dw1000 are used as local position estimate */
-#ifndef DW1000_USE_HAS_LOCAL_POS
-#define DW1000_USE_HAS_LOCAL_POS TRUE
+#ifndef DW1000_USE_AS_LOCAL_POS
+#define DW1000_USE_AS_LOCAL_POS TRUE
 #endif
 
 /** TRUE if dw1000 are used as GPS */
-#ifndef DW1000_USE_HAS_GPS
-#define DW1000_USE_HAS_GPS FALSE
+#ifndef DW1000_USE_AS_GPS
+#define DW1000_USE_AS_GPS FALSE
+#endif
+
+/** TRUE if EKF range filter is use */
+#ifndef DW1000_USE_EKF
+#define DW1000_USE_EKF TRUE
 #endif
 
 /** Number of anchors
@@ -81,16 +86,46 @@
 
 /** DW1000 Noise */
 #ifndef DW1000_NOISE_X
-#define DW1000_NOISE_X 0.1
+#define DW1000_NOISE_X 0.1f
 #endif
 
 #ifndef DW1000_NOISE_Y
-#define DW1000_NOISE_Y 0.1
+#define DW1000_NOISE_Y 0.1f
 #endif
 
 #ifndef DW1000_NOISE_Z
-#define DW1000_NOISE_Z 0.1
+#define DW1000_NOISE_Z 0.1f
 #endif
+
+#if DW1000_USE_EKF
+#include "modules/decawave/ekf_range.h"
+#include "filters/median_filter.h"
+
+#define DW1000_EKF_UNINIT   0
+#define DW1000_EKF_POS_INIT 1
+#define DW1000_EKF_RUNNING  2
+
+#ifndef DW1000_EKF_P0_POS
+#define DW1000_EKF_P0_POS 1.0f
+#endif
+
+#ifndef DW1000_EKF_P0_SPEED
+#define DW1000_EKF_P0_SPEED 1.0f
+#endif
+
+#ifndef DW1000_EKF_Q
+#define DW1000_EKF_Q 1.0f
+#endif
+
+#ifndef DW1000_EKF_R_DIST
+#define DW1000_EKF_R_DIST 0.1f
+#endif
+
+#ifndef DW1000_EKF_R_SPEED
+#define DW1000_EKF_R_SPEED 0.1f
+#endif
+
+#endif // USE_EKF
 
 /** waypoints to use as anchors in simulation
  */
@@ -128,6 +163,12 @@ struct DW1000 {
   struct GpsState gps_dw1000; ///< "fake" gps structure
   struct LtpDef_i ltp_def;    ///< ltp reference
   bool updated;               ///< new anchor data available
+#if DW1000_USE_EKF
+  // TODO use_ekf bool
+  bool ekf_running;           ///< EKF logic status
+  struct EKFRange ekf_range;  ///< EKF filter
+  struct MedianFilterFloat mf[DW1000_NB_ANCHORS]; ///< median filter for EKF input data
+#endif
 #if SITL
   uint8_t anchor_sim_wp[DW1000_NB_ANCHORS];   ///< WP index for simulation
 #endif
@@ -164,10 +205,12 @@ static void fill_anchor(struct DW1000 *dw) {
     uint16_t id = uint16_from_buf(dw->buf);
     if (dw->anchors[i].id == id) {
       dw->raw_dist[i] = float_from_buf(dw->buf + 2);
+      // TODO median filter for EKF
       // store scaled distance
       dw->anchors[i].distance = scale[i] * (dw->raw_dist[i] - offset[i]);
       dw->anchors[i].time = get_sys_time_float();
-      dw->updated = true;
+      dw->anchors[i].updated = true;
+      dw->updated = true; // at least one of the anchor is updated
       break;
     }
   }
@@ -208,9 +251,9 @@ static void dw1000_arduino_parse(struct DW1000 *dw, uint8_t c)
       dw->state = DW_WAIT_STX;
   }
 }
-#endif
+#endif // !SITL
 
-#if DW1000_USE_HAS_GPS
+#if DW1000_USE_AS_GPS
 static void send_gps_dw1000_small(struct DW1000 *dw)
 {
   // rotate and convert to cm integer
@@ -253,7 +296,7 @@ static void send_gps_dw1000_small(struct DW1000 *dw)
 }
 #endif
 
-#if DW1000_USE_HAS_LOCAL_POS
+#if DW1000_USE_AS_LOCAL_POS
 static void send_pos_estimate(struct DW1000 *dw)
 {
   uint32_t now_ts = get_sys_time_usec();
@@ -265,12 +308,13 @@ static void send_pos_estimate(struct DW1000 *dw)
 #endif
 
 /** check timeout for each anchor
+ * @param dw DW1000 struct
+ * @param timeout timeout in seconds
  * @return true if one has reach timeout
  */
-static bool check_anchor_timeout(struct DW1000 *dw)
+static bool check_anchor_timeout(struct DW1000 *dw, float timeout)
 {
   const float now = get_sys_time_float();
-  const float timeout = (float)DW1000_TIMEOUT / 1000.;
   for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
     if (now - dw->anchors[i].time > timeout) {
       return true;
@@ -279,17 +323,69 @@ static bool check_anchor_timeout(struct DW1000 *dw)
   return false;
 }
 
+/** check new data and compute with the proper algorithm
+ * @return true if processing is succesful
+ */
+static inline bool check_and_compute_data(struct DW1000 *dw)
+{
+  const float timeout = (float)DW1000_TIMEOUT / 1000.;
+#if DW1000_USE_EKF
+  //TODO process ekf logic
+  if (dw->ekf_running) {
+    // filter is running
+    if (check_anchor_timeout(dw, 5.f*timeout)) {
+      // no more valid data for a long time
+      dw->ekf_running = false;
+      return false;
+    } else {
+      // run filter on each updated anchor
+      for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
+        if (dw->anchors[i].updated) {
+          ekf_range_update_dist(&dw->ekf_range, dw->anchors[i].distance,
+              dw->anchors[i].pos);
+          dw->anchors[i].updated = false;
+        }
+      }
+      dw->pos = ekf_range_get_pos(&dw->ekf_range);
+      return true;
+    }
+  } else {
+    // filter is currently not running,
+    // waiting for a new valid initial position
+    if (check_anchor_timeout(dw, timeout)) {
+      // no valid data
+      return false;
+    } else {
+      if (trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
+        // got valid initial pos
+        struct EnuCoor_f speed = { 0.f, 0.f, 0.f };
+        ekf_range_set_state(&dw->ekf_range, dw->pos, speed);
+        dw->ekf_running = true;
+        return true;
+      } else {
+        // trilateration failed
+        return false;
+      }
+    }
+  }
+#else
+  // Direct trilateration only
+  // if no timeout on anchors, run trilateration algorithm
+  return (check_anchor_timeout(dw, timeout) == false &&
+      trilateration_compute(dw->anchors, &(dw->pos)) == 0);
+#endif
+}
+
 static void process_data(struct DW1000 *dw) {
   // process if new data
   if (dw->updated) {
-    // if no timeout on anchors, run trilateration algorithm
-    if (check_anchor_timeout(dw) == false &&
-        trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
-#if DW1000_USE_HAS_GPS
+    // send result if process returns true
+    if (check_and_compute_data(dw)) {
+#if DW1000_USE_AS_GPS
       // send fake GPS message for INS filters
       send_gps_dw1000_small(dw);
 #endif
-#if DW1000_USE_HAS_LOCAL_POS
+#if DW1000_USE_AS_LOCAL_POS
       // send a local postion estimate
       send_pos_estimate(dw);
 #endif
@@ -342,10 +438,11 @@ static void compute_anchors_dist_from_wp(struct DW1000 *dw)
     VECT3_DIFF(diff, (*pos), a_pos);
     dw->anchors[i].distance = float_vect3_norm(&diff);
     dw->anchors[i].time = time;
+    dw->anchors[i].updated = true;
     dw->updated = true;
   }
 }
-#endif
+#endif // SITL
 
 void dw1000_arduino_init(void)
 {
@@ -363,6 +460,7 @@ void dw1000_arduino_init(void)
     dw1000.anchors[i].distance = 0.f;
     dw1000.anchors[i].time = 0.f;
     dw1000.anchors[i].id = ids[i];
+    dw1000.anchors[i].updated = false;
     dw1000.anchors[i].pos.x = pos_x[i];
     dw1000.anchors[i].pos.y = pos_y[i];
     dw1000.anchors[i].pos.z = pos_z[i];
@@ -386,10 +484,24 @@ void dw1000_arduino_init(void)
   // init trilateration algorithm
   trilateration_init(dw1000.anchors);
 
+#if DW1000_USE_EKF
+  dw1000.ekf_running = false;
+  ekf_range_init(&dw1000.ekf_range, DW1000_EKF_P0_POS, DW1000_EKF_P0_SPEED,
+      DW1000_EKF_Q, DW1000_EKF_R_DIST, DW1000_EKF_R_SPEED, 0.1f);
+  for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
+    init_median_filter_f(&dw1000.mf[i], 3);
+  }
+#endif
 }
 
 void dw1000_arduino_periodic(void)
 {
+#if DW1000_USE_EKF
+  if (dw1000.ekf_running) {
+    ekf_range_predict(&dw1000.ekf_range);
+    dw1000.pos = ekf_range_get_pos(&dw1000.ekf_range);
+  }
+#endif
 #if SITL
   // compute position from WP for simulation
   compute_anchors_dist_from_wp(&dw1000);

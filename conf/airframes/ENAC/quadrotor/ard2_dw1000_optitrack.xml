@@ -35,8 +35,8 @@
       <configure name="SECONDARY_GPS" value="datalink"/>
     </module>
     <module name="dw1000_arduino">
-      <configure name="DW1000_USE_HAS_GPS" value="TRUE"/>
-      <configure name="DW1000_USE_HAS_LOCAL_POS" value="FALSE"/>
+      <configure name="DW1000_USE_AS_GPS" value="TRUE"/>
+      <configure name="DW1000_USE_AS_LOCAL_POS" value="FALSE"/>
       <configure name="DW1000_ARDUINO_UART" value="uart1"/>
     </module>
     <module name="stabilization" type="int_quat"/>
