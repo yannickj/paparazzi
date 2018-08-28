@@ -45,7 +45,7 @@ void ekf_range_init(struct EKFRange *ekf_range, float P0_pos, float P0_speed, fl
     ekf_range->Q[i][i] = Q_sigma2 * dt4;
     ekf_range->Q[i+1][i] = Q_sigma2 * dt3;
     ekf_range->Q[i][i+1] = Q_sigma2 * dt3;
-    ekf_range->Q[i+1][i+1] = Q_sigma2 * dt4;
+    ekf_range->Q[i+1][i+1] = Q_sigma2 * dt2;
   }
   ekf_range->R_dist = R_dist;
   ekf_range->R_speed = R_speed;

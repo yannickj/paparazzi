@@ -114,15 +114,15 @@
 #endif
 
 #ifndef DW1000_EKF_Q
-#define DW1000_EKF_Q 1.0f
+#define DW1000_EKF_Q 10.0f
 #endif
 
 #ifndef DW1000_EKF_R_DIST
-#define DW1000_EKF_R_DIST 0.1f
+#define DW1000_EKF_R_DIST 0.001f
 #endif
 
 #ifndef DW1000_EKF_R_SPEED
-#define DW1000_EKF_R_SPEED 0.1f
+#define DW1000_EKF_R_SPEED 0.01f
 #endif
 
 #endif // USE_EKF
@@ -163,18 +163,17 @@ struct DW1000 {
   struct GpsState gps_dw1000; ///< "fake" gps structure
   struct LtpDef_i ltp_def;    ///< ltp reference
   bool updated;               ///< new anchor data available
-#if DW1000_USE_EKF
-  // TODO use_ekf bool
   bool ekf_running;           ///< EKF logic status
   struct EKFRange ekf_range;  ///< EKF filter
   struct MedianFilterFloat mf[DW1000_NB_ANCHORS]; ///< median filter for EKF input data
-#endif
 #if SITL
   uint8_t anchor_sim_wp[DW1000_NB_ANCHORS];   ///< WP index for simulation
 #endif
 };
 
 static struct DW1000 dw1000;
+
+bool dw1000_use_ekf;
 
 /// init arrays from airframe file
 static const uint16_t ids[] = DW1000_ANCHORS_IDS;
@@ -329,51 +328,50 @@ static bool check_anchor_timeout(struct DW1000 *dw, float timeout)
 static inline bool check_and_compute_data(struct DW1000 *dw)
 {
   const float timeout = (float)DW1000_TIMEOUT / 1000.;
-#if DW1000_USE_EKF
-  //TODO process ekf logic
-  if (dw->ekf_running) {
-    // filter is running
-    if (check_anchor_timeout(dw, 5.f*timeout)) {
-      // no more valid data for a long time
-      dw->ekf_running = false;
-      return false;
+  if (dw1000_use_ekf) {
+    if (dw->ekf_running) {
+      // filter is running
+      if (check_anchor_timeout(dw, 5.f*timeout)) {
+        // no more valid data for a long time
+        dw->ekf_running = false;
+        return false;
+      } else {
+        // run filter on each updated anchor
+        for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
+          if (dw->anchors[i].updated) {
+            ekf_range_update_dist(&dw->ekf_range, dw->anchors[i].distance,
+                dw->anchors[i].pos);
+            dw->anchors[i].updated = false;
+          }
+        }
+        dw->pos = ekf_range_get_pos(&dw->ekf_range);
+        return true;
+      }
     } else {
-      // run filter on each updated anchor
-      for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
-        if (dw->anchors[i].updated) {
-          ekf_range_update_dist(&dw->ekf_range, dw->anchors[i].distance,
-              dw->anchors[i].pos);
-          dw->anchors[i].updated = false;
+      // filter is currently not running,
+      // waiting for a new valid initial position
+      if (check_anchor_timeout(dw, timeout)) {
+        // no valid data
+        return false;
+      } else {
+        if (trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
+          // got valid initial pos
+          struct EnuCoor_f speed = { 0.f, 0.f, 0.f };
+          ekf_range_set_state(&dw->ekf_range, dw->pos, speed);
+          dw->ekf_running = true;
+          return true;
+        } else {
+          // trilateration failed
+          return false;
         }
       }
-      dw->pos = ekf_range_get_pos(&dw->ekf_range);
-      return true;
     }
   } else {
-    // filter is currently not running,
-    // waiting for a new valid initial position
-    if (check_anchor_timeout(dw, timeout)) {
-      // no valid data
-      return false;
-    } else {
-      if (trilateration_compute(dw->anchors, &(dw->pos)) == 0) {
-        // got valid initial pos
-        struct EnuCoor_f speed = { 0.f, 0.f, 0.f };
-        ekf_range_set_state(&dw->ekf_range, dw->pos, speed);
-        dw->ekf_running = true;
-        return true;
-      } else {
-        // trilateration failed
-        return false;
-      }
-    }
+    // Direct trilateration only
+    // if no timeout on anchors, run trilateration algorithm
+    return (check_anchor_timeout(dw, timeout) == false &&
+        trilateration_compute(dw->anchors, &(dw->pos)) == 0);
   }
-#else
-  // Direct trilateration only
-  // if no timeout on anchors, run trilateration algorithm
-  return (check_anchor_timeout(dw, timeout) == false &&
-      trilateration_compute(dw->anchors, &(dw->pos)) == 0);
-#endif
 }
 
 static void process_data(struct DW1000 *dw) {
@@ -422,13 +420,20 @@ void dw1000_reset_heading_ref(void)
 #if SITL
 static const uint8_t wp_ids[] = DW1000_ANCHOR_SIM_WP;
 
+#define DW1000_SITL_SYNC FALSE
+
 static void compute_anchors_dist_from_wp(struct DW1000 *dw)
 {
+#if !DW1000_SITL_SYNC
+  static int i = 0; // async data update (more realistic)
+#endif
   // position of the aircraft
   struct FloatVect3 *pos = (struct FloatVect3 *) (stateGetPositionEnu_f());
   float time = get_sys_time_float();
   // compute distance to each WP/anchor
+#if DW1000_SITL_SYNC
   for (uint8_t i = 0; i < DW1000_NB_ANCHORS; i++) {
+#endif
     struct FloatVect3 a_pos = {
       WaypointX(wp_ids[i]),
       WaypointY(wp_ids[i]),
@@ -440,6 +445,17 @@ static void compute_anchors_dist_from_wp(struct DW1000 *dw)
     dw->anchors[i].time = time;
     dw->anchors[i].updated = true;
     dw->updated = true;
+
+    i = (i+1)%DW1000_NB_ANCHORS;
+#if DW1000_SITL_SYNC
+  }
+#endif
+  struct EnuCoor_f t_pos;
+  // direct trilat for debug
+  if (trilateration_compute(dw->anchors, &t_pos) == 0) {
+    dw->raw_dist[0] = t_pos.x;
+    dw->raw_dist[1] = t_pos.y;
+    dw->raw_dist[2] = t_pos.z;
   }
 }
 #endif // SITL
@@ -484,24 +500,25 @@ void dw1000_arduino_init(void)
   // init trilateration algorithm
   trilateration_init(dw1000.anchors);
 
-#if DW1000_USE_EKF
+  dw1000_use_ekf = DW1000_USE_EKF;
   dw1000.ekf_running = false;
   ekf_range_init(&dw1000.ekf_range, DW1000_EKF_P0_POS, DW1000_EKF_P0_SPEED,
       DW1000_EKF_Q, DW1000_EKF_R_DIST, DW1000_EKF_R_SPEED, 0.1f);
   for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
     init_median_filter_f(&dw1000.mf[i], 3);
   }
-#endif
 }
 
 void dw1000_arduino_periodic(void)
 {
-#if DW1000_USE_EKF
-  if (dw1000.ekf_running) {
-    ekf_range_predict(&dw1000.ekf_range);
-    dw1000.pos = ekf_range_get_pos(&dw1000.ekf_range);
+  if (dw1000_use_ekf) {
+    if (dw1000.ekf_running) {
+      ekf_range_predict(&dw1000.ekf_range);
+      dw1000.pos = ekf_range_get_pos(&dw1000.ekf_range);
+    }
+  } else {
+    dw1000.ekf_running = false; // init sequence will be required at next run
   }
-#endif
 #if SITL
   // compute position from WP for simulation
   compute_anchors_dist_from_wp(&dw1000);

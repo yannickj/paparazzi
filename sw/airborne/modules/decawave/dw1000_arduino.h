@@ -26,6 +26,11 @@
 #ifndef DW1000_ARDUINO_H
 #define DW1000_ARDUINO_H
 
+#include "std.h"
+
+/** enable EKF filtering */
+extern bool dw1000_use_ekf;
+
 extern void dw1000_arduino_init(void);
 extern void dw1000_arduino_periodic(void);
 extern void dw1000_arduino_report(void);

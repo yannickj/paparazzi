@@ -117,7 +117,7 @@ void shift_tracking_init(void)
   stp.dir.y = dir[1];
   stp.dir.z = dir[2];
   float_vect3_normalize(&stp.dir); // normalize direction
-  init_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki, nav_dt);
+  init_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki, 30.f);
   stp.shift = NULL;
 
   // Bind to position message
@@ -126,7 +126,7 @@ void shift_tracking_init(void)
 
 void shift_tracking_reset(void)
 {
-  //stp.sum = 0.f;
+  reset_pid_f(&stp.pid);
   shift_tracking.shift = 0.f;
   if (stp.shift) {
     *stp.shift = 0.f;
@@ -151,7 +151,7 @@ void shift_tracking_run(float *shift)
   float value = (- stp.dir.y * stp.pos.x) + (stp.dir.x * stp.pos.y);
 
   // shift calculation
-  shift_tracking.shift = update_pid_f(&stp.pid, value);
+  shift_tracking.shift = update_pid_f(&stp.pid, value, nav_dt);
   BoundAbs(shift_tracking.shift, SHIFT_TRACKING_MAXSHIFT);
 
   // pilot actual value
@@ -162,5 +162,5 @@ void shift_tracking_run(float *shift)
 
 void shift_tracking_update_gains(void)
 {
-  set_gains_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki, nav_dt);
+  set_gains_pid_f(&stp.pid, shift_tracking.kp, shift_tracking.kd, shift_tracking.ki);
 }

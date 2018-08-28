@@ -24,6 +24,7 @@
   <exceptions/>
   <blocks>
     <block name="Wait GPS">
+      <call_once fun="dw1000_use_ekf = false"/>
       <set value="1" var="autopilot.kill_throttle"/>
       <while cond="!GpsFixValid()"/>
     </block>
@@ -48,13 +49,15 @@
       <oval p1="1" p2="2" radius="nav_radius"/>
     </block>
     <block name="Start Shift Tracking">
-      <call_once fun="shift_tracking_reset()"/>
       <call_once fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, nav_radius)"/>
       <circle radius="nav_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
       <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
     </block>
     <block name="Run Shift Tracking" pre_call="shift_tracking_run(&nav_shift)">
+      <call_once fun="shift_tracking_reset()"/>
+      <call_once fun="dw1000_use_ekf = true"/>
       <go approaching_time="0" from="AF" hmode="route" wp="TD" alt="WaypointAlt(WP_AF)"/>
+      <call_once fun="dw1000_use_ekf = false"/>
       <deroute block="Start Shift Tracking"/>
     </block>
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">

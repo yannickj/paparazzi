@@ -24,12 +24,19 @@
       <define name="NB_ANCHORS" value="3" description="Set number of anchors, only 3 are required/supported at the moment"/>
     </section>
   </doc>
+  <settings>
+    <dl_settings>
+      <dl_settings name="dw1000">
+        <dl_setting max="1" min="0" step="1" module="decawave/dw1000_arduino" var="dw1000_use_ekf" shortname="use_ekf" values="FALSE|TRUE"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
   <header>
     <file name="dw1000_arduino.h"/>
   </header>
   <init fun="dw1000_arduino_init()"/>
   <periodic fun="dw1000_arduino_periodic()" freq="10"/>
-  <periodic fun="dw1000_arduino_report()" freq="10" autorun="FALSE"/>
+  <periodic fun="dw1000_arduino_report()" freq="10" autorun="TRUE"/>
   <periodic fun="dw1000_reset_heading_ref()" freq="1" autorun="FALSE"/>
   <event fun="dw1000_arduino_event()"/>
   <makefile>
