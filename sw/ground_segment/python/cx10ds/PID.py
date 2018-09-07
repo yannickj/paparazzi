@@ -61,6 +61,12 @@ class PID:
 
         self.output = 0.0
 
+    def clear_PID(self):
+        """Clears PID computations only"""
+        self.last_error = 0.0
+        self.int_error = 0.0
+        self.output = 0.0
+
     def update(self, feedback_value):
         """Calculates PID value for given reference feedback
 
@@ -101,14 +107,17 @@ class PID:
     def setKp(self, proportional_gain):
         """Determines how aggressively the PID reacts to the current error with setting Proportional Gain"""
         self.Kp = proportional_gain
+        print("set Kp {}".format(self.Kp))
 
     def setKi(self, integral_gain):
         """Determines how aggressively the PID reacts to the current error with setting Integral Gain"""
         self.Ki = integral_gain
+        print("set Ki {}".format(self.Ki))
 
     def setKd(self, derivative_gain):
         """Determines how aggressively the PID reacts to the current error with setting Derivative Gain"""
         self.Kd = derivative_gain
+        print("set Kd {}".format(self.Kd))
 
     def setWindup(self, windup):
         """Integral windup, also known as integrator windup or reset windup,
@@ -121,6 +130,7 @@ class PID:
         The specific problem is the excess overshooting.
         """
         self.windup_guard = windup
+        print("set windup {}".format(self.windup_guard))
 
     def setSampleTime(self, sample_time):
         """PID that should be updated at a regular interval.

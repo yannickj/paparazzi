@@ -44,7 +44,8 @@ class UavDetector:
         blur = cv2.GaussianBlur(gray,(5,5),0)
         ret,th = cv2.threshold(blur,self.threshold,255,cv2.THRESH_BINARY)
         if self.set_mask:
-            self.mask = cv2.dilate(th, np.ones((10,10), np.uint8), iterations=1)
+            print(self.height,self.width)
+            self.mask = cv2.dilate(th, np.ones((40,40), np.uint8), iterations=1)
             self.mask = cv2.bitwise_not(self.mask)
             self.set_mask = False
         th_masked = cv2.bitwise_and(th, th, mask=self.mask)
@@ -72,7 +73,7 @@ class UavDetector:
             self.area = w * h
             box = np.int0(cv2.boxPoints(rect))
             cv2.drawContours(img, [box], 0, (0,255,0), 3)
-            print("POS {} {} {}".format(self.x, self.y, self.area))
+            print("POS {:.3f} {:.3f} {:.3f}".format(self.x, self.y, self.area))
 
         if outframe:
             #cv2.imshow('gray',gray)
@@ -145,33 +146,49 @@ class Controller():
         self.msg['button4'] = 0 # idle
         self._interface.send(self.msg)
 
+    def reset(self):
+        self.pid_lat.clear_PID()
+        self.pid_vert.clear_PID()
+
 
 if __name__ == '__main__':
+
+    enabled = False
+    def activate(e):
+        global enabled
+        enabled = e==1
 
     detector = UavDetector()
     ctrl = Controller()
 
 
-    cv2.namedWindow('out')
+    cv2.namedWindow('ctrl')
     # create trackbars for color change
-    cv2.createTrackbar('P lat','out',int(ctrl.pid_lat.Kp*100),1000,lambda x: ctrl.pid_lat.setKp(x/100.))
-    cv2.createTrackbar('I lat','out',int(ctrl.pid_lat.Ki*100),1000,lambda x: ctrl.pid_lat.setKi(x/100.))
-    cv2.createTrackbar('D lat','out',int(ctrl.pid_lat.Kd*100),1000,lambda x: ctrl.pid_lat.setKd(x/100.))
-    cv2.createTrackbar('P vert','out',int(ctrl.pid_vert.Kp*100),1000,lambda x: ctrl.pid_vert.setKp(x/100.))
-    cv2.createTrackbar('I vert','out',int(ctrl.pid_vert.Ki*100),1000,lambda x: ctrl.pid_vert.setKi(x/100.))
-    cv2.createTrackbar('D vert','out',int(ctrl.pid_vert.Kd*100),1000,lambda x: ctrl.pid_vert.setKd(x/100.))
-    cv2.createTrackbar('Speed','out',ctrl.speed,255,ctrl.set_speed)
-    cv2.createTrackbar('Thres','out',detector.threshold,255,lambda x: detector.parseSerial("set_thres {}".format(x)))
+    cv2.createTrackbar('enable','ctrl',enabled,1,activate)
+    cv2.createTrackbar('P lat','ctrl',int(ctrl.pid_lat.Kp*100),1000,lambda x: ctrl.pid_lat.setKp(x/100.))
+    cv2.createTrackbar('I lat','ctrl',int(ctrl.pid_lat.Ki*100),1000,lambda x: ctrl.pid_lat.setKi(x/100.))
+    cv2.createTrackbar('D lat','ctrl',int(ctrl.pid_lat.Kd*100),1000,lambda x: ctrl.pid_lat.setKd(x/100.))
+    cv2.createTrackbar('P vert','ctrl',int(ctrl.pid_vert.Kp*100),1000,lambda x: ctrl.pid_vert.setKp(x/100.))
+    cv2.createTrackbar('I vert','ctrl',int(ctrl.pid_vert.Ki*100),1000,lambda x: ctrl.pid_vert.setKi(x/100.))
+    cv2.createTrackbar('D vert','ctrl',int(ctrl.pid_vert.Kd*100),1000,lambda x: ctrl.pid_vert.setKd(x/100.))
+    cv2.createTrackbar('Speed','ctrl',ctrl.speed,255,ctrl.set_speed)
+    cv2.createTrackbar('Thres','ctrl',detector.threshold,255,lambda x: detector.parseSerial("set_thres {}".format(x)))
 
 
+    cv2.namedWindow('out')
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
 
     while (True):
         # Capture frame-by-frame
         ret, frame = cap.read()
 
         detector.process(frame)
-        ctrl.run(detector.x, detector.y, detector.area)
+        if enabled:
+            ctrl.run(detector.x, detector.y, detector.area)
+        else:
+            ctrl.reset()
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

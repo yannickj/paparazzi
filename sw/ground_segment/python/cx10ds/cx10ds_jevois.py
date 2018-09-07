@@ -27,6 +27,8 @@ import socket
 from time import sleep
 
 from cx10ds import CX10DS
+from UavController import UavController
+import serial
 
 import sys
 from os import path, getenv
@@ -36,46 +38,48 @@ from pprzlink.ivy import IvyMessagesInterface
 from pprzlink.message import PprzMessage 
 
 
-class Cx10ds2ivy:
-    def __init__(self, verbose=False):
+class Cx10dsJevois:
+    def __init__(self, dev='/dev/ttyACM0', baud=115200, verbose=False):
         self.verbose = verbose
         self.step = 0.1 # period in seconds
-        self.button_land = False
-        self.button_takeoff = False
-        self.button_idle = False
 
-        self._cx10 = CX10DS(verbose)
+        self.throttle = 128 # controls the throttle range 0-255
+        self.rudder = 128 # controls the rudder range 48-208 ?? CHECK
+        self.aileron = 128 #todo: range check
+        self.elevator = 128 #todo: range check
+        self.mode = 0 # 0 = idle, 1 = takeoff, 2 = land
+        self.auto = False # manual control
+
+        # controller
+        self._ctrl = UavController()
+
+        # CX10 remote control
+        self._cx10 = CX10DS()
 
         # Start IVY interface
-        self._interface = IvyMessagesInterface("Cx10ds2ivy")
+        self._interface = IvyMessagesInterface("Cx10dsJevois")
+
+        # Open serial
+        try:
+            self._ser = serial.Serial(dev, baud, timeout=0.05)
+            sleep(0.1)
+            self._ser.reset_input_buffer()
+        except:
+            print("jevois serial not found")
+            self.stop()
+            exit(0)
 
         # bind to JOYSTICK message
         def joystick_cb(ac_id, msg):
-            aileron = int(msg['axis1'])
-            elevator = int(msg['axis2'])
-            rudder = int(msg['axis3'])
-            throttle = 128
+            self.aileron = int(msg['axis1'])
+            self.elevator = int(msg['axis2'])
+            self.rudder = int(msg['axis3'])
+            self.throttle = 128
             direction = int(msg['button1'])-1
             throttle_incr = self._cx10.valid_range(int(msg['axis4']), 0, 127)
-            throttle = 128 + direction * throttle_incr # up
-            mode = 0
-            if msg['button2'] == '1' and not self.button_takeoff:
-                mode = 1 # takeoff
-            if msg['button3'] == '1' and not self.button_land:
-                mode = 2 # land
-            if msg['button4'] == '1' and not self.button_idle:
-                mode = 0 # idle
-            self._cx10.set_cmd(aileron,elevator,rudder,throttle,mode)
-
-            self.button_land = (msg['button2'] == '1')
-            self.button_takeoff = (msg['button3'] == '1')
-            self.button_idle = (msg['button4'] == '1')
-            if self.verbose:
-                print("Throttle {0}".format(throttle))
-                print("Rudder {0}".format(rudder))
-                print("elevator {0}".format(elevator))
-                print("aileron {0}".format(aileron))
-                print("Mode {0}".format(mode))
+            self.throttle = 128 + direction * throttle_incr # up
+            self.mode = int(msg['button2'])
+            self.auto = int(msg['button3']) == 1
 
         self._interface.subscribe(joystick_cb, PprzMessage("ground", "JOYSTICK"))
 
@@ -91,9 +95,30 @@ class Cx10ds2ivy:
     def run(self):
         try:
             while True:
-                # TODO: make better frequency managing
+                try:
+                    el = self._ser.readline().split(' ')
+                except serial.SerialException, serial.SerialTimeoutException:
+                    if self.verbose:
+                        print("jevois readline error")
+                valid = False
+                if el[0] == "POS":
+                    x, y, a = float(el[1]), float(el[2]), float(el[3])
+                    valid = True
+                    #dist = 8.152 * float(a)**(-0.2121) - 1.086
+                    if self.verbose:
+                        print('x: {}, y: {}, a: {}'.format(x,y,a))
+                if self.auto:
+                    if valid:
+                        (r, p, y, t) = self._ctrl.run(x,y,a)
+                        self._cx10.set_cmd(r,self.elevator,y,t,0)
+                        if self.verbose:
+                            print("auto",r,p,y,t,a)
+                else:
+                    self._ctrl.reset()
+                    self._cx10.set_cmd(self.aileron,self.elevator,self.rudder,self.throttle,self.mode)
                 self._cx10.send()
-                sleep(self.step)
+                self._ctrl.refresh()
+                #sleep(self.step) # TODO better timing
 
         except KeyboardInterrupt:
             if self.verbose:
@@ -108,6 +133,6 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true', help="display debug messages")
     args = parser.parse_args()
 
-    rmt = Cx10ds2ivy(verbose=args.verbose)
+    rmt = Cx10dsJevois(verbose=args.verbose)
     rmt.run()
 
