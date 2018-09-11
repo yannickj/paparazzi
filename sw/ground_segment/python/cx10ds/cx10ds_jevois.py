@@ -24,7 +24,7 @@
 #
 
 import socket
-from time import sleep
+from time import sleep, time
 
 from cx10ds import CX10DS
 from UavController import UavController
@@ -94,6 +94,7 @@ class Cx10dsJevois:
     # main loop
     def run(self):
         try:
+            last_time = time()
             while True:
                 try:
                     el = self._ser.readline().split(' ')
@@ -116,7 +117,11 @@ class Cx10dsJevois:
                 else:
                     self._ctrl.reset()
                     self._cx10.set_cmd(self.aileron,self.elevator,self.rudder,self.throttle,self.mode)
-                self._cx10.send()
+                current_time = time()
+                dt = current_time - last_time
+                if dt >= self.step:
+                    self._cx10.send()
+                    last_time = current_time
                 self._ctrl.refresh()
                 #sleep(self.step) # TODO better timing
 
