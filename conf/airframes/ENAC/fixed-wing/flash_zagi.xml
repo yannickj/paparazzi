@@ -5,9 +5,12 @@
 -->
 
 <airframe name="zagi_titouan">
-    
+  
+  <autopilot name="nephelae_autopilot.xml"/>
   <firmware name="fixedwing">
       
+    <define name="CONTROL_FREQUENCY" value="60"/>
+
     <target name="ap" board="chimera_1.0">
       <module name="radio_control" type="sbus"/>
     </target>
@@ -39,6 +42,12 @@
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger"  type="sd_chibios"/>
+    <module name="nephelae_observer">
+      <!--define name="" value=""/-->
+      <!--define name="" value=""/-->
+      <!--define name="" value=""/-->
+    </module>
+    <module name="nephelae_control"/>
     <!--module name="flightrecorder"/-->
 
   </firmware>

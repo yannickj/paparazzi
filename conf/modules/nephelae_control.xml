@@ -1,0 +1,15 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="nephelae_control" dir="nephelae">
+  <doc>
+    <description>Control based on the nephelae_observer and so the airplane caracteristics</description>
+  </doc>
+  <header>
+    <file name="nephelae_control.h"/>
+  </header>
+  <init fun="nephelae_control_init()"/>
+  <makefile>
+    <file name="nephelae_control.c"/>
+  </makefile>
+</module>
+

@@ -62,6 +62,10 @@
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
 
+    <block name="TestAgentPython">
+      <go wp="NephB"/>
+    </block>
+
     <block name="ClimbInCloud">
     <circle radius="-125" wp="NephCloudCenter" vmode="climb" climb="5" until="GetPosAlt() > GetAltRef() + 500"/>
     </block>

@@ -1,0 +1,14 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="nephelae_observer" dir="nephelae">
+  <doc>
+    <description>Observer of state vector based on airplane caracteristics</description>
+  </doc>
+  <header>
+    <file name="nephelae_observer.h"/>
+  </header>
+  <init fun="nephelae_observer_init()"/>
+  <makefile>
+    <file name="nephelae_observer.c"/>
+  </makefile>
+</module>

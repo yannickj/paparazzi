@@ -51,5 +51,5 @@
  <channel ctl="D" function="YAW"      min="1107" neutral="1520" max="1932" average="0"/>
  <channel ctl="E" function="MODE"     max="966"  neutral="1520" min="2072" average="1"/>
  <channel ctl="F" function="KILL"     min="966"  neutral="1520" max="2072" average="0"/>
- <channel ctl="G" function="GAIN2"    min="966"  neutral="1520" max="2072" average="0"/>
+ <channel ctl="G" function="MODE2"  min="966"  neutral="1520" max="2072" average="0"/>
 </radio>
