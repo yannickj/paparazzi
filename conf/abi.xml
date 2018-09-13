@@ -191,14 +191,14 @@
       <field name="extra"        type="int16_t">Extra field for options like detector source etc</field>
     </message>
     
-    <message name="NEPHELAE_OBS" id="28">
-      <field name="NbObserver" type="uint8_t"/>
-      <field name="NbControler" type="uint8_t"/>
+    <message name="NEPH_OBS_TO_CTRL" id="28">
+      <field name="Vect1" type="struct FloatVect3 *"/>
+      <field name="Vect2" type="struct FloatVect3 *"/>
+      <field name="Vect3" type="struct FloatVect2 *"/>
     </message>
 
-    <message name="NEPHELAE_CTRL" id="29">
-      <field name="NbObserver" type="uint8_t"/>
-      <field name="NbControler" type="uint8_t"/>
+    <message name="NEPH_CTRL_TO_OBS" id="29">
+      <field name="U" type="struct FloatVect3 *"/>
     </message>
 
   </msg_class>

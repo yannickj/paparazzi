@@ -38,7 +38,7 @@ static void neph_cb(uint8_t sender_id __attribute__((unused)),
 	Ctrl = NbControler;
 	Ctrl ++;
 	
-	AbiSendMsgNEPHELAE_CTRL(SENDER_ID,&Obs, &Ctrl);
+	//AbiSendMsgNEPHELAE_CTRL(SENDER_ID,&Obs, &Ctrl);
 }
 
 void nephelae_control_init(void) {
