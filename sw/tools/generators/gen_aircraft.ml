@@ -396,8 +396,6 @@ let () =
       settings;
     Printf.printf "\n%!";
 
-(**
-
     (** Expands the configuration of the A/C into one single file *)
     let conf_aircraft = Env.expand_ac_xml aircraft_xml in
     let configuration =
@@ -419,14 +417,19 @@ let () =
       Printf.fprintf f "%s\n" md5sum;
       close_out f;
 
-        (** Save the configuration for future use *)
+      (** Save the configuration for future use *)
       let d = U.localtime (U.gettimeofday ()) in
-      let filename = sprintf "%02d_%02d_%02d__%02d_%02d_%02d_%s_%s.conf" (d.U.tm_year mod 100) (d.U.tm_mon+1) (d.U.tm_mday) (d.U.tm_hour) (d.U.tm_min) (d.U.tm_sec) md5sum aircraft in
+      let filename = sprintf "%02d_%02d_%02d__%02d_%02d_%02d_%s_%s.conf"
+          (d.U.tm_year mod 100) (d.U.tm_mon+1) (d.U.tm_mday)
+          (d.U.tm_hour) (d.U.tm_min) (d.U.tm_sec)
+          md5sum aircraft in
       let d = Env.paparazzi_home // "var" // "conf" in
       mkdir d;
       let f = open_out (d // filename) in
       Printf.fprintf f "%s\n" (ExtXml.to_string_fmt configuration);
       close_out f end;
+
+(**
 
     let airframe_dir = Filename.dirname airframe_file in
     let var_airframe_dir = aircraft_conf_dir // airframe_dir in
@@ -453,10 +456,10 @@ let () =
 *)
 
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
-
-(*
-    let () = extract_makefile (value "ac_id") airframe.Airframe.filename abs_flight_plan_file temp_makefile_ac in
-*)
+    begin match airframe, flight_plan with
+    | Some af, Some fp ->
+      Gen_makefile.generate_makefile af.Airframe.name af fp temp_makefile_ac
+    | _ -> Printf.eprintf "Missing airframe or flight_plan" end;
 
     (* Create Makefile.ac only if needed *)
     let makefile_ac = aircraft_dir // "Makefile.ac" in

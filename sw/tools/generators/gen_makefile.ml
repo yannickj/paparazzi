@@ -307,5 +307,5 @@ let generate_makefile = fun ac_id airframe flight_plan makefile_out ->
   fprintf f "AC_ID=%s\n" ac_id;
 
   (** Search and dump the firmware sections *)
-  dump_firmware_sections f ac_id airframe.xml flight_plan.xml;
+  dump_firmware_sections f ac_id airframe.Airframe.xml flight_plan.Flight_plan.xml;
 
