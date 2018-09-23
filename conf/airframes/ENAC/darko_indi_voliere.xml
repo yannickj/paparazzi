@@ -200,6 +200,8 @@
     <!--define name="DEFAULT_CIRCLE_RADIUS" value="50.0"/--> <!-- AKA: NAV_RADIUS -->
     <define name="ARRIVED_AT_WAYPOINT" value="0.50"/> <!-- For indoor -->
     <define name="DEFAULT_CIRCLE_RADIUS" value="1.7"/> <!-- For indoor -->
+    <!--Switch advanced INDI scheduling functions on or off-->
+    <define name="INDI_FUNCTIONS_RC_CHANNEL" value="6"/>
   </section>
 
   <modules main_freq="500">
