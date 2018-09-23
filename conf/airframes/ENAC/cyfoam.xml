@@ -288,6 +288,9 @@
 
     <define name="ARRIVED_AT_WAYPOINT" value="50.0"/>
     <define name="USE_AIRSPEED" value="TRUE"/>
+
+    <!--Switch advanced INDI scheduling functions on or off-->
+    <define name="INDI_FUNCTIONS_RC_CHANNEL" value="6"/>
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">
