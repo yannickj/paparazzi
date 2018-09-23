@@ -34,7 +34,7 @@
 #error "You need to use WLS control allocation for this module"
 #endif
 
-#if INDI_FUNCTIONS_RC_CHANNEL
+#ifndef INDI_FUNCTIONS_RC_CHANNEL
 #error "You need to define an RC channel to switch between simple and advanced scheduling"
 #endif
 
