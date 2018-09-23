@@ -356,7 +356,7 @@ void guidance_indi_run(float *heading_sp) {
   float flap_accel_body_x = (float) flap_accel_hp.o[0] * flap_effectiveness;
 
   float accel_x, accel_y, accel_z;
-  if(radio_control.values[5] > 0) {
+  if(radio_control.values[INDI_FUNCTIONS_RC_CHANNEL] > 0) {
     struct FloatRMat rot_mat;
     float_rmat_of_quat(&rot_mat, stateGetNedToBodyQuat_f());
     accel_x = filt_accel_ned[0].o[0] - RMAT_ELMT(rot_mat, 0,0) * flap_accel_body_x;
