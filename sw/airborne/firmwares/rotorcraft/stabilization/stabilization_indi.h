@@ -42,6 +42,9 @@ extern bool indi_use_adaptive;
 
 extern float *Bwls[INDI_OUTPUTS];
 
+// for logging
+extern float indi_v[INDI_OUTPUTS];
+
 struct ReferenceSystem {
   float err_p;
   float err_q;
