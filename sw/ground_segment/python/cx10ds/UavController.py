@@ -32,7 +32,7 @@ import numpy as np
 from PID import PID
 
 class UavController:
-    def __init__(self, gui=True):
+    def __init__(self, gui=True, detector=None):
         self.use_gui = gui
         self.pid_lat = PID(P=0.2,D=0.2,I=0.01)
         self.pid_vert = PID(P=0.5,D=0.5,I=0.)
@@ -53,13 +53,16 @@ class UavController:
             cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),1000,lambda x:  self.pid_dist.setKp(x/1000.))
             cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),1000,lambda x:  self.pid_dist.setKi(x/1000.))
             cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),1000,lambda x:  self.pid_dist.setKd(x/1000.))
+            if detector is not None:
+                cv2.createTrackbar('Thres', 'ctrl',detector.threshold,255,detector.set_thres)
             im = cv2.imread('cx10ds.jpg',cv2.IMREAD_COLOR)
             cv2.imshow('ctrl',im)
             cv2.waitKey(1000)
 
 
     def stop(self):
-        cv2.destroyAllWindows()
+        if self.use_gui:
+            cv2.destroyAllWindows()
 
     def set_speed(self, speed):
         self.speed = speed
