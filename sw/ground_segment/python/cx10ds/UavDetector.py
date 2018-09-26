@@ -25,8 +25,10 @@ class UavDetector:
     ## Process function with USB output
     def process(self, inframe, outframe=False):
         # Get the next camera image (may block until it is captured) and convert it to OpenCV GRAY:
-        img = inframe
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        if outframe:
+            img = cv2.cvtColor(inframe, cv2.COLOR_GRAY2BGR)
+        #gray = cv2.cvtColor(inframe, cv2.COLOR_BGR2GRAY)
+        gray = inframe
 
         # Get image width, height, channels in pixels. Beware that if you change this module to get img as a grayscale
         # image, then you should change the line below to: "height, width = img.shape" otherwise numpy will throw. See
@@ -49,6 +51,8 @@ class UavDetector:
             ## rotated rectangle (min area)
             rect = cv2.minAreaRect(cnt)
             ((x, y), (w, h), _) = rect
+            #if abs(w - h) > 10: # not square
+            #    continue
             self.x = x-self.width/2
             self.y = -(y-self.height/2)
             self.area = w * h

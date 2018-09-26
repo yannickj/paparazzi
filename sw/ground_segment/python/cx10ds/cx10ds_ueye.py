@@ -71,8 +71,10 @@ class Cx10dsUeye:
         try:
             self._cam = Camera()
             self._cam.init()
-            self._cam.set_colormode(ueye.IS_CM_BGR8_PACKED)
-            self._cam.set_aoi(0, 0, 1600, 1200)
+            #self._cam.set_colormode(ueye.IS_CM_BGR8_PACKED)
+            self._cam.set_colormode(ueye.IS_CM_MONO8)
+            #self._cam.set_aoi(0, 0, 1600, 1200)
+            self._cam.set_aoi(0, 0, 1936, 1216)
             #self._cam.set_pixel_clock(30)
             self._cam.set_fps(10.)
             self._cam.set_exposure(1.)
@@ -120,6 +122,9 @@ class Cx10dsUeye:
 
     # main loop
     def run(self):
+        #i = 0
+        #size = 0.
+        #nb = 100
         try:
             last_time = time()
             while True:
@@ -131,7 +136,13 @@ class Cx10dsUeye:
                     valid = True
                     #dist = 8.152 * float(a)**(-0.2121) - 1.086
                     if self.verbose:
-                        print('x: {}, y: {}, a: {}'.format(x,y,a))
+                        print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}'.format(x,y,a))
+                        #i += 1
+                        #size += a
+                        #if i == nb:
+                        #    print("area {}".format(size/nb))
+                        #    i = 0
+                        #    size = 0.
                 if self.auto:
                     if valid:
                         (r, p, y, t) = self._ctrl.run(x,y,a)
