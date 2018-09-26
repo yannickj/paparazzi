@@ -16,8 +16,6 @@
 #include "subsystems/abi.h"
 #include "std.h"
 #include "generated/airframe.h"
-#include "math/pprz_algebra_int.h"
-#include "math/pprz_algebra_float.h"
 #include "subsystems/datalink/telemetry.h"
 
 /** ABI binding for IMU acceleration
@@ -73,6 +71,8 @@ uint8_t Obs = 0;
 
 uint8_t module = 0;
 
+struct ObsVect neph_obs_state;
+
 static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
                      struct Int32Vect3 *accel){
@@ -93,18 +93,18 @@ static void send_debug(struct transport_tx *trans, struct link_device *dev)
 {
   module ++;
   if(flag_gyro && flag_acc){
-  	pprz_msg_send_NEPHELAE_TEST_DEBUG(trans, dev, AC_ID,
+  	/*pprz_msg_send_NEPHELAE_TEST_DEBUG(trans, dev, AC_ID,
   										&neph_stamp, &neph_gyro_f.p, &neph_gyro_f.q, &neph_gyro_f.r,
   										&neph_accel_f.x, &neph_accel_f.y, &neph_accel_f.z,
-  										&neph_A6[7]);
-  	pprz_msg_send_PPRZ_DEBUG(trans, dev, AC_ID, &module, &Ctrl);
+  										&neph_A6[7]);*/
+  	/*pprz_msg_send_PPRZ_DEBUG(trans, dev, AC_ID, &module, &Ctrl);*/
   }
   flag_gyro = false;
   flag_acc = false;
 }
 
 static void neph_cb(uint8_t sender_id __attribute__((unused)),
-					uint8_t NbObserver, uint8_t NbControler){
+					         uint8_t NbObserver, uint8_t NbControler){
 
 	Ctrl = NbControler;
 	Obs = NbObserver;
@@ -117,12 +117,24 @@ static void neph_cb(uint8_t sender_id __attribute__((unused)),
  */
 void nephelae_observer_init(void) {
 
+  neph_obs_state.airspeed.x = 10.0;
+  neph_obs_state.airspeed.y = 0.0;
+  neph_obs_state.airspeed.z = 0.0;
+
+  neph_obs_state.rotspeed.p = 0.0;
+  neph_obs_state.rotspeed.q = 0.0;
+  neph_obs_state.rotspeed.r = 0.0;
+
+  neph_obs_state.attitude.phi = 0.0;
+  neph_obs_state.attitude.theta = 0.0;
+  neph_obs_state.attitude.psi = 0.0;
+
 	AbiBindMsgIMU_ACCEL_INT32(IMU_ACC_NEPH_ID, &acc_ev, accel_cb);
 	AbiBindMsgIMU_GYRO_INT32(IMU_GYRO_NEPH_ID, &gyro_ev, gyro_cb);
 	AbiBindMsgNEPH_CTRL_TO_OBS(NEPH_CTRL_ID, &neph_ev, neph_cb);
 
 	#if PERIODIC_TELEMETRY
-  	register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_NEPHELAE_TEST_DEBUG, send_debug);
+  	//register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_NEPHELAE_TEST_DEBUG, send_debug);
   	register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_PPRZ_DEBUG, send_debug);
 	#endif
 }

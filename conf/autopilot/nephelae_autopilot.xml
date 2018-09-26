@@ -18,6 +18,7 @@
       <include name="guidance/guidance_h.h"/>
       <include name="stabilization/stabilization_attitude.h"/>
       <include name="subsystems/gps.h"/>
+      <include name="modules/nephelae/nephelae_control.h"/>
       <define  name="RCNeph0()" value="rc_mode_switch(RADIO_MODE2,0,2)"/>
       <define  name="RCNeph1()" value="rc_mode_switch(RADIO_MODE2,1,2)"/>
     </includes>
@@ -49,6 +50,35 @@
     <control_block name="guidance">
       <call fun="h_ctl_guidance_loop()"/>
       <call fun="v_ctl_guidance_loop()"/>
+    </control_block>
+
+    <control_block name="neph_set_attitude_from_rc">
+      <call fun="PPRZ_MUTEX_LOCK(fbw_state_mtx)"/>
+      <call fun="AP_SETPOINT_ROLL(neph_h_ctl_roll_setpoint, AUTO1_MAX_ROLL)"/>
+      <call fun="AP_SETPOINT_PITCH(neph_h_ctl_pitch_setpoint, AUTO1_MAX_PITCH)"/>
+      <!--call fun="AP_SETPOINT_YAW_RATE(h_ctl_yaw_rate_setpoint, AUTO1_MAX_YAW_RATE)"/-->
+      <call fun="AP_SETPOINT_THROTTLE(neph_v_ctl_throttle_setpoint)"/>
+      <call fun="PPRZ_MUTEX_UNLOCK(fbw_state_mtx)"/>
+    </control_block>
+
+    <control_block name="neph_attitude">
+      <call fun="neph_h_ctl_attitude_loop()"/>
+      <!--call fun="v_ctl_throttle_slew()"/-->
+    </control_block>
+
+    <!--control_block name="neph_guidance">
+      <call fun="neph_h_ctl_guidance_loop()"/>
+      <call fun="neph_v_ctl_guidance_loop()"/>
+    </control_block-->
+
+    <control_block name="neph_actuators_ap">
+      <call fun="PPRZ_MUTEX_LOCK(ap_state_mtx)"/>
+      <call fun="AP_COMMAND_SET_THROTTLE(neph_v_ctl_throttle_setpoint)"/>
+      <call fun="AP_COMMAND_SET_ROLL(-neph_h_ctl_aileron_setpoint)"/>
+      <call fun="AP_COMMAND_SET_PITCH(neph_h_ctl_elevator_setpoint)"/>
+      <!--call fun="AP_COMMAND_SET_YAW(h_ctl_rudder_setpoint)"/-->
+      <!--call fun="AP_COMMAND_SET_CL(h_ctl_flaps_setpoint)"/-->
+      <call fun="PPRZ_MUTEX_UNLOCK(ap_state_mtx)"/>
     </control_block>
 
     <exceptions>
@@ -88,9 +118,9 @@
         <call fun="nav_periodic_task()"/>
       </control>
       <control>
-        <call_block name="set_attitude_from_rc"/>
-        <call_block name="attitude"/>
-        <call_block name="actuators_ap"/>
+        <call_block name="neph_set_attitude_from_rc"/>
+        <call_block name="neph_attitude"/>
+        <call_block name="neph_actuators_ap"/>
       </control>
       <exception cond="RCLost() && autopilot_in_flight()" deroute="HOME"/>
     </mode>
