@@ -80,7 +80,35 @@
     <program name="ffplay" command="/usr/bin/ffplay"/>
   </section>
   <section name="sessions">
-    <session name="Flight UDP Voliere Swarm">
+    <session name="Swarm Bebop2 210 211">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="210"/>
+        <arg flag="210"/>
+        <arg flag="-ac" constant="211"/>
+        <arg flag="211"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
+        <arg flag="-gr"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_210_211.json"/>
+      </program>
+    </session>
+    <session name="Swarm Bebop2 210 212">
       <program name="Server"/>
       <program name="Data Link">
         <arg flag="-udp"/>
@@ -105,8 +133,147 @@
         <arg flag="T1600M_ground.xml"/>
       </program>
       <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_210_212.json"/>
+      </program>
+    </session>
+    <session name="Swarm Bebop2 210 213">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="210"/>
+        <arg flag="210"/>
+        <arg flag="-ac" constant="213"/>
+        <arg flag="213"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
         <arg flag="-gr"/>
-        <arg flag="conf_2uav_rot_210_212.json"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_210_213.json"/>
+      </program>
+    </session>
+    <session name="Swarm Bebop2 211 212">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="211"/>
+        <arg flag="211"/>
+        <arg flag="-ac" constant="212"/>
+        <arg flag="212"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
+        <arg flag="-gr"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_211_212.json"/>
+      </program>
+    </session>
+    <session name="Swarm Bebop2 211 213">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="211"/>
+        <arg flag="211"/>
+        <arg flag="-ac" constant="213"/>
+        <arg flag="213"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
+        <arg flag="-gr"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_211_213.json"/>
+      </program>
+    </session>
+    <session name="Swarm Bebop2 212 213">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="212"/>
+        <arg flag="212"/>
+        <arg flag="-ac" constant="213"/>
+        <arg flag="213"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
+        <arg flag="-gr"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_212_213.json"/>
+      </program>
+    </session>
+    <session name="Flight UDP Voliere Swarm">
+      <program name="Server"/>
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="GCS">
+        <arg flag="-maps_zoom" constant="20"/>
+        <arg flag="-auto_hide_fp"/>
+        <arg flag="-layout" constant="enac_voliere.xml"/>
+        <arg flag="-zoom" constant="40"/>
+      </program>
+      <program name="NatNet3">
+        <arg flag="-ac" constant="211"/>
+        <arg flag="211"/>
+        <arg flag="-ac" constant="212"/>
+        <arg flag="212"/>
+        <arg flag="-s" constant="192.168.1.230"/>
+        <arg flag="-f" constant="10"/>
+        <arg flag="-gr"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="GCS"/>
+        <arg flag="T1600M_ground.xml"/>
+      </program>
+      <program name="FC Rotorcraft">
+        <arg flag="-gr" constant="conf_2uav_rot_211_212.json"/>
       </program>
     </session>
     <session name="Flight UDP/WiFi Bebop2 211">
