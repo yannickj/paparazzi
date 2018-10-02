@@ -24,7 +24,7 @@ class UavDetector:
         self.x = 0.
         self.y = 0.
         self.area = 0.
-        self.threshold = 200
+        self.threshold = 100
         
 
     # ###################################################################
@@ -46,25 +46,15 @@ class UavDetector:
         if self.set_mask:
             print(self.height,self.width)
             self.mask = cv2.dilate(th, np.ones((40,40), np.uint8), iterations=1)
+            self.bk = np.zeros((self.height,self.width,3),np.uint8)
+            self.bk[:] = (255,0,0)
+            self.bk = cv2.bitwise_and(self.bk, self.bk, mask=self.mask)
+            cv2.imshow('mask',self.bk)
             self.mask = cv2.bitwise_not(self.mask)
             self.set_mask = False
         th_masked = cv2.bitwise_and(th, th, mask=self.mask)
         image, contours, hierarchy = cv2.findContours(th_masked,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
-            ## polygon contour
-            #epsilon = 0.05*cv2.arcLength(cnt,True)
-            #approx = cv2.approxPolyDP(cnt,epsilon,True)
-            #pos = np.mean(approx, axis=0)
-            #print("POS {} {}".format(pos[0][0]-self.width/2, -(pos[0][1]-self.height/2)));
-            #cv2.drawContours(img, [approx], 0, (0,255,0), 3)
-
-            ## bounding rectangle
-            #x, y, w, h = cv2.boundingRect(cnt)
-            #screenCnt = np.array([[[x, y]], [[x+w, y]], [[x+w, y+h]], [[x, y+h]]])
-            ##print(x,y,w,h)
-            #print("POS {} {} {}".format(x+w/2-self.width/2, -(y+h/2-self.height/2), h*w));
-            #cv2.drawContours(img, [screenCnt], 0, (255, 255, 0), 2)
-
             ## rotated rectangle (min area)
             rect = cv2.minAreaRect(cnt)
             ((x, y), (w, h), _) = rect
@@ -77,6 +67,9 @@ class UavDetector:
 
         if outframe:
             #cv2.imshow('gray',gray)
+            fg = cv2.bitwise_and(img, img, mask=self.mask)
+            #img = cv2.add(fg, self.bk)
+            img = cv2.bitwise_or(fg, self.bk)
             cv2.imshow('out',img)
          
 

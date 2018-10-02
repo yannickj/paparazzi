@@ -34,25 +34,27 @@ from PID import PID
 class UavController:
     def __init__(self, gui=True, detector=None):
         self.use_gui = gui
-        self.pid_lat = PID(P=0.2,D=0.2,I=0.01)
-        self.pid_vert = PID(P=0.5,D=0.5,I=0.)
-        self.pid_dist = PID(P=0.5,D=0.4,I=0.05)
+        self.pid_lat = PID(P=0.35,D=0.2,I=0.2)
+        self.pid_vert = PID(P=0.8,D=0.5,I=0.25)
+        self.pid_dist = PID(P=10.,D=4.,I=2.)
         self.speed = 128 ## openloop forward control FIXME use size?
+        self.dist = 2. # in meters
 
         if self.use_gui:
             print("start control GUI")
             cv2.namedWindow('ctrl')
             # create trackbars for color change
-            cv2.createTrackbar('P lat','ctrl',int(self.pid_lat.Kp*1000),1000,lambda x: self.pid_lat.setKp(x/1000.))
-            cv2.createTrackbar('I lat','ctrl',int(self.pid_lat.Ki*1000),1000,lambda x: self.pid_lat.setKi(x/1000.))
-            cv2.createTrackbar('D lat','ctrl',int(self.pid_lat.Kd*1000),1000,lambda x: self.pid_lat.setKd(x/1000.))
-            cv2.createTrackbar('P vert','ctrl',int(self.pid_vert.Kp*1000),1000,lambda x: self.pid_vert.setKp(x/1000.))
-            cv2.createTrackbar('I vert','ctrl',int(self.pid_vert.Ki*1000),1000,lambda x:  self.pid_vert.setKi(x/1000.))
-            cv2.createTrackbar('D vert','ctrl',int(self.pid_vert.Kd*1000),1000,lambda x:  self.pid_vert.setKd(x/1000.))
+            cv2.createTrackbar('P lat','ctrl',int(self.pid_lat.Kp*1000),2000,lambda x: self.pid_lat.setKp(x/1000.))
+            cv2.createTrackbar('I lat','ctrl',int(self.pid_lat.Ki*1000),2000,lambda x: self.pid_lat.setKi(x/1000.))
+            cv2.createTrackbar('D lat','ctrl',int(self.pid_lat.Kd*1000),2000,lambda x: self.pid_lat.setKd(x/1000.))
+            cv2.createTrackbar('P vert','ctrl',int(self.pid_vert.Kp*1000),2000,lambda x: self.pid_vert.setKp(x/1000.))
+            cv2.createTrackbar('I vert','ctrl',int(self.pid_vert.Ki*1000),2000,lambda x:  self.pid_vert.setKi(x/1000.))
+            cv2.createTrackbar('D vert','ctrl',int(self.pid_vert.Kd*1000),2000,lambda x:  self.pid_vert.setKd(x/1000.))
             cv2.createTrackbar('Speed','ctrl',self.speed,255,self.set_speed)
-            cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),1000,lambda x:  self.pid_dist.setKp(x/1000.))
-            cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),1000,lambda x:  self.pid_dist.setKi(x/1000.))
-            cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),1000,lambda x:  self.pid_dist.setKd(x/1000.))
+            cv2.createTrackbar('Dist','ctrl',int(self.dist*10),300,lambda x: self.set_dist(x/10.))
+            cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),20000,lambda x:  self.pid_dist.setKp(x/1000.))
+            cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),20000,lambda x:  self.pid_dist.setKi(x/1000.))
+            cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),20000,lambda x:  self.pid_dist.setKd(x/1000.))
             if detector is not None:
                 cv2.createTrackbar('Thres', 'ctrl',detector.threshold,255,detector.set_thres)
             im = cv2.imread('cx10ds.jpg',cv2.IMREAD_COLOR)
@@ -67,12 +69,16 @@ class UavController:
     def set_speed(self, speed):
         self.speed = speed
 
+    def set_dist(self, dist):
+        self.dist = max(1.0, dist)
+        self.pid_dist.SetPoint = self.dist
+
     def run(self, lat, vert, dist):
         self.pid_lat.update(lat)
         self.pid_vert.update(vert)
         self.pid_dist.update(dist)
         # return (roll, pitch, yaw, thrust)
-        return (127+int(self.pid_lat.output), self.speed, 127, 127+int(self.pid_vert.output))
+        return (127+int(self.pid_lat.output), 127+int(self.pid_dist.output), 127, 127+int(self.pid_vert.output))
 
     def reset(self):
         self.pid_lat.clear_PID()
@@ -80,5 +86,5 @@ class UavController:
         self.pid_dist.clear_PID()
 
     def refresh(self):
-        cv2.waitKey(1)
+        return cv2.waitKey(1) & 0xFF
 

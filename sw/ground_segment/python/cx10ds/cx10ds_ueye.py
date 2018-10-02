@@ -34,6 +34,8 @@ from pyueye_camera import Camera
 from pyueye_utils import FrameThread, FrameNoThread
 from pyueye import ueye
 
+from math import sqrt
+
 import sys
 from os import path, getenv
 PPRZ_HOME = getenv("PAPARAZZI_HOME", path.normpath(path.join(path.dirname(path.abspath(__file__)), '../../../../')))
@@ -134,9 +136,12 @@ class Cx10dsUeye:
                     x, y, a = self._detector.x, self._detector.y, self._detector.area
                     self._detector.new_data = False
                     valid = True
-                    #dist = 8.152 * float(a)**(-0.2121) - 1.086
+                    if a < 1.:
+                        a = 1.
+                    #dist = sqrt(1200/a)
+                    dist = 400 / sqrt(a)
                     if self.verbose:
-                        print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}'.format(x,y,a))
+                        print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}, d: {:0.2f}'.format(x,y,a,dist))
                         #i += 1
                         #size += a
                         #if i == nb:
@@ -145,8 +150,9 @@ class Cx10dsUeye:
                         #    size = 0.
                 if self.auto:
                     if valid:
-                        (r, p, y, t) = self._ctrl.run(x,y,a)
-                        self._cx10.set_cmd(r,self.elevator,y,t,0)
+                        (r, p, y, t) = self._ctrl.run(x,y,dist)
+                        self._cx10.set_cmd(r,p,y,t,0)
+                        #self._cx10.set_cmd(r,self.elevator,y,t,0)
                         if self.verbose:
                             print("auto",r,p,y,t,a)
                 else:
@@ -157,7 +163,16 @@ class Cx10dsUeye:
                 if dt >= self.step:
                     self._cx10.send()
                     last_time = current_time
-                self._ctrl.refresh()
+                key = self._ctrl.refresh()
+                if key == ord('c'):
+                    self._detector.clearmask()
+                elif key == ord('s'):
+                    self._detector.setmask()
+                elif key == ord('q'):
+                    if self.verbose:
+                        print("Exiting..")
+                    self.stop()
+                    break
 
         except KeyboardInterrupt:
             if self.verbose:
