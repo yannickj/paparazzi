@@ -168,6 +168,10 @@ class Cx10dsUeye:
                     self._detector.clearmask()
                 elif key == ord('s'):
                     self._detector.setmask()
+                elif key == ord('t'):
+                    self._cx10.set_trim()
+                elif key == ord('m'):
+                    self._ctrl.start_stop_mission()
                 elif key == ord('q'):
                     if self.verbose:
                         print("Exiting..")

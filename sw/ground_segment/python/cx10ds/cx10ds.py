@@ -46,14 +46,18 @@ class CX10DS:
         self.crc = 0 #crc calculated from thr, rdr, ail, elev, mode xor product
         self.mode = 0 # 0 = idle, 1 = takeoff, 2 = land
 
+        self.trim_roll = 0
+        self.trim_pitch = 0
+        self.trim_yaw = 0
+
     def __del__(self):
         self.sock.close()
 
     def set_cmd(self, aileron, elevator, rudder, throttle, mode):
         self.throttle = self.valid_range(throttle)
-        self.rudder = self.valid_range(rudder)
-        self.aileron = self.valid_range(aileron)
-        self.elevator = self.valid_range(elevator)
+        self.rudder = self.valid_range(rudder+self.trim_yaw)
+        self.aileron = self.valid_range(aileron+self.trim_roll)
+        self.elevator = self.valid_range(elevator+self.trim_pitch)
         self.mode = mode
 
     #sends out a message to the given IP/PORT every 0.5 seconds
@@ -81,5 +85,10 @@ class CX10DS:
     # validate range with constraints
     def valid_range(self, value, MIN = 0, MAX = 255):
         return max(min(MAX, value), MIN)
+
+    def set_trim(self):
+        self.trim_roll = self.aileron - 128
+        self.trim_pitch = self.elevator - 128
+        self.trim_yaw = self.rudder - 128
 
 

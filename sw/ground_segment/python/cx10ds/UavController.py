@@ -37,8 +37,10 @@ class UavController:
         self.pid_lat = PID(P=0.35,D=0.2,I=0.2)
         self.pid_vert = PID(P=0.8,D=0.5,I=0.25)
         self.pid_dist = PID(P=10.,D=4.,I=2.)
-        self.speed = 128 ## openloop forward control FIXME use size?
+        self.speed = 1. # in meters/s
         self.dist = 2. # in meters
+        self.limit = 10. # in meters, end mission limit
+        self.mission = False
 
         if self.use_gui:
             print("start control GUI")
@@ -50,8 +52,9 @@ class UavController:
             cv2.createTrackbar('P vert','ctrl',int(self.pid_vert.Kp*1000),2000,lambda x: self.pid_vert.setKp(x/1000.))
             cv2.createTrackbar('I vert','ctrl',int(self.pid_vert.Ki*1000),2000,lambda x:  self.pid_vert.setKi(x/1000.))
             cv2.createTrackbar('D vert','ctrl',int(self.pid_vert.Kd*1000),2000,lambda x:  self.pid_vert.setKd(x/1000.))
-            cv2.createTrackbar('Speed','ctrl',self.speed,255,self.set_speed)
             cv2.createTrackbar('Dist','ctrl',int(self.dist*10),300,lambda x: self.set_dist(x/10.))
+            cv2.createTrackbar('Speed','ctrl',int(self.speed*10),30,lambda x: self.set_speed(x/10.))
+            cv2.createTrackbar('Limit','ctrl',int(self.dist*10),300,lambda x: self.set_limit(x/10.))
             cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),20000,lambda x:  self.pid_dist.setKp(x/1000.))
             cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),20000,lambda x:  self.pid_dist.setKi(x/1000.))
             cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),20000,lambda x:  self.pid_dist.setKd(x/1000.))
@@ -71,9 +74,19 @@ class UavController:
 
     def set_dist(self, dist):
         self.dist = max(1.0, dist)
-        self.pid_dist.SetPoint = self.dist
+        if not self.mission:
+            self.pid_dist.SetPoint = self.dist
+
+    def set_limit(self, dist):
+        self.limit = max(1.0, dist)
 
     def run(self, lat, vert, dist):
+        if self.mission:
+            if self.pid_dist.SetPoint > self.limit:
+                self.start_stop_mission()
+            else:
+                self.pid_dist.SetPoint += self.speed * 0.1 # FIXME should not be fixed dt
+
         self.pid_lat.update(lat)
         self.pid_vert.update(vert)
         self.pid_dist.update(dist)
@@ -88,3 +101,11 @@ class UavController:
     def refresh(self):
         return cv2.waitKey(1) & 0xFF
 
+    def start_stop_mission(self):
+        if self.mission:
+            # if running, stop and go back to start
+            self.mission = False
+        else:
+            # start mission
+            self.mission = True
+        self.pid_dist.SetPoint = self.dist

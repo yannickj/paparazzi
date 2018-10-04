@@ -58,8 +58,8 @@ class UavDetector:
         _, contours, _ = cv2.findContours(th_masked,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         
         # call correct feature extraction function
-        #self.extract_rect(contours, img, outframe)
-        self.extract_triangle(contours, img, outframe)
+        self.extract_rect(contours, img, outframe)
+        #self.extract_triangle(contours, img, outframe)
         #self.extract_line(contours, img, outframe)
 
         if outframe:
@@ -78,8 +78,13 @@ class UavDetector:
     def extract_rect(self, contours, img, outframe):
         if len(contours) != 1:
             self.new_data = False
+            for cnt in contours:
+                rect = cv2.minAreaRect(cnt)
+                box = np.int0(cv2.boxPoints(rect))
+                cv2.drawContours(img, [box], 0, (0,255,0), 3)
             return
 
+        
         ## rotated rectangle (min area)
         rect = cv2.minAreaRect(contours[0])
         ((x, y), (w, h), _) = rect
