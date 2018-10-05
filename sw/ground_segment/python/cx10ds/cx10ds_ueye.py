@@ -70,6 +70,7 @@ class Cx10dsUeye:
 
         # Start camera
         self._thread = None
+        self.visible = False
         try:
             self._cam = Camera()
             self._cam.init()
@@ -172,6 +173,13 @@ class Cx10dsUeye:
                     self._cx10.set_trim()
                 elif key == ord('m'):
                     self._ctrl.start_stop_mission()
+                elif key == ord('v'):
+                    if self.visible:
+                        self.visible = False
+                        self._cam.set_exposure(1.)
+                    else:
+                        self.visible = True
+                        self._cam.set_exposure(10.)
                 elif key == ord('q'):
                     if self.verbose:
                         print("Exiting..")
