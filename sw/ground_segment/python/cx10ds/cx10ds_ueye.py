@@ -139,8 +139,8 @@ class Cx10dsUeye:
                     valid = True
                     if a < 1.:
                         a = 1.
-                    #dist = sqrt(1200/a)
-                    dist = 400 / sqrt(a)
+                    dist = sqrt(1200/a)
+                    #dist = 400 / sqrt(a)
                     if self.verbose:
                         print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}, d: {:0.2f}'.format(x,y,a,dist))
                         #i += 1
@@ -155,7 +155,7 @@ class Cx10dsUeye:
                         self._cx10.set_cmd(r,p,y,t,0)
                         #self._cx10.set_cmd(r,self.elevator,y,t,0)
                         if self.verbose:
-                            print("auto",r,p,y,t,a)
+                            print("auto",r,p,y,t,a,self._ctrl.pid_dist.SetPoint)
                 else:
                     self._ctrl.reset()
                     self._cx10.set_cmd(self.aileron,self.elevator,self.rudder,self.throttle,self.mode)

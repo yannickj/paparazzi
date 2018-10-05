@@ -52,12 +52,12 @@ class UavController:
             cv2.createTrackbar('P vert','ctrl',int(self.pid_vert.Kp*1000),2000,lambda x: self.pid_vert.setKp(x/1000.))
             cv2.createTrackbar('I vert','ctrl',int(self.pid_vert.Ki*1000),2000,lambda x:  self.pid_vert.setKi(x/1000.))
             cv2.createTrackbar('D vert','ctrl',int(self.pid_vert.Kd*1000),2000,lambda x:  self.pid_vert.setKd(x/1000.))
-            cv2.createTrackbar('Dist','ctrl',int(self.dist*10),300,lambda x: self.set_dist(x/10.))
-            cv2.createTrackbar('Speed','ctrl',int(self.speed*10),30,lambda x: self.set_speed(x/10.))
-            cv2.createTrackbar('Limit','ctrl',int(self.dist*10),300,lambda x: self.set_limit(x/10.))
             cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),20000,lambda x:  self.pid_dist.setKp(x/1000.))
             cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),20000,lambda x:  self.pid_dist.setKi(x/1000.))
             cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),20000,lambda x:  self.pid_dist.setKd(x/1000.))
+            cv2.createTrackbar('Dist','ctrl',int(self.dist*10),300,lambda x: self.set_dist(x/10.))
+            cv2.createTrackbar('Speed','ctrl',int(self.speed*10),30,lambda x: self.set_speed(x/10.))
+            cv2.createTrackbar('Limit','ctrl',int(self.limit*10),300,lambda x: self.set_limit(x/10.))
             if detector is not None:
                 cv2.createTrackbar('Thres', 'ctrl',detector.threshold,255,detector.set_thres)
             im = cv2.imread('cx10ds.jpg',cv2.IMREAD_COLOR)
@@ -79,6 +79,7 @@ class UavController:
 
     def set_limit(self, dist):
         self.limit = max(1.0, dist)
+        print("set mission limit: {}".format(self.limit))
 
     def run(self, lat, vert, dist):
         if self.mission:
