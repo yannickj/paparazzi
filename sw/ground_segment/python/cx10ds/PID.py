@@ -54,20 +54,22 @@ class PID:
         self.ITerm = 0.0
         self.DTerm = 0.0
         self.last_error = 0.0
+        self.delta_error = 0.0
 
         # Windup Guard
         self.int_error = 0.0
-        self.windup_guard = 20.0
+        self.windup_guard = 100.0
 
         self.output = 0.0
 
     def clear_PID(self):
         """Clears PID computations only"""
         self.last_error = 0.0
+        self.delta_error = 0.0
         self.int_error = 0.0
         self.output = 0.0
 
-    def update(self, feedback_value):
+    def update(self, feedback_value, in_flight=True, coef=1.0, max_error=None):
         """Calculates PID value for given reference feedback
 
         .. math::
@@ -83,26 +85,39 @@ class PID:
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time
-        delta_error = error - self.last_error
+        if delta_time > 1.: # FIXME hardcoded timeout
+            # Remember last time and last error for next calculation
+            self.last_time = self.current_time
+            self.last_error = error
+            print("delta {}".format(delta_time))
+            return # too long since last update
 
         if (delta_time >= self.sample_time):
             self.PTerm = self.Kp * error
-            self.ITerm += error * delta_time
-
-            if (self.ITerm < -self.windup_guard):
-                self.ITerm = -self.windup_guard
-            elif (self.ITerm > self.windup_guard):
-                self.ITerm = self.windup_guard
+            if in_flight:
+                if max_error is None or error < max_error: # only integrate if not too far
+                    self.int_error += error * delta_time
+                self.ITerm = self.Ki * self.int_error
+                if (self.ITerm < -self.windup_guard):
+                    self.ITerm = -self.windup_guard
+                    print("windup - sat")
+                elif (self.ITerm > self.windup_guard):
+                    self.ITerm = self.windup_guard
+                    print("windup + sat")
+            else:
+                self.int_error = 0.0
+                self.ITerm = 0.0
 
             self.DTerm = 0.0
             if delta_time > 0:
-                self.DTerm = delta_error / delta_time
+                self.delta_error = error - self.last_error
+                self.DTerm = self.Kd * self.delta_error / delta_time
 
             # Remember last time and last error for next calculation
             self.last_time = self.current_time
             self.last_error = error
 
-            self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+            self.output = (coef * self.PTerm) + self.ITerm + (coef * self.DTerm)
 
     def setKp(self, proportional_gain):
         """Determines how aggressively the PID reacts to the current error with setting Proportional Gain"""

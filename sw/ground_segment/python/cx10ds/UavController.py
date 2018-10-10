@@ -34,13 +34,14 @@ from PID import PID
 class UavController:
     def __init__(self, gui=True, detector=None):
         self.use_gui = gui
-        self.pid_lat = PID(P=0.35,D=0.2,I=0.2)
-        self.pid_vert = PID(P=0.8,D=0.5,I=0.25)
+        self.pid_lat = PID(P=0.44,D=0.23,I=0.3)
+        self.pid_vert = PID(P=1.0,D=0.5,I=0.25)
         self.pid_dist = PID(P=10.,D=4.,I=2.)
-        self.speed = 1. # in meters/s
-        self.dist = 2. # in meters
-        self.limit = 10. # in meters, end mission limit
         self.mission = False
+        self.ff_speed_gain = 30.
+        self.speed = 1. # in meters/s
+        self.set_dist(4.) # in meters
+        self.limit = 17. # in meters, end mission limit
 
         if self.use_gui:
             print("start control GUI")
@@ -55,6 +56,7 @@ class UavController:
             cv2.createTrackbar('P dist','ctrl',int(self.pid_dist.Kp*1000),20000,lambda x:  self.pid_dist.setKp(x/1000.))
             cv2.createTrackbar('I dist','ctrl',int(self.pid_dist.Ki*1000),20000,lambda x:  self.pid_dist.setKi(x/1000.))
             cv2.createTrackbar('D dist','ctrl',int(self.pid_dist.Kd*1000),20000,lambda x:  self.pid_dist.setKd(x/1000.))
+            cv2.createTrackbar('FF dist','ctrl',int(self.ff_speed_gain),100,lambda x:  self.set_ff_speed_gain(x))
             cv2.createTrackbar('Dist','ctrl',int(self.dist*10),300,lambda x: self.set_dist(x/10.))
             cv2.createTrackbar('Speed','ctrl',int(self.speed*10),30,lambda x: self.set_speed(x/10.))
             cv2.createTrackbar('Limit','ctrl',int(self.limit*10),300,lambda x: self.set_limit(x/10.))
@@ -72,6 +74,9 @@ class UavController:
     def set_speed(self, speed):
         self.speed = speed
 
+    def set_ff_speed_gain(self, gain):
+        self.ff_speed_gain = gain
+
     def set_dist(self, dist):
         self.dist = max(1.0, dist)
         if not self.mission:
@@ -81,18 +86,29 @@ class UavController:
         self.limit = max(1.0, dist)
         print("set mission limit: {}".format(self.limit))
 
-    def run(self, lat, vert, dist):
+    def run(self, lat, vert, dist, in_flight=True):
+        ff_cmd = 0
         if self.mission:
             if self.pid_dist.SetPoint > self.limit:
                 self.start_stop_mission()
             else:
                 self.pid_dist.SetPoint += self.speed * 0.1 # FIXME should not be fixed dt
+                ff_cmd = int(self.speed * self.ff_speed_gain)
 
-        self.pid_lat.update(lat)
-        self.pid_vert.update(vert)
-        self.pid_dist.update(dist)
+        dist_coef = min(30.,max(1., dist)) # bound distance
+        dist_coef = dist_coef / 5. # tune gains at 5 meters
+        print(dist, dist_coef)
+        print("lat")
+        self.pid_lat.update(lat, in_flight, coef=min(1.2,dist_coef)) # coef = dist_coef ?
+        print("vert")
+        self.pid_vert.update(vert, in_flight)
+        print("dist")
+        self.pid_dist.update(dist, in_flight, max_error=3.)#, 1./dist_coef) # coef = 1/dist_coef ?
+        d_cmd = int(self.pid_dist.output)
+        if dist > 15. and self.mission:
+            d_cmd = 0
         # return (roll, pitch, yaw, thrust)
-        return (127+int(self.pid_lat.output), 127+int(self.pid_dist.output), 127, 127+int(self.pid_vert.output))
+        return (128+int(self.pid_lat.output), 128+ff_cmd+d_cmd, 128, 128+int(self.pid_vert.output))
 
     def reset(self):
         self.pid_lat.clear_PID()

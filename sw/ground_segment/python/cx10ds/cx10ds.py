@@ -90,5 +90,6 @@ class CX10DS:
         self.trim_roll = self.aileron - 128
         self.trim_pitch = self.elevator - 128
         self.trim_yaw = self.rudder - 128
+        print("trim: {} {} {}".format(self.trim_roll, self.trim_pitch, self.trim_yaw))
 
 
