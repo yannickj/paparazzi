@@ -35,7 +35,7 @@ class UavController:
     def __init__(self, gui=True, detector=None):
         self.use_gui = gui
         self.pid_lat = PID(P=0.44,D=0.23,I=0.3)
-        self.pid_vert = PID(P=1.0,D=0.5,I=0.25)
+        self.pid_vert = PID(P=1.3,D=0.5,I=0.35)
         self.pid_dist = PID(P=10.,D=4.,I=2.)
         self.mission = False
         self.ff_speed_gain = 30.
@@ -101,9 +101,9 @@ class UavController:
         print("lat")
         self.pid_lat.update(lat, in_flight, coef=min(1.2,dist_coef)) # coef = dist_coef ?
         print("vert")
-        self.pid_vert.update(vert, in_flight)
+        self.pid_vert.update(vert, in_flight, coef=min(1.2,dist_coef))
         print("dist")
-        self.pid_dist.update(dist, in_flight, max_error=3.)#, 1./dist_coef) # coef = 1/dist_coef ?
+        self.pid_dist.update(dist, in_flight, max_error=2.)#, 1./dist_coef) # coef = 1/dist_coef ?
         d_cmd = int(self.pid_dist.output)
         if dist > 15. and self.mission:
             d_cmd = 0

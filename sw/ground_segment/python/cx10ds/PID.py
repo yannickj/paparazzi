@@ -82,6 +82,11 @@ class PID:
 
         """
         error = self.SetPoint - feedback_value
+        if max_error is not None:
+            if error > max_error:
+                error = max_error
+            elif: error < -max_error:
+                error = -max_error
 
         self.current_time = time.time()
         delta_time = self.current_time - self.last_time
@@ -95,8 +100,7 @@ class PID:
         if (delta_time >= self.sample_time):
             self.PTerm = self.Kp * error
             if in_flight:
-                if max_error is None or error < max_error: # only integrate if not too far
-                    self.int_error += error * delta_time
+                self.int_error += error * delta_time
                 self.ITerm = self.Ki * self.int_error
                 if (self.ITerm < -self.windup_guard):
                     self.ITerm = -self.windup_guard
