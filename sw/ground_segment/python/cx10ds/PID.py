@@ -85,7 +85,7 @@ class PID:
         if max_error is not None:
             if error > max_error:
                 error = max_error
-            elif: error < -max_error:
+            elif error < -max_error:
                 error = -max_error
 
         self.current_time = time.time()
@@ -100,14 +100,16 @@ class PID:
         if (delta_time >= self.sample_time):
             self.PTerm = self.Kp * error
             if in_flight:
-                self.int_error += error * delta_time
-                self.ITerm = self.Ki * self.int_error
+                int_error = self.int_error + error * delta_time
+                self.ITerm = self.Ki * int_error
                 if (self.ITerm < -self.windup_guard):
                     self.ITerm = -self.windup_guard
                     print("windup - sat")
                 elif (self.ITerm > self.windup_guard):
                     self.ITerm = self.windup_guard
                     print("windup + sat")
+                else:
+                    self.int_error = int_error
             else:
                 self.int_error = 0.0
                 self.ITerm = 0.0

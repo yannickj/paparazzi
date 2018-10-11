@@ -43,9 +43,9 @@ class UavDetector:
             cv2.line(img,(int(self.width*0.1),int(self.center[1])), (int(self.width*0.9),int(self.center[1])), (0,0,255),1)
 
         blur = cv2.GaussianBlur(gray,(5,5),0)
-        ret,th = cv2.threshold(blur,self.threshold,255,cv2.THRESH_BINARY)
         if self.set_mask:
             print("set mask")
+            _,th = cv2.threshold(blur,self.threshold/2,255,cv2.THRESH_BINARY)
             self.mask = cv2.dilate(th, np.ones((40,40), np.uint8), iterations=1)
             if outframe:
                 # build mask image
@@ -54,6 +54,8 @@ class UavDetector:
                 self.bk = cv2.bitwise_and(self.bk, self.bk, mask=self.mask)
             self.mask = cv2.bitwise_not(self.mask) # invert mask
             self.set_mask = False
+        else:
+            _,th = cv2.threshold(blur,self.threshold,255,cv2.THRESH_BINARY)
         th_masked = cv2.bitwise_and(th, th, mask=self.mask)
         _, contours, _ = cv2.findContours(th_masked,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         

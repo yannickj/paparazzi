@@ -59,6 +59,7 @@ class CX10DS:
         self.aileron = self.valid_range(aileron+self.trim_roll)
         self.elevator = self.valid_range(elevator+self.trim_pitch)
         self.mode = mode
+        #print("commands: {} {} {} {}".format(self.aileron, self.elevator, self.rudder, self.throttle))
 
     #sends out a message to the given IP/PORT every 0.5 seconds
     def send(self):

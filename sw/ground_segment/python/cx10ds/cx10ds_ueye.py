@@ -34,6 +34,8 @@ from pyueye_camera import Camera
 from pyueye_utils import FrameThread, FrameNoThread
 from pyueye import ueye
 
+from cx10ds_serial_remote import Cx10dsSerialRemote, RemoteError
+
 from math import sqrt
 
 import sys
@@ -58,6 +60,14 @@ class Cx10dsUeye:
         self.auto = False # manual control
         self.in_flight = False
         self.button_trim = False
+
+        # Remote controller
+        try:
+            self._remote = Cx10dsSerialRemote(self.parse_cmd, verbose)
+            sleep(0.1)
+            self._remote.start()
+        except RemoteError:
+            self._remote = None
 
         # Detector
         self._detector = UavDetector()
@@ -132,6 +142,35 @@ class Cx10dsUeye:
             self._cam.stop_video()
             self._cam.exit()
             print("stop thread and cam")
+        if self._remote is not None and self._remote.running:
+            self._remote.stop()
+            self._remote.join()
+            print("stop remote")
+
+    def parse_cmd(self, cmd, val):
+        if cmd == 'c': # clear mask
+            self._detector.clearmask()
+        elif cmd == 's': # set mask
+            self._detector.setmask()
+        elif cmd == 't': # set trim
+            self._cx10.set_trim()
+        elif cmd == 'm': # start mission
+            self._ctrl.start_stop_mission()
+        elif cmd == 'o': # takeoff
+            self.auto_mode = 1
+        elif cmd == 'l': # land
+            self.auto_mode = 2
+        elif cmd == 'v': # toggle exposure
+            if self.visible:
+                self.visible = False
+                self._cam.set_exposure(1.)
+            else:
+                self.visible = True
+                self._cam.set_exposure(10.)
+        elif cmd == 'dist' and len(val) == 1:
+            self._ctrl.set_dist(float(val[0]))
+        elif cmd == 'limit' and len(val) == 1:
+            self._ctrl.set_limit(float(val[0]))
 
     # main loop
     def run(self):
@@ -151,6 +190,8 @@ class Cx10dsUeye:
                         a = 1.
                     dist = sqrt(1200/a)
                     #dist = 400 / sqrt(a)
+                    if self._remote is not None:
+                        self._remote.send_pos(x,y,dist,1 if self.auto else 0)
                     if self.verbose:
                         print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}, d: {:0.2f}'.format(x,y,a,dist))
                         #i += 1
@@ -183,26 +224,28 @@ class Cx10dsUeye:
                     self._cx10.send()
                     last_time = current_time
                 key = self._ctrl.refresh()
-                if key == ord('c'): # clear mask
-                    self._detector.clearmask()
-                elif key == ord('s'): # set mask
-                    self._detector.setmask()
-                elif key == ord('t'): # set trim
-                    self._cx10.set_trim()
-                elif key == ord('m'): # start mission
-                    self._ctrl.start_stop_mission()
-                elif key == ord('o'): # takeoff
-                    self.auto_mode = 1
-                elif key == ord('l'): # land
-                    self.auto_mode = 2
-                elif key == ord('v'): # toggle exposure
-                    if self.visible:
-                        self.visible = False
-                        self._cam.set_exposure(1.)
-                    else:
-                        self.visible = True
-                        self._cam.set_exposure(10.)
-                elif key == ord('q'): # quit
+                self.parse_cmd(chr(key),[])
+                #if key == ord('c'): # clear mask
+                #    self._detector.clearmask()
+                #elif key == ord('s'): # set mask
+                #    self._detector.setmask()
+                #elif key == ord('t'): # set trim
+                #    self._cx10.set_trim()
+                #elif key == ord('m'): # start mission
+                #    self._ctrl.start_stop_mission()
+                #elif key == ord('o'): # takeoff
+                #    self.auto_mode = 1
+                #elif key == ord('l'): # land
+                #    self.auto_mode = 2
+                #elif key == ord('v'): # toggle exposure
+                #    if self.visible:
+                #        self.visible = False
+                #        self._cam.set_exposure(1.)
+                #    else:
+                #        self.visible = True
+                #        self._cam.set_exposure(10.)
+                #elif key == ord('q'): # quit
+                if key == ord('q'): # quit
                     if self.verbose:
                         print("Exiting..")
                     self.stop()
