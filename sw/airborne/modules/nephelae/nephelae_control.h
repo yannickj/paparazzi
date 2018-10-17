@@ -19,9 +19,9 @@
 #include "generated/airframe.h"
 
 struct CtrlVect{
-	float aileron1;
-	float aileron2;
-	float t_motor;
+	float aileron;
+	float flap;
+	float v_motor;
 };
 
 extern struct CtrlVect neph_ctrl_state;
@@ -35,7 +35,7 @@ extern float  neph_h_ctl_pitch_setpoint;
 extern pprz_t neph_h_ctl_elevator_setpoint;
 
 extern pprz_t neph_v_ctl_throttle_setpoint;
-extern pprz_t neph_v_ctl_throttle_setpoint;
+extern pprz_t neph_v_ctl_power_setpoint;
 
 extern float trim_elevator;
 extern float trim_aileron;

@@ -158,6 +158,7 @@
       <field name="flag" type="uint8_t">0: 2D accel setpoint, 1: 3D accel setpoint</field>
       <field name="accel_sp" type="struct FloatVect3 *" unit="m/s^2"/>
     </message>
+<<<<<<< 6458358d031ea3d253ed401c4443efeea71bad6e
 
     <message name="RELATIVE_LOCALIZATION" id="24">
       <field name="id" type="int32_t"/>
@@ -191,16 +192,6 @@
       <field name="extra"        type="int16_t">Extra field for options like detector source etc</field>
     </message>
     
-    <message name="NEPH_OBS_TO_CTRL" id="28">
-      <field name="Vect1" type="struct FloatVect3 *"/>
-      <field name="Vect2" type="struct FloatVect3 *"/>
-      <field name="Vect3" type="struct FloatVect2 *"/>
-    </message>
-
-    <message name="NEPH_CTRL_TO_OBS" id="29">
-      <field name="U" type="struct FloatVect3 *"/>
-    </message>
-
   </msg_class>
 
 </protocol>

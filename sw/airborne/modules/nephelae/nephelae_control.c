@@ -81,7 +81,7 @@ float  neph_h_ctl_pitch_setpoint;
 pprz_t neph_h_ctl_elevator_setpoint;
 
 pprz_t neph_v_ctl_throttle_setpoint;
-pprz_t neph_v_ctl_throttle_setpoint;
+pprz_t neph_v_ctl_power_setpoint;
 
 float neph_gamma;
 
@@ -93,14 +93,15 @@ float tension_tmp = 0.f;
 float intensity_tmp = 0.f;
 float omega_tmp;
 
-static void neph_cb(uint8_t sender_id __attribute__((unused)),
-                    uint8_t NbObserver, uint8_t NbControler){
-	Obs = NbObserver;
-	Ctrl = NbControler;
-	Ctrl ++;
-	
-	//AbiSendMsgNEPHELAE_CTRL(SENDER_ID,&Obs, &Ctrl);
-}
+float ailevon_left_tmp = 0.f;
+float ailevon_right_tmp = 0.f;
+
+float aileron_demod = 0.f;
+float flap_demod = 0.f;
+
+int16_t command_aileron = 0;
+int16_t command_flap = 0;
+int16_t command_tension = 0;
 
 static void gps_cb(uint8_t sender_id __attribute__((unused)),
                     uint32_t stamp, struct GpsState *gps_s){
@@ -109,8 +110,6 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
 	neph_temp = 288.25 - (6.5/1000.0) * (alt_gps/1000.0);
 	neph_press = 101325.0*powf((neph_temp/288.0),5.255);
 	neph_ro = neph_press/(287.05*neph_temp); // Calcul de ro en fonction de l'altitude GPS
-
-	gamma_process();
 }
 
 static void send_neph_debug(struct transport_tx *trans, struct link_device *dev)
@@ -167,7 +166,7 @@ void control_law(void){
 
 	flap_tmp += neph_g1[0] * neph_v_ctl_throttle_setpoint;
 	flap_tmp += neph_g1[1] * neph_h_ctl_roll_setpoint;
-	flap_tmp += neph_g1[2] * neph_h_ctl_pitch_setpoint;
+	flap_tmp += neph_g1[2] * neph_gamma;
 
 	aileron_tmp += -neph_kc2[0] * neph_obs_state.airspeed.x;
 	aileron_tmp += -neph_kc2[1] * neph_obs_state.airspeed.y;
@@ -180,7 +179,7 @@ void control_law(void){
 
 	aileron_tmp += neph_g2[0] * neph_v_ctl_throttle_setpoint;
 	aileron_tmp += neph_g2[1] * neph_h_ctl_roll_setpoint;
-	aileron_tmp += neph_g2[2] * neph_h_ctl_pitch_setpoint;
+	aileron_tmp += neph_g2[2] * neph_gamma;
 
 	thrust_tmp += -neph_kc3[0] * neph_obs_state.airspeed.x;
 	thrust_tmp += -neph_kc3[1] * neph_obs_state.airspeed.y;
@@ -193,7 +192,7 @@ void control_law(void){
 
 	thrust_tmp += neph_g3[0] * neph_v_ctl_throttle_setpoint;
 	thrust_tmp += neph_g3[1] * neph_h_ctl_roll_setpoint;
-	thrust_tmp += neph_g3[2] * neph_h_ctl_pitch_setpoint; 
+	thrust_tmp += neph_g3[2] * neph_gamma; 
 }
 
 void control_trim(void){
@@ -228,31 +227,76 @@ void control_saturation_motor(void){
 	tension_tmp = (omega_tmp/NEPH_KV) + (NEPH_R* intensity_tmp) + (NEPH_R*NEPH_I0);
 
 	if(tension_tmp > vsupply){
-		tension_tmp = (float) vsupply;
+		tension_tmp = (float)vsupply;
+	}
+	if(tension_tmp < 0){
+		tension_tmp = 0.f;
 	}
 }
 
 void control_saturation_actuator(void){
+	float neph_ail_limit[2] = NEPH_LIMITAILERON;
 
+	ailevon_left_tmp = flap_tmp + CTRL_SIGNL * aileron_tmp;
+	ailevon_right_tmp = flap_tmp + CTRL_SIGNR * aileron_tmp;
+
+	if(ailevon_left_tmp > neph_ail_limit[1]){
+		ailevon_left_tmp = neph_ail_limit[1];
+	}
+	if(ailevon_left_tmp < neph_ail_limit[0]){
+		ailevon_left_tmp = neph_ail_limit[0];
+	}
+	if(ailevon_right_tmp > neph_ail_limit[1]){
+		ailevon_right_tmp = neph_ail_limit[1];
+	}
+	if(ailevon_right_tmp < neph_ail_limit[0]){
+		ailevon_right_tmp = neph_ail_limit[0];
+	}
+}
+
+void control_demodulation_actuator(void){
+	aileron_demod = (ailevon_left_tmp - ailevon_right_tmp) / (CTRL_SIGNL - CTRL_SIGNR);
+	flap_demod = ailevon_left_tmp - CTRL_SIGNL * aileron_tmp;
+}
+
+void control_actuator_convertion(void){
+	float neph_ail_limit[2] = NEPH_LIMITAILERON;
+
+	float a = (MAX_PPRZ - MIN_PPRZ) / (neph_ail_limit[1] - neph_ail_limit[0]);
+	neph_h_ctl_aileron_setpoint = (pprz_t)(a * (aileron_demod - neph_ail_limit[0]));
+	neph_h_ctl_elevator_setpoint = (pprz_t)(a * (flap_demod - neph_ail_limit[0]));
+
+	neph_v_ctl_power_setpoint = (pprz_t)(tension_tmp / (float) vsupply);
 }
 
 void neph_h_ctl_attitude_loop(void){
+	gamma_process();
+	control_law();
+	control_trim();
+	control_voltage();
+	control_saturation_motor();
+	control_saturation_actuator();
+	control_demodulation_actuator();
+	control_actuator_convertion();
 
+	neph_ctrl_state.aileron = aileron_demod;
+	neph_ctrl_state.flap = flap_demod;
+	neph_ctrl_state.v_motor = tension_tmp;
 }
 
 void nephelae_control_init(void) {
+
 	neph_h_ctl_roll_setpoint = 0.f;
-	neph_h_ctl_aileron_setpoint = 0.f;
+	neph_h_ctl_aileron_setpoint = 0;
 	neph_h_ctl_pitch_setpoint = 0.f;
-	neph_h_ctl_elevator_setpoint = 0.f;
+	neph_h_ctl_elevator_setpoint = 0;
 	neph_v_ctl_throttle_setpoint = 0.f;
-	neph_v_ctl_throttle_setpoint = 0.f;
+	neph_v_ctl_power_setpoint = 0;
 
 	trim_elevator = 0.f;
 	trim_aileron = 0.f;
 	trim_thrust = 1.5f;
 
-	AbiBindMsgNEPH_OBS_TO_CTRL(NEPH_OBS_ID, &neph_ev, neph_cb);
 	AbiBindMsgGPS(GPS_ID, &gps_ev, gps_cb);
 
 	#if PERIODIC_TELEMETRY

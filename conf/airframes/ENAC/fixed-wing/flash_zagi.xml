@@ -235,10 +235,8 @@
     <define name="L6" value="-0.0079, -0.0114, -0.0063, -4.8553, -0.0068, 3.8705" type="float[]"/>
     <define name="L7" value="0.0343, 1.2075, -0.0000, -1.3588, 0.1401, 11.9474" type="float[]"/>
     <define name="L8" value="-1.0178, -0.0516, -0.1629, -0.0685, -0.7974, -0.4914" type="float[]"/>
-    <!-- Vector UMAX(2x1) -->
-    <define name="UMAX" value="30, 30" type="float[]"/>
-    <!-- VECTOR UMIN(2x1) -->
-    <define name="UMIN" value="-30, -30" type="float[]"/>
+    <!-- Vector Limit Aileron(2x1) -->
+    <define name="LIMITAILERON" value="-30, 30" type="float[]"/>
     <!-- Float Variable -->
     <define name="KFW" value="0.0000064934"/>
     <define name="KFX" value="-0.00020966"/>

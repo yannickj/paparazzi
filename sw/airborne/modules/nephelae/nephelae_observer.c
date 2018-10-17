@@ -13,6 +13,7 @@
 #include "modules/nephelae/nephelae_observer.h"
 
 #include <stdio.h>
+#include <math.h>
 #include "subsystems/abi.h"
 #include "std.h"
 #include "generated/airframe.h"
@@ -32,84 +33,92 @@ static abi_event acc_ev;
 #endif
 static abi_event gyro_ev;
 
-/** ABI binding for Nephelae State
- */
-#ifndef NEPH_CTRL_ID
-#define NEPH_CTRL_ID ABI_BROADCAST
-#endif
-static abi_event neph_ev;
+struct ObsVect neph_obs_state;
 
-/**ABI publisher for Neph State
- */
-#define SENDER_ID 24
-
-/**Caracteristic of the plane
- **/
-#ifndef NEPH_G1
-#define NEPH_G1
-#endif
-
-#ifndef NEPH_KFW
-#define NEPH_KFW 33
-#endif
-
-uint32_t neph_stamp = 0;
+static struct ObsVect neph_obs_state_mem;
 
 static struct FloatRates neph_gyro_f;
+uint32_t neph_stamp_gyro = 0;
+uint32_t neph_stamp_gyro_mem = 0;
+
 
 static struct FloatVect3 neph_accel_f;
+uint32_t neph_stamp_accel = 0;
 
-float neph_A6[8] = NEPH_A6;
-float neph_g1[3] = NEPH_G3;
-float neph_kfw = NEPH_KFW;
+float delta_f_motor = 0.f;
+float delta_q_motor = 0.f;
 
-bool flag_acc = false;
-bool flag_gyro = false;
+float omega_obs;
+float omega_zero;
 
-uint8_t Ctrl = 0;
-uint8_t Obs = 0;
-
-uint8_t module = 0;
-
-struct ObsVect neph_obs_state;
+bool processing = false;
 
 static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
                      struct Int32Vect3 *accel){
-	flag_acc = true;
+
 	ACCELS_FLOAT_OF_BFP(neph_accel_f, *accel);
+  neph_stamp_accel = stamp;
 }
 
 static void gyro_cb(uint8_t sender_id __attribute__((unused)),
                     uint32_t stamp __attribute__((unused)),
                     struct Int32Rates *gyro){
 
-	flag_gyro = true;
-	neph_stamp = stamp;
+  neph_stamp_gyro_mem = neph_stamp_gyro;
 	RATES_FLOAT_OF_BFP(neph_gyro_f, *gyro);
-}
+  neph_stamp_gyro = stamp;
 
-static void send_debug(struct transport_tx *trans, struct link_device *dev)
-{
-  module ++;
-  if(flag_gyro && flag_acc){
-  	/*pprz_msg_send_NEPHELAE_TEST_DEBUG(trans, dev, AC_ID,
-  										&neph_stamp, &neph_gyro_f.p, &neph_gyro_f.q, &neph_gyro_f.r,
-  										&neph_accel_f.x, &neph_accel_f.y, &neph_accel_f.z,
-  										&neph_A6[7]);*/
-  	/*pprz_msg_send_PPRZ_DEBUG(trans, dev, AC_ID, &module, &Ctrl);*/
+  if ((fabs(neph_stamp_gyro - neph_stamp_accel) < fabs(neph_stamp_gyro_mem - neph_stamp_accel)) && processing == true){
+    integration();
   }
-  flag_gyro = false;
-  flag_acc = false;
 }
 
-static void neph_cb(uint8_t sender_id __attribute__((unused)),
-					         uint8_t NbObserver, uint8_t NbControler){
+void omega_process(void){
+  float A = NEPH_R * NEPH_KV * NEPH_KQW;
+  float B = (1 / NEPH_KV) + ( NEPH_R * NEPH_KV * NEPH_KQX * (neph_obs_state.airspeed.x + NEPH_V0));
+  float C = (NEPH_R * NEPH_KV * NEPH_KQU) * powf((neph_obs_state.airspeed.x + NEPH_V0), 2) + (NEPH_R * NEPH_I0) - neph_ctrl_state.v_motor;
+  float delta_obs = powf(B,2) - (4*A*C);
+  omega_obs = 0.f;
 
-	Ctrl = NbControler;
-	Obs = NbObserver;
-	Obs++;
-	//AbiSendMsgNEPHELAE_OBS(SENDER_ID, &Obs, &Ctrl);
+  if (delta_obs > 0.0){
+    omega_obs = (-B + sqrt(delta_obs))/(2*A);
+  }
+  else{
+    omega_obs = -B /(2*A);
+  }
+}
+
+void omega_zero_process(void){
+  float A = NEPH_KFW;
+  float B = NEPH_KFX * NEPH_V0;
+  float C = -trim_thrust * NEPH_M;
+  float delta_obs = powf(B,2) - (4*A*C);
+  omega_zero = 0.f;
+
+  if (delta_obs > 0.0){
+    omega_zero = (-B + sqrt(delta_obs))/(2*A);
+  }
+  else{
+    omega_zero = -B /(2*A);
+  }
+}
+
+void motor_process(void){
+  delta_f_motor = (((NEPH_KFW * powf(omega_obs,2)) + (NEPH_KFX * omega_obs * (neph_obs_state.airspeed.x + NEPH_V0))) / NEPH_M) - (trim_thrust);
+  delta_q_motor = (((NEPH_KQW * powf(omega_obs,2)) + (NEPH_KQX * omega_obs * (neph_obs_state.airspeed.x + NEPH_V0)) +
+                  (NEPH_KQU * powf((neph_obs_state.airspeed.x + NEPH_V0),2))) - 
+                  ((NEPH_KQW * powf(omega_zero,2)) + (NEPH_KQX * omega_zero * NEPH_V0) +
+                  (NEPH_KQU * powf((NEPH_V0),2)))) / NEPH_IXX;
+}
+
+void integration(void){
+  processing = false;
+
+
+
+
+  processing = true;
 }
 
 /** IMU Acc and Gyro Observer for state feedback control. Called at startup.
@@ -117,7 +126,7 @@ static void neph_cb(uint8_t sender_id __attribute__((unused)),
  */
 void nephelae_observer_init(void) {
 
-  neph_obs_state.airspeed.x = 10.0;
+  neph_obs_state.airspeed.x = 0.0;
   neph_obs_state.airspeed.y = 0.0;
   neph_obs_state.airspeed.z = 0.0;
 
@@ -129,14 +138,17 @@ void nephelae_observer_init(void) {
   neph_obs_state.attitude.theta = 0.0;
   neph_obs_state.attitude.psi = 0.0;
 
+  neph_obs_state_mem = neph_obs_state;
+
 	AbiBindMsgIMU_ACCEL_INT32(IMU_ACC_NEPH_ID, &acc_ev, accel_cb);
 	AbiBindMsgIMU_GYRO_INT32(IMU_GYRO_NEPH_ID, &gyro_ev, gyro_cb);
-	AbiBindMsgNEPH_CTRL_TO_OBS(NEPH_CTRL_ID, &neph_ev, neph_cb);
-
-	#if PERIODIC_TELEMETRY
-  	//register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_NEPHELAE_TEST_DEBUG, send_debug);
-  	register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_PPRZ_DEBUG, send_debug);
-	#endif
 }
 
 
+// neph_ctrl_state.aileron
+// neph_ctrl_state.flap
+// neph_ctrl_state.v_motor
+
+// trim_elevator
+// trim_aileron
+// trim_thrust
