@@ -9,23 +9,23 @@
     <waypoint name="GOAL" x="2.0" y="2.0"/>
     <waypoint name="STDBY" x="-0.7" y="-0.8"/>
     <waypoint name="TD" x="0.8" y="-1.7"/>
-    <waypoint name="S1" x="3" y="4"/>
-    <waypoint name="S2" x="3" y="-4"/>
-    <waypoint name="S3" x="-3" y="-4"/>
-    <waypoint name="S4" x="-3" y="4"/>
+    <waypoint name="S1" x="2.1" y="2.8"/>
+    <waypoint name="S2" x="2.0" y="-3.0"/>
+    <waypoint name="S3" x="-2.1" y="-3.1"/>
+    <waypoint name="S4" x="-2.2" y="2.8"/>
     <waypoint name="_N1" x="4.5" y="5.2"/>
     <waypoint name="_N2" x="4.5" y="-5.2"/>
     <waypoint name="_N3" x="-4.5" y="-5.2"/>
     <waypoint name="_N4" x="-4.5" y="5.2"/>
   </waypoints>
   <sectors>
-    <sector name="Net" color="red">
+    <sector color="red" name="Net">
       <corner name="_N1"/>
       <corner name="_N2"/>
       <corner name="_N3"/>
       <corner name="_N4"/>
     </sector>
-    <sector name="Survey" color="green" type="dynamic">
+    <sector color="green" name="Survey" type="dynamic">
       <corner name="S1"/>
       <corner name="S2"/>
       <corner name="S3"/>
@@ -83,11 +83,11 @@
     </block>
     <block name="flare">
       <exception cond="NavDetectGround()" deroute="Holding point"/>
-      <exception cond="!nav_is_in_flight()" deroute="landed"/>
+      <exception cond="!nav_is_in_flight()" deroute="KILL_LANDED"/>
       <call_once fun="NavStartDetectGround()"/>
       <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
     </block>
-    <block name="landed">
+    <block name="KILL_LANDED">
       <call_once fun="NavKillThrottle()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
