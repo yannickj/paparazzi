@@ -23,6 +23,9 @@ class UavDetector:
         self.new_data = False
         self.bk = None
         self.center = None
+        self.filter = True
+        self.filter_last = None
+        self.filter_max = 200 # jump prevention in pixels
         
 
     # ###################################################################
@@ -78,17 +81,53 @@ class UavDetector:
             cv2.imshow('out',resized)
 
     def extract_rect(self, contours, img, outframe):
-        if len(contours) != 1:
-            self.new_data = False
-            for cnt in contours:
-                rect = cv2.minAreaRect(cnt)
-                box = np.int0(cv2.boxPoints(rect))
-                cv2.drawContours(img, [box], 0, (0,255,0), 3)
-            return
+        def dist(c1, c2):
+            (x1,y1) = c1
+            (x2,y2) = c2
+            return abs(x1-x2) + abs(y1-y2)
 
+        if len(contours) == 0:
+            self.new_data = False
+            return
+        elif len(contours) == 1:
+            rect = cv2.minAreaRect(contours[0])
+            if self.filter and self.filter_last is not None:
+                (p, _, _) = rect
+                print(self.filter_last)
+                d = dist(self.filter_last, p)
+                if d < self.filter_max:
+                    (self.filter_last, _, _) = rect
+                else:
+                    self.new_data = False
+                    return # this might be a jump
+            else:
+                (self.filter_last, _, _) = rect
+        else:
+            if self.filter and self.filter_last is not None:
+                # try to find the best match if more than one object
+                best_dist = 9999
+                rect = None
+                for cnt in contours:
+                    r = cv2.minAreaRect(cnt)
+                    (p, _, _) = r
+                    d = dist(self.filter_last, p)
+                    if d < best_dist:
+                        rect = r
+                        best_dist = d
+                if best_dist < self.filter_max:
+                    (self.filter_last, _, _) = rect
+                else:
+                    self.new_data = False
+                    return # this might be a jump
+            else:
+                self.new_data = False
+                for cnt in contours:
+                    rect = cv2.minAreaRect(cnt)
+                    box = np.int0(cv2.boxPoints(rect))
+                    cv2.drawContours(img, [box], 0, (0,255,0), 3)
+                return
         
         ## rotated rectangle (min area)
-        rect = cv2.minAreaRect(contours[0])
         ((x, y), (w, h), _) = rect
         #if abs(w - h) > 10: # not square
         #    continue
