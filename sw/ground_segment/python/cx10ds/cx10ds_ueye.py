@@ -112,10 +112,13 @@ class Cx10dsUeye:
             self.aileron = int(msg['axis1'])
             self.elevator = int(msg['axis2'])
             self.rudder = int(msg['axis3'])
-            self.throttle = 128
-            direction = int(msg['button1'])-1
-            throttle_incr = self._cx10.valid_range(int(msg['axis4']), 0, 127)
-            self.throttle = 128 + direction * throttle_incr # up
+            if int(msg['button1']) == 255:
+                self.throttle = int(msg['axis4']) # direct throttle reading
+            else:
+                self.throttle = 128
+                direction = int(msg['button1'])-1
+                throttle_incr = self._cx10.valid_range(int(msg['axis4']), 0, 127)
+                self.throttle = 128 + direction * throttle_incr # up
             self.mode = int(msg['button2'])
             self.auto = int(msg['button3']) == 1
             if self.mode == 1 and not self.auto:
@@ -154,8 +157,16 @@ class Cx10dsUeye:
             self._detector.setmask()
         elif cmd == 't': # set trim
             self._cx10.set_trim()
-        elif cmd == 'm': # start mission
+        elif cmd == 'm': # start mission1
             self._ctrl.start_stop_mission()
+        elif cmd == 'M': # start mission1 and land
+            self._ctrl.start_land_mission()
+        elif cmd == 'm2': # start mission2
+            self._ctrl.start_stop_mission2()
+        elif cmd == 'M2': # start mission2 and land
+            self._ctrl.start_land_mission2()
+        elif cmd == 'i': # idle
+            self.auto_mode = 0
         elif cmd == 'o': # takeoff
             self.auto_mode = 1
         elif cmd == 'l': # land
@@ -171,12 +182,11 @@ class Cx10dsUeye:
             self._ctrl.set_dist(float(val[0]))
         elif cmd == 'limit' and len(val) == 1:
             self._ctrl.set_limit(float(val[0]))
+        elif cmd == 'limit2' and len(val) == 1:
+            self._ctrl.set_limit2(float(val[0]))
 
     # main loop
     def run(self):
-        #i = 0
-        #size = 0.
-        #nb = 100
         try:
             last_time = time()
             while True:
@@ -194,30 +204,29 @@ class Cx10dsUeye:
                         self._remote.send_pos(x,y,dist,1 if self.auto else 0)
                     if self.verbose:
                         print('x: {:0.2f}, y: {:0.2f}, a: {:0.4f}, d: {:0.2f}'.format(x,y,a,dist))
-                        #i += 1
-                        #size += a
-                        #if i == nb:
-                        #    print("area {}".format(size/nb))
-                        #    i = 0
-                        #    size = 0.
+                else:
+                    if self._remote is not None:
+                        self._remote.send_pos(0.,0.,42., 1 if self.auto else 0)
                 if self.auto:
                     if valid:
-                        (r, p, y, t) = self._ctrl.run(x,y,dist,self.in_flight)
-                        self._cx10.set_cmd(r,p,y,t,self.auto_mode)
+                        (r, p, y, t, self.auto_mode) = self._ctrl.run(x,y,dist,self.auto_mode,self.in_flight)
+                        self._cx10.set_cmd(r,p,y,t if self.auto_mode != 2 else 128,self.auto_mode)
                         if self.auto_mode == 1:
                             self.in_flight = True
                             self.auto_mode = 0
                         elif self.auto_mode == 2:
                             self.in_flight = False
-                            self.auto_mode = 0
+                            #self.auto_mode = 0 # TODO keep it at 2 ???
                         #self._cx10.set_cmd(r,self.elevator,y,t,0)
                         if self.verbose:
-                            print("auto",r,p,y,t,a,self._ctrl.pid_dist.SetPoint)
+                            print("auto",r,p,y,t,a,self._ctrl.pid_dist.SetPoint,self.auto_mode)
                     else:
                         self._cx10.set_cmd(128,128,128,128,0)
                 else:
                     self._ctrl.reset()
                     self._cx10.set_cmd(self.aileron,self.elevator,self.rudder,self.throttle,self.mode)
+                    if self.verbose:
+                        print("man",self.aileron,self.elevator,self.rudder,self.throttle,self.mode)
                 current_time = time()
                 dt = current_time - last_time
                 if dt >= self.step:
@@ -225,26 +234,6 @@ class Cx10dsUeye:
                     last_time = current_time
                 key = self._ctrl.refresh()
                 self.parse_cmd(chr(key),[])
-                #if key == ord('c'): # clear mask
-                #    self._detector.clearmask()
-                #elif key == ord('s'): # set mask
-                #    self._detector.setmask()
-                #elif key == ord('t'): # set trim
-                #    self._cx10.set_trim()
-                #elif key == ord('m'): # start mission
-                #    self._ctrl.start_stop_mission()
-                #elif key == ord('o'): # takeoff
-                #    self.auto_mode = 1
-                #elif key == ord('l'): # land
-                #    self.auto_mode = 2
-                #elif key == ord('v'): # toggle exposure
-                #    if self.visible:
-                #        self.visible = False
-                #        self._cam.set_exposure(1.)
-                #    else:
-                #        self.visible = True
-                #        self._cam.set_exposure(10.)
-                #elif key == ord('q'): # quit
                 if key == ord('q'): # quit
                     if self.verbose:
                         print("Exiting..")

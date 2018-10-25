@@ -7,9 +7,13 @@ CMD = {
         ':TAKEOFF': 'o',
         ':IDLE': 'i',
         ':LAND': 'l',
-        ':START': 'm',
         ':DIST': 'dist',
-        ':LIMIT': 'limit'
+        ':START': 'm',
+        ':START_LAND': 'M',
+        ':LIMIT': 'limit',
+        ':START2': 'm2',
+        ':START_LAND2': 'M2',
+        ':LIMIT2': 'limit2'
     }
 
 class RemoteError(Exception):

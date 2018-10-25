@@ -25,7 +25,7 @@ class UavDetector:
         self.center = None
         self.filter = True
         self.filter_last = None
-        self.filter_max = 200 # jump prevention in pixels
+        self.filter_max = 500 # jump prevention in pixels
         
 
     # ###################################################################
@@ -93,7 +93,6 @@ class UavDetector:
             rect = cv2.minAreaRect(contours[0])
             if self.filter and self.filter_last is not None:
                 (p, _, _) = rect
-                print(self.filter_last)
                 d = dist(self.filter_last, p)
                 if d < self.filter_max:
                     (self.filter_last, _, _) = rect
@@ -194,12 +193,14 @@ class UavDetector:
 
     def setmask(self):
         self.set_mask = True
+        self.filter_last = None
         print("Mask set")
 
     def clearmask(self):
         self.mask = np.zeros((self.height, self.width), np.uint8)
         self.mask = cv2.bitwise_not(self.mask)
         self.bk = np.zeros((self.height,self.width,3),np.uint8)
+        self.filter_last = None
         print("Mask cleared")
 
     def set_thres(self, val):
