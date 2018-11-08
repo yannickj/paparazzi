@@ -181,6 +181,15 @@ uint8_t dc_info(void)
   return 0;
 }
 
+void dc_send_command_common(uint8_t cmd)
+{
+#if DC_SHOT_EXTRA_DL
+  uint8_t tab[] = { cmd };
+  DOWNLINK_SEND_PAYLOAD_COMMAND(extra_pprz_tp, EXTRA_DOWNLINK_DEVICE, 0, 1, tab);
+#endif
+}
+
+
 /* shoot on distance */
 uint8_t dc_distance(float interval)
 {
