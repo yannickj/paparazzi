@@ -41,7 +41,7 @@ class UavController:
         self.autoland = False
         self.ff_speed_gain = 30.
         self.speed = 1. # in meters/s
-        self.set_dist(4.) # in meters
+        self.set_dist(2.5) # in meters
         self.limit1 = 17. # in meters, end mission 1 limit
         self.limit2 = 10. # in meters, end mission 2 limit
         self.limit = self.limit1 # current limit

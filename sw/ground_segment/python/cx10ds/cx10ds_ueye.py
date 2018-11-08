@@ -171,6 +171,10 @@ class Cx10dsUeye:
             self.auto_mode = 1
         elif cmd == 'l': # land
             self.auto_mode = 2
+        elif cmd == 'revert': # revert (loop)
+            self.auto_mode = 64 # 0x40
+        elif cmd == 'calib': # calibrate
+            self.auto_mode = 128 # 0x80
         elif cmd == 'v': # toggle exposure
             if self.visible:
                 self.visible = False
@@ -184,11 +188,14 @@ class Cx10dsUeye:
             self._ctrl.set_limit(float(val[0]))
         elif cmd == 'limit2' and len(val) == 1:
             self._ctrl.set_limit2(float(val[0]))
+        elif cmd == 'r': # reset mission parameters
+            self._ctrl.stop_mission()
 
     # main loop
     def run(self):
         try:
             last_time = time()
+            sub_cnt = 0
             while True:
                 valid = False
                 self._thread.run_once()
@@ -232,6 +239,10 @@ class Cx10dsUeye:
                 if dt >= self.step:
                     self._cx10.send()
                     last_time = current_time
+                    sub_cnt += 1
+                    if sub_cnt == 10 and self._remote is not None:
+                        self._remote.send_sliders(sefl._ctrl.dist, self._ctrl.limit1, self._ctrl.limit2)
+                        sub_cnt = 0
                 key = self._ctrl.refresh()
                 self.parse_cmd(chr(key),[])
                 if key == ord('q'): # quit

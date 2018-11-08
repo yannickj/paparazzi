@@ -13,7 +13,8 @@ CMD = {
         ':LIMIT': 'limit',
         ':START2': 'm2',
         ':START_LAND2': 'M2',
-        ':LIMIT2': 'limit2'
+        ':LIMIT2': 'limit2',
+        ':RESET': 'r'
     }
 
 class RemoteError(Exception):
@@ -53,6 +54,10 @@ class Cx10dsSerialRemote(threading.Thread):
 
     def send_pos(self, x, y, d, m):
         msg = ":{},{},{},{}\n".format(x,y,d,m)
+        self.send(msg)
+
+    def send_sliders(self, dist, limit1, limit2):
+        msg = ":{},{},{}\n".format(dist,limit1,limit2)
         self.send(msg)
 
     def run(self):
