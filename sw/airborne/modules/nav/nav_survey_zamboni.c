@@ -42,6 +42,16 @@
 #define LINE_STOP_FUNCTION {}
 #endif
 
+#if ZAMBONI_USE_GVF
+#include "modules/guidance/gvf/gvf.h"
+#define NAV_ZAMBONI_LINE(_x1, _y1, _x2, _y2) gvf_segment_XY1_XY2(_x1, _y1, _x2, _y2)
+#define NAV_ZAMBONI_CIRCLE(_x, _y, _r) gvf_set_direction(_r); gvf_ellipse_XY(_x, _y, _r, _r, 0)
+#else
+#define NAV_ZAMBONI_LINE(_x1, _y1, _x2, _y2) nav_route_xy(_x1, _y1, _x2, _y2)
+#define NAV_ZAMBONI_CIRCLE(_x, _y, _r) nav_circle_XY(_x, _y, _r)
+#endif
+
+
 struct ZamboniSurvey zs;
 
 /**
@@ -134,7 +144,7 @@ bool nav_survey_zamboni_run(void)
 
   //go from center of field to end of field - (before starting the syrvey)
   if (zs.stage == Z_ENTRY) {
-    nav_route_xy(zs.wp_center.x, zs.wp_center.y, zs.seg_end.x, zs.seg_end.y);
+    NAV_ZAMBONI_LINE(zs.wp_center.x, zs.wp_center.y, zs.seg_end.x, zs.seg_end.y);
     if (nav_approaching_xy(zs.seg_end.x, zs.seg_end.y, zs.wp_center.x, zs.wp_center.y, CARROT)) {
       zs.stage = Z_TURN1;
       NavVerticalAutoThrottleMode(0.0);
@@ -144,7 +154,7 @@ bool nav_survey_zamboni_run(void)
 
   //Turn from stage to return
   else if (zs.stage == Z_TURN1) {
-    nav_circle_XY(zs.turn_center1.x, zs.turn_center1.y, zs.turnradius1);
+    NAV_ZAMBONI_CIRCLE(zs.turn_center1.x, zs.turn_center1.y, zs.turnradius1);
     if (NavCourseCloseTo(zs.return_angle + zs.pre_leave_angle)) {
       // && nav_approaching_xy(zs.seg_end.x, zs.seg_end.y, zs.seg_start.x, zs.seg_start.y, CARROT
       //calculate SEG-points for the next flyover
@@ -161,7 +171,7 @@ bool nav_survey_zamboni_run(void)
 
   //fly the segment until seg_end is reached
   else if (zs.stage == Z_RET) {
-    nav_route_xy(zs.ret_start.x, zs.ret_start.y, zs.ret_end.x, zs.ret_end.y);
+    NAV_ZAMBONI_LINE(zs.ret_start.x, zs.ret_start.y, zs.ret_end.x, zs.ret_end.y);
     if (nav_approaching_xy(zs.ret_end.x, zs.ret_end.y, zs.ret_start.x, zs.ret_start.y, 0)) {
       zs.current_laps = zs.current_laps + 1;
 #ifdef DIGITAL_CAM
@@ -174,7 +184,7 @@ bool nav_survey_zamboni_run(void)
 
   //turn from stage to return
   else if (zs.stage == Z_TURN2) {
-    nav_circle_XY(zs.turn_center2.x, zs.turn_center2.y, zs.turnradius2);
+    NAV_ZAMBONI_CIRCLE(zs.turn_center2.x, zs.turn_center2.y, zs.turnradius2);
     if (NavCourseCloseTo(zs.flight_angle + zs.pre_leave_angle)) {
       //zs.current_laps = zs.current_laps + 1;
       zs.stage = Z_SEG;
@@ -186,7 +196,7 @@ bool nav_survey_zamboni_run(void)
 
     //return
   } else if (zs.stage == Z_SEG) {
-    nav_route_xy(zs.seg_start.x, zs.seg_start.y, zs.seg_end.x, zs.seg_end.y);
+    NAV_ZAMBONI_LINE(zs.seg_start.x, zs.seg_start.y, zs.seg_end.x, zs.seg_end.y);
     if (nav_approaching_xy(zs.seg_end.x, zs.seg_end.y, zs.seg_start.x, zs.seg_start.y, 0)) {
 
       // calculate the rest of the points for the next fly-over
