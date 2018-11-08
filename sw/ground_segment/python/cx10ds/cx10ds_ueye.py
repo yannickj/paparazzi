@@ -189,6 +189,7 @@ class Cx10dsUeye:
         elif cmd == 'limit2' and len(val) == 1:
             self._ctrl.set_limit2(float(val[0]))
         elif cmd == 'r': # reset mission parameters
+            self.auto_mode = 0
             self._ctrl.stop_mission()
 
     # main loop
@@ -241,7 +242,7 @@ class Cx10dsUeye:
                     last_time = current_time
                     sub_cnt += 1
                     if sub_cnt == 10 and self._remote is not None:
-                        self._remote.send_sliders(sefl._ctrl.dist, self._ctrl.limit1, self._ctrl.limit2)
+                        self._remote.send_sliders(self._ctrl.dist, self._ctrl.limit1, self._ctrl.limit2)
                         sub_cnt = 0
                 key = self._ctrl.refresh()
                 self.parse_cmd(chr(key),[])
