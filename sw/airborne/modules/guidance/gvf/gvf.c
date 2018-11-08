@@ -200,6 +200,14 @@ void gvf_control_2D(float ke, float kn, float e,
 
     lateral_mode = LATERAL_MODE_ROLL;
   }
+
+  // carrot display
+  struct EnuCoor_f *pos = stateGetPositionEnu_f();
+  float norm = sqrtf(pdx_dot * pdx_dot + pdy_dot * pdy_dot);
+  if (norm > 0.001f) {
+    desired_x = pos->x + CARROT * ground_speed * pdx_dot / norm;
+    desired_y = pos->y + CARROT * ground_speed * pdy_dot / norm;
+  }
 }
 
 void gvf_set_direction(int8_t s)
