@@ -61,8 +61,8 @@
 <!-- commands section -->
   <servos>
     <servo name="MOTOR" no="0" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_RIGHT" no="1" min="1465" neutral="1565" max="1700"/>
-    <servo name="AILEVON_LEFT" no="2" min="1690" neutral="1590" max="1455"/>
+    <servo name="AILEVON_RIGHT" no="1" min="1445" neutral="1565" max="1720"/>
+    <servo name="AILEVON_LEFT" no="2" min="1710" neutral="1590" max="1435"/>
   </servos>
 
   <commands>
