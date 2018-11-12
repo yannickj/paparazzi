@@ -391,7 +391,13 @@ static void process_data(struct DW1000 *dw) {
 #if DW1000_LOG
     if (log_started) {
       struct EnuCoor_f pos = *stateGetPositionEnu_f();
-      sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %3.f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f\n",
+      struct EnuCoor_f speed = *stateGetSpeedEnu_f();
+      struct FloatRates *rates = stateGetBodyRates_f();
+      struct FloatRMat *ned_to_body = stateGetNedToBodyRMat_f();
+      float omega_z = -rates->p * MAT33_ELMT(*ned_to_body, 2, 0)
+        + rates->q * MAT33_ELMT(*ned_to_body, 2, 1)
+        + rates->r * MAT33_ELMT(*ned_to_body, 2, 2);
+      sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %3.f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f\n",
           dw1000.anchors[0].distance,
           dw1000.anchors[0].time,
           dw1000.anchors[1].distance,
@@ -403,7 +409,11 @@ static void process_data(struct DW1000 *dw) {
           dw1000.pos.z,
           pos.x,
           pos.y,
-          pos.z);
+          pos.z,
+          speed.x,
+          speed.y,
+          speed.z,
+          omega_z);
     }
 #endif
     dw->updated = false;
@@ -532,7 +542,7 @@ void dw1000_arduino_periodic(void)
   if (pprzLogFile != -1) {
     if (!log_started) {
       sdLogWriteLog(pprzLogFile,
-                    "d1 t1 d2 t2 d3 t3 x y z gps_x gps_y gps_z\n");
+                    "d1 t1 d2 t2 d3 t3 x y z gps_x gps_y gps_z vx vy vz omega\n");
       log_started = true;
     }
   }
