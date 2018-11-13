@@ -53,6 +53,7 @@
     </module>
     <module name="digital_cam">
       <define name="DC_SHUTTER_GPIO" value="GPIOB,GPIO15"/> <!-- Apogee AUX4 -->
+      <define name="DC_AUTOSHOOT_DISTANCE_INIT" value="4"/>
     </module>
 
     <module name="takeoff_detect.xml"/>
