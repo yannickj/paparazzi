@@ -146,9 +146,10 @@
   <section name="MISC">
     <define name="NOMINAL_AIRSPEED" value="12." unit="m/s"/>
     <define name="CARROT" value="5." unit="s"/>
-    <define name="KILL_MODE_DISTANCE" value="(1.5*MAX_DIST_FROM_HOME)"/>
+    <define name="KILL_MODE_DISTANCE" value="(1.05*MAX_DIST_FROM_HOME)"/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="50."/>
     <define name="UNLOCKED_HOME_MODE" value="TRUE"/>
+    <define name="RC_LOST_MODE" value="AP_MODE_AUTO2"/>
   </section>
 
   <section name="VERTICAL CONTROL" prefix="V_CTL_">
@@ -232,10 +233,10 @@
 
   <section name="FAILSAFE" prefix="FAILSAFE_">
     <define name="DELAY_WITHOUT_GPS" value="2" unit="s"/>
-    <define name="DEFAULT_THROTTLE" value="0.3" unit="%"/>
-    <define name="DEFAULT_ROLL" value="0.3" unit="rad"/>
-    <define name="DEFAULT_PITCH" value="0.5" unit="rad"/>
-    <define name="HOME_RADIUS" value="80" unit="m"/>
+    <define name="DEFAULT_THROTTLE" value="0." unit="%"/>
+    <define name="DEFAULT_ROLL" value="20." unit="deg"/>
+    <define name="DEFAULT_PITCH" value="10." unit="deg"/>
+    <define name="HOME_RADIUS" value="50" unit="m"/>
   </section>
 
   <section name="AGGRESSIVE" prefix="AGR_">
