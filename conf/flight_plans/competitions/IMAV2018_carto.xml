@@ -61,16 +61,15 @@ static inline void set_expo(float e) {
     <waypoint name="_NFZ1" x="95.7" y="89.6"/>
     <waypoint name="_NFZ2" x="47.6" y="-140.9"/>
     <waypoint name="_NFZ3" x="-335.2" y="-127.8"/>
-    <waypoint name="_NFZ4" x="-265.1" y="-3.4"/>
-    <waypoint name="_NFZ5" x="-296.4" y="94.5"/>
-    <waypoint name="_NFZ6" x="-241.7" y="144.5"/>
+    <waypoint name="_NFZ4" x="-362.0" y="-21.7"/>
+    <waypoint name="_NFZ5" x="-355.0" y="88.4"/>
+    <waypoint name="_NFZ6" x="-306.0" y="156.7"/>
     <waypoint name="_MAP1" x="-47.0" y="69.0"/>
-    <waypoint name="_MAP2" x="-104.7" y="-89.3"/>
-    <waypoint name="_MAP3" x="-244.8" y="-86.3"/>
-    <waypoint name="_MAP4" x="-203.7" y="95.9"/>
-    <waypoint name="ZBC" x="-142.6" y="-6.6"/>
-    <waypoint name="ZBDIR" x="-202.7" y="0.6"/>
-    <waypoint name="ZBDIR2" x="-133.9" y="41.4"/>
+    <waypoint name="_MAP2" x="-105.8" y="-93.4"/>
+    <waypoint name="_MAP3" x="-293.6" y="-68.1"/>
+    <waypoint name="_MAP4" x="-271.3" y="108.9"/>
+    <waypoint name="ZBC" x="-171.4" y="-5.1"/>
+    <waypoint name="ZBDIR" x="-229.4" y="1.7"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlyZone" type="dynamic">
@@ -138,7 +137,7 @@ static inline void set_expo(float e) {
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
     <block group="map" name="ZamboniSurvey" strip_button="Zamboni">
-      <call_once fun="nav_survey_zamboni_setup(WP_ZBC, WP_ZBDIR, 125, 13, 13, GetAltRef()+map_alt)"/>
+      <call_once fun="nav_survey_zamboni_setup(WP_ZBC, WP_ZBDIR, 200, 13, 13, GetAltRef()+map_alt)"/>
       <call fun="nav_survey_zamboni_run()"/>
       <deroute block="Standby"/>
     </block>
