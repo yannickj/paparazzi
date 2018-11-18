@@ -47,7 +47,7 @@ static inline void set_expo(float e) {
 #define set_expo(_e) { printf("setting expo %f\n",_e); fflush(stdout); }
 #endif
 
-#define LINE_START_FUNCTION dc_Survey(15);
+#define LINE_START_FUNCTION dc_Survey(20);
 #define LINE_STOP_FUNCTION dc_autoshoot = DC_AUTOSHOOT_STOP;
 #endif
 </header>
@@ -91,11 +91,10 @@ static inline void set_expo(float e) {
   </sectors>
   <variables>
     <variable var="exposure" init="2." min="0.1" max="20." step="0.1"/>
+    <variable var="map_alt" init="30." min="10." max="60." step="1."/>
   </variables>
   <modules>
-    <module name="nav" type="survey_polygon"/>
     <module name="nav" type="survey_zamboni"/>
-    <module name="gvf_module"/>
   </modules>
   <exceptions>
     <!-- RC-Loss -->
@@ -138,18 +137,8 @@ static inline void set_expo(float e) {
     <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
-    <block group="map" name="Mapping" strip_button="PolySurvey">
-      <call_once fun="nav_survey_polygon_setup(WP__MAP1, 4, 280, 40, 10, 30, GetAltRef()+20)"/>
-      <call fun="nav_survey_polygon_run()"/>
-      <deroute block="Standby"/>
-    </block>
     <block group="map" name="ZamboniSurvey" strip_button="Zamboni">
-      <call_once fun="nav_survey_zamboni_setup(WP_ZBC, WP_ZBDIR, 120, 13, 13, GetAltRef()+20)"/>
-      <call fun="nav_survey_zamboni_run()"/>
-      <deroute block="Standby"/>
-    </block>
-    <block group="map" name="ZamboniSurvey2" strip_button="Zamboni 2">
-      <call_once fun="nav_survey_zamboni_setup(WP_ZBC, WP_ZBDIR2, 170, 10, 15, GetAltRef()+20)"/>
+      <call_once fun="nav_survey_zamboni_setup(WP_ZBC, WP_ZBDIR, 125, 13, 13, GetAltRef()+map_alt)"/>
       <call fun="nav_survey_zamboni_run()"/>
       <deroute block="Standby"/>
     </block>
