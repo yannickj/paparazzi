@@ -1,10 +1,25 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="175" ground_alt="155" home_mode_height="18" lat0="-37.623547" lon0="145.125942" max_dist_from_home="400" name="IMAV2018 Carto" qfu="180." security_height="10">
+<flight_plan alt="195" ground_alt="155" home_mode_height="18" lat0="-37.623547" lon0="145.125942" max_dist_from_home="400" name="IMAV2018 Carto" qfu="180." security_height="10">
   <header>
 #include "subsystems/datalink/datalink.h"
 
-static inline bool delay_test(bool test, int delay) {
+static inline bool delay_test_rc(bool test, int delay) {
+  static int nb = 0;
+  if (test) {
+    nb++;
+    if (nb == delay) {
+      nb = 0;
+      return true;
+    }
+    return false;
+  } else {
+    nb = 0;
+    return false;
+  }
+}
+
+static inline bool delay_test_gf(bool test, int delay) {
   static int nb = 0;
   if (test) {
     nb++;
@@ -40,15 +55,15 @@ static inline void set_expo(float e) {
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="-12.8" y="19.6"/>
     <waypoint alt="159" name="TD" x="53.8" y="43.7"/>
-    <waypoint alt="170" name="AF" x="27.5" y="-43.5"/>
+    <waypoint alt="165" name="AF" x="27.5" y="-43.5"/>
     <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
     <waypoint name="CLIMB" x="-49.6" y="-15.9"/>
-    <waypoint name="_NFZ1" x="93.7" y="82.1"/>
-    <waypoint name="_NFZ2" x="56.9" y="-110.6"/>
-    <waypoint name="_NFZ3" x="-331.6" y="-111.4"/>
+    <waypoint name="_NFZ1" x="95.7" y="89.6"/>
+    <waypoint name="_NFZ2" x="47.6" y="-140.9"/>
+    <waypoint name="_NFZ3" x="-335.2" y="-127.8"/>
     <waypoint name="_NFZ4" x="-265.1" y="-3.4"/>
     <waypoint name="_NFZ5" x="-296.4" y="94.5"/>
-    <waypoint name="_NFZ6" x="-253.6" y="135.4"/>
+    <waypoint name="_NFZ6" x="-241.7" y="144.5"/>
     <waypoint name="_MAP1" x="-47.0" y="69.0"/>
     <waypoint name="_MAP2" x="-104.7" y="-89.3"/>
     <waypoint name="_MAP3" x="-244.8" y="-86.3"/>
@@ -84,10 +99,10 @@ static inline void set_expo(float e) {
   </modules>
   <exceptions>
     <!-- RC-Loss -->
-    <!--exception cond="(delay_test(RCLost(),10) &&
+    <exception cond="(delay_test_rc(RCLost(),20) &&
       !(IndexOfBlock('Takeoff') > nav_block) &&
       !(nav_block >= IndexOfBlock('Land Right AF-TD')) &&
-      (autopilot.launch == true) )" deroute="EmergencyLanding"/-->
+      (autopilot.launch == true) )" deroute="EmergencyLanding"/>
 
     <!-- Datalink loss -->
     <exception cond="(datalink_time > 10 &&
@@ -96,8 +111,9 @@ static inline void set_expo(float e) {
       (autopilot.launch == true) )" deroute="EmergencyLanding"/>
 
     <!-- Geofence -->
-    <exception cond="( delay_test(!InsideFlyZone(GetPosX(), GetPosY()),10) &&
-      (nav_block >= IndexOfBlock('Takeoff') && IndexOfBlock('Land Right AF-TD') > nav_block) &&
+    <exception cond="(delay_test_gf(!InsideFlyZone(GetPosX(), GetPosY()),10) &&
+      !(IndexOfBlock('Takeoff') > nav_block) &&
+      !(nav_block >= IndexOfBlock('Land Right AF-TD')) &&
       (autopilot.launch == true) )" deroute="EmergencyLanding"/>
 
   </exceptions>
@@ -123,7 +139,7 @@ static inline void set_expo(float e) {
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
     <block group="map" name="Mapping" strip_button="PolySurvey">
-      <call_once fun="nav_survey_polygon_setup(WP__MAP1, 4, 280, 20, 10, 30, GetAltRef()+20)"/>
+      <call_once fun="nav_survey_polygon_setup(WP__MAP1, 4, 280, 40, 10, 30, GetAltRef()+20)"/>
       <call fun="nav_survey_polygon_run()"/>
       <deroute block="Standby"/>
     </block>
