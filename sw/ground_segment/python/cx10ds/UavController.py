@@ -34,16 +34,16 @@ from PID import PID
 class UavController:
     def __init__(self, gui=True, detector=None):
         self.use_gui = gui
-        self.pid_lat = PID(P=0.44,D=0.23,I=0.3)
+        self.pid_lat = PID(P=0.25,D=0.32,I=0.2)
         self.pid_vert = PID(P=1.3,D=0.5,I=0.35)
-        self.pid_dist = PID(P=10.,D=4.,I=2.)
+        self.pid_dist = PID(P=12.,D=4.,I=2.)
         self.mission = False
         self.autoland = False
         self.ff_speed_gain = 30.
         self.speed = 1. # in meters/s
-        self.set_dist(2.5) # in meters
-        self.limit1 = 17. # in meters, end mission 1 limit
-        self.limit2 = 10. # in meters, end mission 2 limit
+        self.set_dist(2.) # in meters
+        self.limit1 = 8.5 # in meters, end mission 1 limit
+        self.limit2 = 22. # in meters, end mission 2 limit
         self.limit = self.limit1 # current limit
 
         if self.use_gui:
