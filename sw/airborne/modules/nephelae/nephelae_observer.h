@@ -19,6 +19,10 @@
 extern float neph_kfw;
 
 struct ObsVect{
+	//uint32_t current_time;
+	uint32_t gyro_time;
+	uint32_t acc_time;
+	float debug;
 	struct FloatVect3 airspeed;
 	struct FloatRates rotspeed;
 	struct FloatEulers attitude;
@@ -26,7 +30,13 @@ struct ObsVect{
 
 extern struct ObsVect neph_obs_state;
 
-extern void nephelae_observer_init(void);
+extern void nephelae_observer_init(void); //enlever extern
+
+void omega_process(void);
+void omega_zero_process(void);
+void motor_process(void);
+void observer_derivative(void);
+void integration(void);
 
 #endif
 

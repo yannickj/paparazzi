@@ -45,5 +45,14 @@ extern float speed_rate;
 extern void nephelae_control_init(void);
 extern void neph_h_ctl_attitude_loop(void);
 
+void gamma_process(void);
+void control_law(void);
+void control_trim(void);
+void control_voltage(void);
+void control_saturation_motor(void);
+void control_saturation_actuator(void);
+void control_demodulation_actuator(void);
+void control_actuator_convertion(void);
+
 #endif
 

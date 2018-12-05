@@ -27,16 +27,6 @@
 #endif
 static abi_event gps_ev;
 
-/** ABI binding for Neph state
-*/
-#ifndef NEPH_OBS_ID
-#define NEPH_OBS_ID ABI_BROADCAST
-#endif
-static abi_event neph_ev;
-
-/**ABI publisher for Neph State
- */
-#define SENDER_ID 25
 
 #define PI 3.14159265358979323846
 
@@ -104,7 +94,7 @@ int16_t command_flap = 0;
 int16_t command_tension = 0;
 
 static void gps_cb(uint8_t sender_id __attribute__((unused)),
-                    uint32_t stamp, struct GpsState *gps_s){
+                    uint32_t stamp __attribute__((unused)), struct GpsState *gps_s){
 
 	alt_gps = (float)gps_s->hmsl;
 	neph_temp = 288.25 - (6.5/1000.0) * (alt_gps/1000.0);
@@ -115,13 +105,10 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
 static void send_neph_debug(struct transport_tx *trans, struct link_device *dev)
 {
 	pprz_msg_send_NEPHELAE_TEST_DEBUG(trans, dev, AC_ID,
-										&alt_gps, &neph_m, &neph_obs_state.airspeed.x, &neph_obs_state.airspeed.y, &neph_obs_state.airspeed.z,
-										//&c_time, &neph_kfw, &x_u, &x_v, &x_w,
+										&neph_obs_state.gyro_time, &neph_obs_state.acc_time, &neph_obs_state.debug, &neph_obs_state.airspeed.x, &neph_obs_state.airspeed.y, &neph_obs_state.airspeed.z,
 										&neph_obs_state.rotspeed.p, &neph_obs_state.rotspeed.q, &neph_obs_state.rotspeed.r,
 										&neph_obs_state.attitude.phi, &neph_obs_state.attitude.theta,
-										//&x_p, &x_q, &x_r, &x_phi, &x_theta,
-										&neph_h_ctl_pitch_setpoint, &neph_gamma, &neph_ro);
-										//&delta_u_elevon, &delta_u_aileron, &delta_u_thottle);
+										&neph_ctrl_state.aileron, &neph_ctrl_state.flap, &neph_ctrl_state.v_motor);
 }
 
 void gamma_process(void){
@@ -293,9 +280,13 @@ void nephelae_control_init(void) {
 	neph_v_ctl_throttle_setpoint = 0.f;
 	neph_v_ctl_power_setpoint = 0;
 
+	neph_ctrl_state.aileron = 0.f;
+	neph_ctrl_state.flap = 0.f;
+	neph_ctrl_state.v_motor = 0.f;
+
 	trim_elevator = 0.f;
 	trim_aileron = 0.f;
-	trim_thrust = 1.5f;
+	trim_thrust = 0.f;
 
 	AbiBindMsgGPS(GPS_ID, &gps_ev, gps_cb);
 
