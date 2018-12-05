@@ -71,7 +71,7 @@
 
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-#ifndef USE_CHIBIOS_RTOS // already defined by chibios syscalls
+#if (!defined USE_CHIBIOS_RTOS) && (!defined _GNU_SOURCE) // already defined by chibios or linux syscalls
 
 __attribute__((used))
 int _read_r(struct _reent *r, int file, char * ptr, int len)

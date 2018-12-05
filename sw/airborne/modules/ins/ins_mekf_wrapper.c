@@ -434,7 +434,7 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
 			NED_FLOAT_OF_BFP(pos, ned_pos);
 			struct EcefCoor_f ecef_vel;
 			ECEF_FLOAT_OF_BFP(ecef_vel, gps_s->ecef_vel);
-			ned_of_ecef_vect_f(&speed, &state.ned_origin_f, &ecef_vel);
+			ned_of_ecef_vect_f((struct NedCoor_f *)(&speed), &state.ned_origin_f, &ecef_vel);
       ins_mekf_update_pos_speed(&pos, &speed);
 
 #if LOG_MEKFW_FILTER
