@@ -1,0 +1,97 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="182" ground_alt="150" lat0="43.633794" lon0="1.365473" max_dist_from_home="3500" name="WAC2019_fixedwing_fpl" qfu="225" security_height="10">
+  <header>
+#include "subsystems/datalink/datalink.h"
+</header>
+  <waypoints>
+    <waypoint alt="150.0" lat="43.6341724" lon="1.3661600" name="HOME"/>
+    <waypoint lat="43.6348316" lon="1.3644112" name="_BASELEG"/>
+    <waypoint alt="162.0" lat="43.635259"  lon="1.363972" name="AF1"/>
+    <waypoint alt="150.0" lat="43.6343329" lon="1.3649094" name="TD1"/>
+    <waypoint alt="150.0" lat="43.6351678" lon="1.3640560" name="TD2"/>
+    <waypoint alt="162.0" lat="43.634261"  lon="1.364993" name="AF2"/>
+    <waypoint lat="43.6353833" lon="1.3638528" name="CLIMB"/>
+    <waypoint lat="43.6351524" lon="1.3650263" name="STDBY"/>
+    <waypoint lat="43.637385"  lon="1.357608"  name="14L"/>
+    <waypoint lat="43.6387114" lon="1.3601377" name="X14L"/>
+    <waypoint lat="43.615621"  lon="1.380265"  name="32R"/>
+    <waypoint lat="43.644130"  lon="1.345926"  name="14R"/>
+    <waypoint lat="43.6455848" lon="1.3492908" name="X14R"/>
+    <waypoint lat="43.618973"  lon="1.372112"  name="32L"/>
+  </waypoints>
+  <exceptions/>
+  <blocks>
+    <block name="Wait GPS">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+      <call_once fun="NavSetGroundReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <attitude roll="0" throttle="0" vmode="throttle"/>
+    </block>
+    <block group="home" key="t" name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
+      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="StandbyOut"/>
+      <set value="0" var="autopilot.kill_throttle"/>
+      <set value="0" var="autopilot.flight_time"/>
+      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>
+      <deroute block="StandbyOut"/>
+    </block>
+    <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
+      <circle radius="nav_radius" wp="STDBY"/>
+    </block>
+    <block group="home" name="StandbyOut">
+      <circle radius="nav_radius" until="NavCircleCount() > 2.0" wp="STDBY"/>
+    </block>
+    <block group="extra_pattern" name="14L32R" strip_button="14L32R" strip_icon="path.png">
+      <path wpts="STDBY,X14L,14L,32R,14L,X14L"/>
+    </block>
+    <block group="extra_pattern" name="14R32L" strip_button="14R32L" strip_icon="path.png">
+      <path wpts="STDBY,X14R,14R,32L,14R,X14R"/>
+    </block>
+    <block group="land" name="PreLand14" strip_button="PreLand14" strip_icon="land-right.png">
+      <set value="-DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="StandbyIn14"/>
+    </block>
+    <block group="land" name="PreLand32" strip_button="PreLand32" strip_icon="land-left.png">
+      <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="StandbyIn32"/>
+    </block>
+    <block group="home" name="StandbyIn14">
+      <circle radius="nav_radius" until="NavCircleCount() > 2.0" wp="STDBY"/>
+    </block>
+    <block name="Land14">
+      <call_once fun="nav_compute_baseleg(WP_AF1, WP_TD1, WP__BASELEG, nav_radius)"/>
+      <circle radius="nav_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
+      <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>        
+    </block>
+    <block name="Final14">
+      <exception cond="GetAltRef() + 10 > GetPosAlt()" deroute="Flare14"/>
+      <go from="AF1" hmode="route" vmode="glide" wp="TD1"/>
+    </block>
+    <block name="Flare14">
+      <go approaching_time="0" from="AF1" hmode="route" throttle="0.0" vmode="throttle" wp="TD1"/>
+      <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="home" name="StandbyIn32">
+      <circle radius="nav_radius" until="NavCircleCount() > 2.0" wp="STDBY"/>
+    </block>
+    <block name="Land32">
+      <call_once fun="nav_compute_baseleg(WP_AF2, WP_TD2, WP__BASELEG, nav_radius)"/>
+      <circle radius="nav_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
+      <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>        
+    </block>
+    <block name="Final32">
+      <exception cond="GetAltRef() + 10 > GetPosAlt()" deroute="Flare32"/>
+      <go from="AF2" hmode="route" vmode="glide" wp="TD2"/>
+    </block>
+    <block name="Flare32">
+      <go approaching_time="0" from="AF2" hmode="route" throttle="0.0" vmode="throttle" wp="TD2"/>
+      <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
