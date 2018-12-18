@@ -40,7 +40,7 @@ void to_atc_periodic(void)
 
   float lat        = (stateGetPositionLla_i()->lat)/1e7;
   float lon        = (stateGetPositionLla_i()->lon)/1e6;
-  float alt        = stateGetPositionEnu_f()->z + (state.ned_origin_i.hmsl/1e3);
+  float alt        = stateGetPositionEnu_f()->z + (gps.hmsl/1e3);
 
   float track      = DegOfRad(gps.course/1e7);
   if (track < 0.) track += 360.0;
