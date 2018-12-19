@@ -21,15 +21,16 @@
 #define TO_ATC_MODEL "A320"
 #endif
 
+#define ASCII_TO_INT 48
 
-const char str[5] = TO_ATC_TACODE;
-const char *elts[] = { &str[0], &str[1], &str[2], &str[3] , &str[4] };
-
-char tacode[] = TO_ATC_TACODE;
-
+char tacode[] = {0, 0, 0, 0};
+char tacode_ascii[5] = {48, 48, 48, 48, '\0'};
 
 void to_atc_init(void)
 {
+  for(int i=0; i<4; i++) {
+    tacode[i] = TO_ATC_TACODE[i] - ASCII_TO_INT;
+  }
 }
 
 
@@ -40,7 +41,7 @@ void to_atc_periodic(void)
 
   float lat        = (stateGetPositionLla_i()->lat)/1e7;
   float lon        = (stateGetPositionLla_i()->lon)/1e6;
-  float alt        = stateGetPositionEnu_f()->z + (gps.hmsl/1e3);
+  float alt        = /*stateGetPositionEnu_f()->z +*/ (gps.hmsl/1e3);
 
   float track      = DegOfRad(gps.course/1e7);
   if (track < 0.) track += 360.0;
@@ -57,7 +58,12 @@ void to_atc_periodic(void)
   char  company[]  = TO_ATC_COMPANY;
   char  model[]    = TO_ATC_MODEL;
 
+  //update transponder code (ints to ASCII)
+  for(int i=0; i<4; i++) {
+    tacode_ascii[i] = tacode[i] + ASCII_TO_INT;
+  }
+
   DOWNLINK_SEND_TO_ATC(DefaultChannel, DefaultDevice,
     strlen(flight),flight, strlen(callsign),callsign, &lat, &lon, &alt, &track, &speed, &vspeed,
-    &heading, &pitch, &roll, strlen(tacode),tacode, strlen(company),company, strlen(model), model);
+    &heading, &pitch, &roll, strlen(tacode_ascii),tacode_ascii, strlen(company),company, strlen(model), model);
 }
