@@ -1,0 +1,16 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="lwc_sensor">
+  <doc>
+    <description>This module will do some action on the flight plan according to the value of LWC given by the python agent basedon the MesoNh cloud simulation.</description>
+  </doc>
+  <header>
+    <file name="lwc_sensor.h"/>
+  </header>
+  <init fun="lwc_sensor_init()"/>
+  <datalink message="PAYLOAD_COMMAND" fun="LWC_sensor_in_out_callback()"/>
+  <makefile>
+    <file name="lwc_sensor.c"/>
+  </makefile>
+</module>
+
