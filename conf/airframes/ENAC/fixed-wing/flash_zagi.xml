@@ -42,6 +42,7 @@
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger"  type="sd_chibios"/>
+    <module name="lwc_sensor"/>
     <!--module name="flightrecorder"/-->
 
   </firmware>
