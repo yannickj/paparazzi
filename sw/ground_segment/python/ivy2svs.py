@@ -12,12 +12,17 @@ import argparse
 #DEFAULTBUS="127.255.255.255:2010"
 #DEFAULTBUS=""
 
-format_TO_ATC="(\\S*) TO_ATC (.*)"
+format_TO_ATC="(\\S*) TO_ATC (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*)"
+
+fieldNames = ["Flight=", "CallSign=", "Lat=", "Lon=", "Alt=", "Track=", "Speed=", "VSpeed=", "Heading=", "Pitch=", "Roll=", "TACode=", "Company=", "Model="]
 
 def on_TO_ATC(agent, *larg):
   for element in dictlist:
    if element['ac_id'] == int(larg[0]):
-     res = "DroneEvent "+larg[1].replace('"','');
+
+     res = "DroneEvent"
+     for i, name in enumerate(fieldNames):
+       res += " " + name + larg[i+1].replace("\"", '')
      bus.send_msg(res)
  
 def on_Period(IvyTimer):

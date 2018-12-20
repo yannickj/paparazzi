@@ -40,7 +40,7 @@ void to_atc_periodic(void)
   char  callsign[] = TO_ATC_CALLSIGN;
 
   float lat        = (stateGetPositionLla_i()->lat)/1e7;
-  float lon        = (stateGetPositionLla_i()->lon)/1e6;
+  float lon        = (stateGetPositionLla_i()->lon)/1e7;
   float alt        = /*stateGetPositionEnu_f()->z +*/ (gps.hmsl/1e3);
 
   float track      = DegOfRad(gps.course/1e7);
@@ -50,7 +50,7 @@ void to_atc_periodic(void)
   float vspeed     = stateGetSpeedEnu_f()->z;
 
   float heading    = DegOfRad(stateGetNedToBodyEulers_f()->psi);
-  if (heading < 0.) heading += 360.0;
+  //if (heading < 0.) heading += 360.0;
 
   float pitch      = DegOfRad(stateGetNedToBodyEulers_f()->theta);
   float roll       = DegOfRad(stateGetNedToBodyEulers_f()->phi);
