@@ -201,10 +201,10 @@
 
   <section name="TO_ATC" prefix="TO_ATC_">
     <define name="FLIGHT"   value="838"    type="string"/>
-    <define name="CALLSIGN" value="DRONE9" type="string"/> 
+    <define name="CALLSIGN" value="DRONE3" type="string"/> 
     <define name="TACODE"   value="5834"   type="string"/> 
-    <define name="COMPANY"  value="POP"    type="string"/> 
-    <define name="MODEL"    value="UAV"   type="string"/>  
+    <define name="COMPANY"  value="ATB"    type="string"/> 
+    <define name="MODEL"    value="UAVB"   type="string"/>  
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">

@@ -200,11 +200,11 @@
   </modules>
 
   <section name="TO_ATC" prefix="TO_ATC_">
-    <define name="FLIGHT"   value="634"    type="string"/>
+    <define name="FLIGHT"   value="636"    type="string"/>
     <define name="CALLSIGN" value="DRONE2" type="string"/> 
     <define name="TACODE"   value="5678"   type="string"/> 
-    <define name="COMPANY"  value="AFR"    type="string"/> 
-    <define name="MODEL"    value="A320"   type="string"/>  
+    <define name="COMPANY"  value="MED"    type="string"/> 
+    <define name="MODEL"    value="UAVB"   type="string"/>  
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">

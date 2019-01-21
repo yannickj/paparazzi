@@ -77,11 +77,11 @@
   </firmware>
 
   <section name="TO_ATC" prefix="TO_ATC_">
-    <define name="FLIGHT"   value="523"    type="string"/>
+    <define name="FLIGHT"   value="526"    type="string"/>
     <define name="CALLSIGN" value="DRONE1" type="string"/> 
     <define name="TACODE"   value="1234"   type="string"/> 
-    <define name="COMPANY"  value="AFR"    type="string"/> 
-    <define name="MODEL"    value="A320"   type="string"/>  
+    <define name="COMPANY"  value="ATB"    type="string"/> 
+    <define name="MODEL"    value="UAVA"   type="string"/>  
   </section>
 
    <servos>
