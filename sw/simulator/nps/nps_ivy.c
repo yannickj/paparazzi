@@ -60,13 +60,13 @@ void nps_ivy_init(char *ivy_bus)
 {
   const char *agent_name = AIRFRAME_NAME"_NPS";
   const char *ready_msg = AIRFRAME_NAME"_NPS Ready";
-  IvyInit(agent_name, ready_msg, NULL, NULL, NULL, NULL);
+  // IvyInit(agent_name, ready_msg, NULL, NULL, NULL, NULL);
 
   // bind on a general WORLD_ENV (not a reply to request)
-  IvyBindMsg(on_WORLD_ENV, NULL, "^(\\S*) WORLD_ENV (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*)");
+  // IvyBindMsg(on_WORLD_ENV, NULL, "^(\\S+) WORLD_ENV (\\S+) (\\S+) (\\S+) (\\S+) (\\S+) (\\S+)");
 
   // to be able to change datalink_enabled setting back on
-  IvyBindMsg(on_DL_SETTING, NULL, "^(\\S*) DL_SETTING (\\S*) (\\S*) (\\S*)");
+  // IvyBindMsg(on_DL_SETTING, NULL, "^(\\S+) DL_SETTING (\\S+) (\\S+) (\\S+)");
 
 #ifdef __APPLE__
   const char *default_ivy_bus = "224.255.255.255";
@@ -74,9 +74,9 @@ void nps_ivy_init(char *ivy_bus)
   const char *default_ivy_bus = "127.255.255.255";
 #endif
   if (ivy_bus == NULL) {
-    IvyStart(default_ivy_bus);
+    // IvyStart(default_ivy_bus);
   } else {
-    IvyStart(ivy_bus);
+    // IvyStart(ivy_bus);
   }
 
   nps_ivy_send_world_env = false;
@@ -84,7 +84,7 @@ void nps_ivy_init(char *ivy_bus)
   ap_launch_index = find_launch_index();
 
   // Launch separate thread with IvyMainLoop()
-  pthread_create(&th_ivy_main, NULL, ivy_main_loop, NULL);
+  // pthread_create(&th_ivy_main, NULL, ivy_main_loop, NULL);
 
 }
 
@@ -133,7 +133,7 @@ void nps_ivy_send_WORLD_ENV_REQ(void)
   int pid = (int)getpid();
 
   // Bind to the reply
-  ivyPtr = IvyBindMsg(on_WORLD_ENV, NULL, "^%d_%d (\\S*) WORLD_ENV (\\S*) (\\S*) (\\S*) (\\S*) (\\S*) (\\S*)", pid, seq);
+  ivyPtr = IvyBindMsg(on_WORLD_ENV, NULL, "^%d_%d (\\S+) WORLD_ENV (\\S+) (\\S+) (\\S+) (\\S+) (\\S+) (\\S+)", pid, seq);
 
   // Send actual request
   struct NpsFdm fdm_ivy;
@@ -207,6 +207,8 @@ void nps_ivy_display(struct NpsFdm* fdm_data, struct NpsSensors* sensors_data)
   memcpy (&fdm_ivy, fdm_data, sizeof(struct NpsFdm));
 
   struct NpsSensors sensors_ivy;
+
+  return;
   memcpy (&sensors_ivy, sensors_data, sizeof(struct NpsSensors));
 
   IvySendMsg("%d NPS_RATE_ATTITUDE %f %f %f %f %f %f",

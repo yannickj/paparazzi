@@ -37,11 +37,11 @@
       <call_once fun="NavKillThrottle()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Start Engine">
+    <block name="Start Engine" strip_button="Start Engine" strip_icon="on.png" group="takeoff">
       <call_once fun="NavResurrect()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png" group="takeoff">
       <exception cond="stateGetPositionEnu_f()->z > 5.0" deroute="Standby"/>
       <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
       <stay climb="nav_climb_vspeed" vmode="climb" wp="CLIMB"/>

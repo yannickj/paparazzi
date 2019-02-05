@@ -1,28 +1,28 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="182" ground_alt="150" lat0="43.617997"  lon0="1.386943"  max_dist_from_home="8000" name="WAC2019_vtol_fpl" security_height="25">
+<flight_plan alt="182" ground_alt="150" lat0="43.6230150" lon0="1.3785282" max_dist_from_home="8000" name="WAC2019_vtol_fpl" security_height="25">
   <header>
 #include "autopilot.h"
-  </header>
+</header>
   <waypoints>
     <waypoint name="HOME" x="0.0" y="0.0"/>
     <waypoint name="CLIMB" x="0.0" y="0.0"/>
-    <waypoint lat="43.617997"  lon="1.386943" name="STDBY"/>
-    <waypoint lat="43.617611"  lon="1.386729" name="P1"/>
-    <waypoint lat="43.617212"  lon="1.388253" name="P2"/>
-    <waypoint lat="43.616968"  lon="1.389545" name="P3"/>
+    <waypoint lat="43.623015" lon="1.3785282" name="STDBY"/>
+    <waypoint lat="43.622301" lon="1.378892" name="P1"/>
+    <waypoint lat="43.619159" lon="1.382151" name="P2"/>
+    <waypoint lat="43.617282" lon="1.388186" name="P3"/>
     <waypoint lat="43.6165588" lon="1.3919818" name="P4"/>
-    <waypoint lat="43.616257"  lon="1.393229" name="P5"/>
+    <waypoint lat="43.616257" lon="1.393229" name="P5"/>
     <waypoint lat="43.6156697" lon="1.3942489" name="P6"/>
-    <waypoint lat="43.615388"  lon="1.394820" name="P7"/>
-    <waypoint lat="43.615016"  lon="1.395648" name="P8"/>
-    <waypoint lat="43.614506"  lon="1.396924" name="P9"/>
+    <waypoint lat="43.615388" lon="1.394820" name="P7"/>
+    <waypoint lat="43.615016" lon="1.395648" name="P8"/>
+    <waypoint lat="43.614506" lon="1.396924" name="P9"/>
     <waypoint lat="43.6141076" lon="1.3982990" name="P10"/>
-    <waypoint lat="43.613992"  lon="1.399629" name="P11"/>
-    <waypoint lat="43.613619"  lon="1.400796" name="P12"/>
-    <waypoint lat="43.613375"  lon="1.400328" name="P13"/>
-    <waypoint lat="43.613264"  lon="1.400090" name="P14"/>
-    <waypoint alt="162.0" lat="43.613264"  lon="1.400090" name="TD"/>
+    <waypoint lat="43.613992" lon="1.399629" name="P11"/>
+    <waypoint lat="43.613619" lon="1.400796" name="P12"/>
+    <waypoint lat="43.613375" lon="1.400328" name="P13"/>
+    <waypoint lat="43.613264" lon="1.400090" name="P14"/>
+    <waypoint alt="162.0" lat="43.613264" lon="1.400090" name="TD"/>
   </waypoints>
   <blocks>
     <block name="Wait GPS">
@@ -37,11 +37,11 @@
       <call_once fun="NavKillThrottle()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Start Engine">
+    <block group="takeoff" name="Start Engine" strip_button="Start Engine" strip_icon="on.png">
       <call_once fun="NavResurrect()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+    <block group="takeoff" name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
       <exception cond="stateGetPositionEnu_f()->z > 5.0" deroute="Standby"/>
       <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
       <stay climb="nav_climb_vspeed" vmode="climb" wp="CLIMB"/>
