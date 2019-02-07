@@ -143,7 +143,8 @@ if __debug__:
 
                 #outfifo.write(msg)
                 #outfifo.flush()
-                sock.sendto(bytes(msg, "utf-8"),("127.0.0.1",5005))
+                #sock.sendto(bytes(msg, "utf-8"),("127.0.0.1",5005))
+                sock.sendto(bytes(msg, "utf-8"),("192.168.1.245",5005))
 
 
 #                stamp = round(stamp,3)
