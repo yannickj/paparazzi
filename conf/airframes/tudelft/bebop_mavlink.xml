@@ -31,16 +31,15 @@
       <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
     </module>
     <module name="ins" type="extended"/>
-  </firmware>
 
-  <modules main_freq="512">
+
     <module name="geo_mag"/>
     <module name="air_data"/>
     <module name="send_imu_mag_current"/>
     <!--module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module-->
-    <module name="video_thread"/>
+    <module name="bebop_cam"/>
 
     <module name="cv_blob_locator">
       <define name="BLOB_LOCATOR_CAMERA" value="bottom_camera"/>
@@ -72,7 +71,8 @@
       <configure name="MAVLINK_PORT" value="UDP1"/>
       <define name="MAVLINK_SYSID" value="1"/>
     </module>
-  </modules>
+  </firmware>
+
 
   <commands>
     <axis name="PITCH" failsafe_value="0"/>

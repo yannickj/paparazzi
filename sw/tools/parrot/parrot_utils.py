@@ -21,6 +21,8 @@
 #
 
 from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import bytes
 import socket
 import telnetlib
 import os
@@ -103,13 +105,15 @@ class ParrotUtils:
             self.tn = telnetlib.Telnet(self.address, timeout=3)
             self.ftp = FTP(self.address)
             self.ftp.login()
-            self.tn.read_until(self.prompt)
+            self.tn.read_until(bytes(self.prompt, 'utf-8'))
             return True
         except:
             print('Could not connect to the ' + self.uav_name + ' (address: ' + self.address + ')')
             print('Check if the ' + self.uav_name + ' is turned on and the computer is connected over wifi or bluetooth.')
             if self.address == '192.168.42.1':
-                print("If you are using Bebop 1 or 2, don't forget pressing the power button 4 times after the Bebop has booted!")
+                print("If you are using Bebop 1 or 2, don't forget pressing the power button 4 times after the Bebop has booted!\n")
+                print("And if using Disco pressing the power button 2 times after aircraft powerup.")
+                print("Or run the buttonpress script to get rid of this buttonpress annoyance.")
             exit(2)
 
     # Close the telnet and ftp
@@ -119,11 +123,11 @@ class ParrotUtils:
 
     # Execute a command
     def execute_command(self, command):
-        self.tn.write(command + '\n')
-        s = self.tn.read_until(self.prompt)
-        if s.endswith('[JS] $ '):
+        self.tn.write(bytes(command + '\n', 'utf-8'))
+        s = self.tn.read_until(bytes(self.prompt, 'utf-8'))
+        if s.endswith(b'[JS] $ '):
             s = s[len(command) + 2:-8]
-        elif s.endswith('[RS.edu] $ '):
+        elif s.endswith(b'[RS.edu] $ '):
             s = s[len(command) + 2:-12]
         else:
             s = s[len(command) + 2:-4]
@@ -260,9 +264,9 @@ class ParrotUtils:
         # Make the upload directory and upload the file
         self.create_directory(self.upload_path + folder)
         if len(folder) > 0:
-            self.upload(folder + '/' + f[1], file(name, "rb"))
+            self.upload(folder + '/' + f[1], open(name, "rb"))
         else:
-            self.upload(f[1], file(name, "rb"))
+            self.upload(f[1], open(name, "rb"))
         sleep(0.5)
         print('Succesfully uploaded "' + name + '" to folder "' + folder + '"')
 
@@ -274,7 +278,7 @@ class ParrotUtils:
             if ((not v == ParrotVersion('0.0.0.0')) and ((v < ParrotVersion(min_ver)) or (v > ParrotVersion(max_ver)))):
                 print("Error: please upgrade your " + self.uav_name + " firmware to version between " + min_ver + " and " + max_ver + "!")
                 return
-            
+
         f = self.split_into_path_and_file(name)
 
         # Upload the file
@@ -381,7 +385,4 @@ class ParrotUtils:
         # Disconnect
         self.disconnect()
         return True
-
-
-
 

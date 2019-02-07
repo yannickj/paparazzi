@@ -36,13 +36,16 @@
 #include "generated/airframe.h"
 #include "mcu_periph/adc.h"
 #include "mcu_periph/spi.h"
+#include "mcu_periph/sys_time.h"
 #include "subsystems/abi.h"
 #include <pthread.h>
-#include "subsystems/datalink/downlink.h"
+#include <unistd.h>
+#include "subsystems/datalink/downlink.h"//FIXME, include only when link need
 
 #include "filters/median_filter.h"
 
 struct MedianFilterFloat sonar_filt;
+uint32_t sonar_bebop_spike_timer;
 
 #ifdef SITL
 #include "state.h"
@@ -91,11 +94,13 @@ static uint8_t pulse_transition_counter;
  */
 static uint8_t sonar_bebop_spi_d[2][16] = {{ 0xF0, 0xF0, 0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
                                            { 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00 }};
-
 struct SonarBebop sonar_bebop;
 
 static struct spi_transaction sonar_bebop_spi_t;
 void *sonar_bebop_read(void *data);
+#if SONAR_BEBOP_FILTER_NARROW_OBSTACLES
+static float sonar_filter_narrow_obstacles(float distance_sonar);
+#endif
 
 void sonar_bebop_init(void)
 {
@@ -105,6 +110,7 @@ void sonar_bebop_init(void)
   sonar_bebop.meas = 0;
   sonar_bebop.offset = 0;
 
+  /* configure spi transaction */
   sonar_bebop_spi_t.status        = SPITransDone;
   sonar_bebop_spi_t.select        = SPISelectUnselect;
   sonar_bebop_spi_t.dss           = SPIDss8bit;
@@ -113,13 +119,18 @@ void sonar_bebop_init(void)
   sonar_bebop_spi_t.input_buf     = NULL;
   sonar_bebop_spi_t.input_length  = 0;
 
+  init_median_filter_f(&sonar_filt, 5);
+#if SONAR_BEBOP_FILTER_NARROW_OBSTACLES
+  SysTimeTimerStart(sonar_bebop_spike_timer);
+#endif
+
 #if USE_SONAR
   pthread_t tid;
   pthread_create(&tid, NULL, sonar_bebop_read, NULL);
-  pthread_setname_np(tid, "pprz_sonar_thread");
+#ifndef __APPLE__
+  pthread_setname_np(tid, "sonar");
 #endif
-
-  init_median_filter_f(&sonar_filt, 5);
+#endif
 }
 
 uint16_t adc_buffer[SONAR_BEBOP_ADC_BUFFER_SIZE];
@@ -173,6 +184,10 @@ void *sonar_bebop_read(void *data __attribute__((unused)))
       sonar_bebop.meas = first_peak - (stop_send - diff / 2);
       sonar_bebop.distance = update_median_filter_f(&sonar_filt, (float)sonar_bebop.meas * SONAR_BEBOP_INX_DIFF_TO_DIST);
 
+#if SONAR_BEBOP_FILTER_NARROW_OBSTACLES
+      sonar_bebop.distance = sonar_filter_narrow_obstacles(sonar_bebop.distance);
+#endif
+
       // set sonar pulse mode for next pulse based on altitude
       if (mode == 0 && sonar_bebop.distance > SONAR_BEBOP_TRANSITION_LOW_TO_HIGH) {
         if (++pulse_transition_counter > SONAR_BEBOP_TRANSITION_COUNT) {
@@ -200,8 +215,50 @@ void *sonar_bebop_read(void *data __attribute__((unused)))
       // Send Telemetry report
       DOWNLINK_SEND_SONAR(DefaultChannel, DefaultDevice, &sonar_bebop.meas, &sonar_bebop.distance);
 #endif
+#ifndef SITL
     }
+#endif
     usleep(10000); //100Hz
   }
   return NULL;
 }
+
+
+#if SONAR_BEBOP_FILTER_NARROW_OBSTACLES
+
+#ifndef SONAR_BEBOP_FILTER_NARROW_OBSTACLES_JUMP
+#define SONAR_BEBOP_FILTER_NARROW_OBSTACLES_JUMP 0.4f
+#endif
+PRINT_CONFIG_VAR(SONAR_BEBOP_FILTER_NARROW_OBSTACLES_JUMP)
+
+#ifndef SONAR_BEBOP_FILTER_NARROW_OBSTACLES_TIME
+#define SONAR_BEBOP_FILTER_NARROW_OBSTACLES_TIME 1.0f
+#endif
+PRINT_CONFIG_VAR(SONAR_BEBOP_FILTER_NARROW_OBSTACLES_TIME)
+
+static float sonar_filter_narrow_obstacles(float distance_sonar)
+{
+  static float previous_distance = 0;
+  static float z0 = 0;
+  bool obstacle_is_in_view = false;
+  float diff_pre_cur = distance_sonar - previous_distance;
+  if (diff_pre_cur < -SONAR_BEBOP_FILTER_NARROW_OBSTACLES_JUMP) {
+    z0 = previous_distance;
+    obstacle_is_in_view = true;
+    SysTimeTimerStart(sonar_bebop_spike_timer);
+  }
+  previous_distance = distance_sonar;
+  float time_since_reset = SysTimeTimer(sonar_bebop_spike_timer);
+  if ((diff_pre_cur > SONAR_BEBOP_FILTER_NARROW_OBSTACLES_JUMP) || (time_since_reset > USEC_OF_SEC(SONAR_BEBOP_FILTER_NARROW_OBSTACLES_TIME)) ) {
+
+    obstacle_is_in_view = false;
+  }
+
+  if (obstacle_is_in_view) {
+    return z0;
+  } else {
+    return distance_sonar;
+  }
+}
+#endif
+

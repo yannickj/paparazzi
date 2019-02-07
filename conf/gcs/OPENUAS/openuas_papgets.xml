@@ -20,8 +20,8 @@
         <property name="icon" value="openuas_takeoff.png"/>
       </papget>
       <papget type="message_field" display="gauge" x="70" y="0">
-        <property name="field" value="BAT:voltage"/>
-        <property name="scale" value="0.1"/>
+        <property name="field" value="ENERGY:voltage"/>
+        <property name="scale" value="1."/>
         <property name="min" value="0."/>
         <property name="max" value="8.7"/>
         <property name="size" value="100."/>
@@ -53,13 +53,18 @@
         <property name="icon" value="openuas_standby.png"/>
       </papget>
       <papget type="message_field" display="gauge" x="370" y="0">
-        <property name="field" value="BAT:throttle"/>
-        <property name="scale" value="0.0104167"/>
+        <property name="field" value="ENERGY:throttle"/>
+        <property name="scale" value="1."/>
         <property name="min" value="0."/>
         <property name="max" value="100."/>
         <property name="size" value="100."/>
         <property name="text" value="Throttle(%)"/>
       </papget>
+      <papget type="video_plugin" display="plugin" x="30" y="50">
+        <property name="command" value="'gst-launch-1.0 udpsrc port=55004 ! 'application/x-rtp, payload=96' ! rtph264depay ! avdec_h264 ! autovideosink'"/>"
+        <property NAME="width" VALUE="320"/>
+        <property NAME="height" VALUE="240"/>
+        </papget>
     </widget>
     <columns>
       <rows SIZE="275">
