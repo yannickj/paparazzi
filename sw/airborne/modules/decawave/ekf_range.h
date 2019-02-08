@@ -94,6 +94,15 @@ extern struct EnuCoor_f ekf_range_get_pos(struct EKFRange *ekf_range);
  */
 extern struct EnuCoor_f ekf_range_get_speed(struct EKFRange *ekf_range);
 
+/** Update process and measurement noises
+ *
+ * @param[in] ekf_range EKFRange structure
+ * @param[in] Q_sigma2 process noise
+ * @param[in] R_dist measurement noise on distance
+ * @param[in] R_speed measurement noise on speed
+ */
+extern void ekf_range_update_noise(struct EKFRange *ekf_range, float Q_sigma2, float R_dist, float R_speed);
+
 /** Prediction step
  *
  * @param[in] ekf_range EKFRange structure

@@ -90,6 +90,23 @@ struct EnuCoor_f ekf_range_get_speed(struct EKFRange *ekf_range)
   return speed;
 }
 
+void ekf_range_update_noise(struct EKFRange *ekf_range, float Q_sigma2, float R_dist, float R_speed)
+{
+  int i;
+  const float dt = ekf_range->dt;
+  const float dt2 = dt * dt;
+  const float dt3 = dt2 * dt / 2.f;
+  const float dt4 = dt2 * dt2 / 4.f;
+  for (i = 0; i < EKF_RANGE_DIM; i += 2) {
+    ekf_range->Q[i][i] = Q_sigma2 * dt4;
+    ekf_range->Q[i+1][i] = Q_sigma2 * dt3;
+    ekf_range->Q[i][i+1] = Q_sigma2 * dt3;
+    ekf_range->Q[i+1][i+1] = Q_sigma2 * dt2;
+  }
+  ekf_range->R_dist = R_dist;
+  ekf_range->R_speed = R_speed;
+}
+
 /** propagate dynamic model
  *
  * F = [ 1 dt 0 0  0 0

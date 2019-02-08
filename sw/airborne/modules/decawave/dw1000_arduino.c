@@ -114,15 +114,15 @@
 #endif
 
 #ifndef DW1000_EKF_Q
-#define DW1000_EKF_Q 10.0f
+#define DW1000_EKF_Q 1.0f
 #endif
 
 #ifndef DW1000_EKF_R_DIST
-#define DW1000_EKF_R_DIST 0.001f
+#define DW1000_EKF_R_DIST 0.1f
 #endif
 
 #ifndef DW1000_EKF_R_SPEED
-#define DW1000_EKF_R_SPEED 0.01f
+#define DW1000_EKF_R_SPEED 0.1f
 #endif
 
 #endif // USE_EKF
@@ -160,6 +160,7 @@ struct DW1000 {
   struct Anchor anchors[DW1000_NB_ANCHORS];   ///< anchors data
   float raw_dist[DW1000_NB_ANCHORS];          ///< raw distance from anchors
   struct EnuCoor_f pos;       ///< local pos in anchors frame
+  struct EnuCoor_f speed;     ///< local speed in anchors frame
   struct GpsState gps_dw1000; ///< "fake" gps structure
   struct LtpDef_i ltp_def;    ///< ltp reference
   bool updated;               ///< new anchor data available
@@ -174,6 +175,9 @@ struct DW1000 {
 static struct DW1000 dw1000;
 
 bool dw1000_use_ekf;
+float dw1000_ekf_q;
+float dw1000_ekf_r_dist;
+float dw1000_ekf_r_speed;
 
 /// init arrays from airframe file
 static const uint16_t ids[] = DW1000_ANCHORS_IDS;
@@ -204,9 +208,10 @@ static void fill_anchor(struct DW1000 *dw) {
     uint16_t id = uint16_from_buf(dw->buf);
     if (dw->anchors[i].id == id) {
       dw->raw_dist[i] = float_from_buf(dw->buf + 2);
-      // TODO median filter for EKF
+      // median filter for EKF
+      const float dist = scale[i] * (dw->raw_dist[i] - offset[i]);
       // store scaled distance
-      dw->anchors[i].distance = scale[i] * (dw->raw_dist[i] - offset[i]);
+      dw->anchors[i].distance = update_median_filter_f(&dw->mf[i], dist);
       dw->anchors[i].time = get_sys_time_float();
       dw->anchors[i].updated = true;
       dw->updated = true; // at least one of the anchor is updated
@@ -270,6 +275,22 @@ static void send_gps_dw1000_small(struct DW1000 *dw)
   lla_of_ecef_i(&(dw->gps_dw1000.lla_pos), &(dw->gps_dw1000.ecef_pos));
   SetBit(dw->gps_dw1000.valid_fields, GPS_VALID_POS_LLA_BIT);
 
+  // Convert ENU speed to ECEF
+  struct EnuCoor_i enu_speed;
+  enu_speed.x = (int32_t) (dw->speed.x * 100.f);
+  enu_speed.y = (int32_t) (dw->speed.y * 100.f);
+  enu_speed.z = (int32_t) (dw->speed.z * 100.f);
+
+  VECT3_NED_OF_ENU(dw->gps_dw1000.ned_vel, enu_speed);
+  SetBit(dw->gps_dw1000.valid_fields, GPS_VALID_VEL_NED_BIT);
+
+  ecef_of_enu_vect_i(&dw->gps_dw1000.ecef_vel , &(dw->ltp_def) , &enu_speed);
+  SetBit(dw->gps_dw1000.valid_fields, GPS_VALID_VEL_ECEF_BIT);
+
+  dw->gps_dw1000.gspeed = (int16_t)FLOAT_VECT2_NORM(enu_speed);
+  dw->gps_dw1000.speed_3d = (int16_t)FLOAT_VECT3_NORM(enu_speed);
+
+  // HMSL
   dw->gps_dw1000.hmsl = dw->ltp_def.hmsl + enu_pos.z * 10;
   SetBit(dw->gps_dw1000.valid_fields, GPS_VALID_HMSL_BIT);
 
@@ -345,6 +366,7 @@ static inline bool check_and_compute_data(struct DW1000 *dw)
           }
         }
         dw->pos = ekf_range_get_pos(&dw->ekf_range);
+        dw->speed = ekf_range_get_speed(&dw->ekf_range);
         return true;
       }
     } else {
@@ -480,6 +502,9 @@ void dw1000_arduino_init(void)
   dw1000.pos.x = 0.f;
   dw1000.pos.y = 0.f;
   dw1000.pos.z = 0.f;
+  dw1000.speed.x = 0.f;
+  dw1000.speed.y = 0.f;
+  dw1000.speed.z = 0.f;
   dw1000.updated = false;
   for (int i = 0; i < DW1000_NB_ANCHORS; i++) {
     dw1000.raw_dist[i] = 0.f;
@@ -511,6 +536,9 @@ void dw1000_arduino_init(void)
   trilateration_init(dw1000.anchors);
 
   dw1000_use_ekf = DW1000_USE_EKF;
+  dw1000_ekf_q = DW1000_EKF_Q;
+  dw1000_ekf_r_dist = DW1000_EKF_R_DIST;
+  dw1000_ekf_r_speed = DW1000_EKF_R_SPEED;
   dw1000.ekf_running = false;
   ekf_range_init(&dw1000.ekf_range, DW1000_EKF_P0_POS, DW1000_EKF_P0_SPEED,
       DW1000_EKF_Q, DW1000_EKF_R_DIST, DW1000_EKF_R_SPEED, 0.1f);
@@ -525,6 +553,7 @@ void dw1000_arduino_periodic(void)
     if (dw1000.ekf_running) {
       ekf_range_predict(&dw1000.ekf_range);
       dw1000.pos = ekf_range_get_pos(&dw1000.ekf_range);
+      dw1000.speed = ekf_range_get_speed(&dw1000.ekf_range);
     }
   } else {
     dw1000.ekf_running = false; // init sequence will be required at next run
@@ -551,7 +580,7 @@ void dw1000_arduino_periodic(void)
 
 void dw1000_arduino_report(void)
 {
-  float buf[9];
+  float buf[12];
   buf[0] = dw1000.anchors[0].distance;
   buf[1] = dw1000.anchors[1].distance;
   buf[2] = dw1000.anchors[2].distance;
@@ -561,7 +590,10 @@ void dw1000_arduino_report(void)
   buf[6] = dw1000.pos.x;
   buf[7] = dw1000.pos.y;
   buf[8] = dw1000.pos.z;
-  DOWNLINK_SEND_PAYLOAD_FLOAT(DefaultChannel, DefaultDevice, 9, buf);
+  buf[9] = dw1000.speed.x;
+  buf[10] = dw1000.speed.y;
+  buf[11] = dw1000.speed.z;
+  DOWNLINK_SEND_PAYLOAD_FLOAT(DefaultChannel, DefaultDevice, 12, buf);
 }
 
 void dw1000_arduino_event(void)
@@ -576,4 +608,22 @@ void dw1000_arduino_event(void)
 #endif
 }
 
+
+void dw1000_arduino_update_ekf_q(float v)
+{
+  dw1000_ekf_q = v;
+  ekf_range_update_noise(&dw1000.ekf_range, dw1000_ekf_q, dw1000_ekf_r_dist, dw1000_ekf_r_speed);
+}
+
+void dw1000_arduino_update_ekf_r_dist(float v)
+{
+  dw1000_ekf_r_dist = v;
+  ekf_range_update_noise(&dw1000.ekf_range, dw1000_ekf_q, dw1000_ekf_r_dist, dw1000_ekf_r_speed);
+}
+
+void dw1000_arduino_update_ekf_r_speed(float v)
+{
+  dw1000_ekf_r_speed = v;
+  ekf_range_update_noise(&dw1000.ekf_range, dw1000_ekf_q, dw1000_ekf_r_dist, dw1000_ekf_r_speed);
+}
 

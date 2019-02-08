@@ -15,6 +15,7 @@
     <target name="ap" board="ardrone2">
       <configure name="USE_MAGNETOMETER" value="FALSE"/>
       <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
+      <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
       <define name="USE_SONAR"/>
       <define name="USE_BARO_MEDIAN_FILTER"/>
       <define name="AUTOPILOT_DISABLE_AHRS_KILL"/>
@@ -43,8 +44,9 @@
     <!-- AHRS + INS for indoor or outdoor -->
     <!--module name="ahrs" type="float_invariant"/-->
     <module name="ahrs" type="int_cmpl_quat"/>
-    <module name="ins" type="hff_extended"/>
-    <define name="HFF_UPDATE_GPS_SPEED" value="FALSE"/>
+    <module name="ins" type="gps_passthrough"/>
+    <!--module name="ins" type="hff_extended"/>
+    <define name="HFF_UPDATE_GPS_SPEED" value="FALSE"/-->
     <!-- INS for outdoor only -->
     <!--module name="ins" type="float_invariant"/-->
 
@@ -96,7 +98,7 @@
     <define name="ANCHORS_POS_X" value="0., 2.5, -2.5" type="float[]"/>
     <define name="ANCHORS_POS_Y" value="5., 0., 0." type="float[]"/>
     <define name="ANCHORS_POS_Z" value="0., 0., 0." type="float[]"/>
-    <define name="OFFSET" value="0.64, 0.9, 0.85" type="float[]"/>
+    <define name="OFFSET" value="0.74, 0.65, 0.5" type="float[]"/>
     <define name="SCALE" value="1.0, 1.0, 1.0" type="float[]"/>
   </section>
 
