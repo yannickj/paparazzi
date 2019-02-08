@@ -97,6 +97,18 @@
 #define DW1000_NOISE_Z 0.1f
 #endif
 
+#ifndef DW1000_VEL_NOISE_X
+#define DW1000_VEL_NOISE_X 0.1f
+#endif
+
+#ifndef DW1000_VEL_NOISE_Y
+#define DW1000_VEL_NOISE_Y 0.1f
+#endif
+
+#ifndef DW1000_VEL_NOISE_Z
+#define DW1000_VEL_NOISE_Z 0.1f
+#endif
+
 #if DW1000_USE_EKF
 #include "modules/decawave/ekf_range.h"
 #include "filters/median_filter.h"
@@ -324,6 +336,12 @@ static void send_pos_estimate(struct DW1000 *dw)
   AbiSendMsgPOSITION_ESTIMATE(GPS_DW1000_ID, now_ts,
       dw->pos.x, dw->pos.y, dw->pos.z,
       DW1000_NOISE_X, DW1000_NOISE_Y, DW1000_NOISE_Z);
+  // send VELOCITY_ESTIMATE type message if EKF is running
+  if (dw1000_use_ekf && dw->ekf_running) {
+    AbiSendMsgVELOCITY_ESTIMATE(GPS_DW1000_ID, now_ts,
+        dw->speed.x, dw->speed.y, dw->speed.z,
+        DW1000_VEL_NOISE_X, DW1000_VEL_NOISE_Y, DW1000_VEL_NOISE_Z);
+  }
 }
 #endif
 

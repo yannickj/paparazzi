@@ -26,6 +26,8 @@
       <define name="EKF_Q" value="1.0" description="EKF process noise"/>
       <define name="EKF_R_DIST" value="0.1" description="EKF noise on distance measurements"/>
       <define name="EKF_R_SPEED" value="0.1" description="EKF noise on speed measurements (if available)"/>
+      <define name="NOISE_X|Y|Z" value="0.1" description="Noise level reported by the POSITION_ESTIMATE message when USE_AS_LOCAL_POS is activated"/>
+      <define name="VEL_NOISE_X|Y|Z" value="0.1" description="Noise level reported by the VELOCITY_ESTIMATE message when USE_AS_LOCAL_POS is activated"/>
     </section>
   </doc>
   <settings>
