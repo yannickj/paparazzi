@@ -78,9 +78,9 @@
 
   <section name="TO_ATC" prefix="TO_ATC_">
     <define name="FLIGHT"   value="423"    type="string"/> <!-- 0 to 500-->
-    <define name="CALLSIGN" value="ADTCDP"  type="string"/> 
+    <define name="CALLSIGN" value="APINS01"  type="string"/> 
     <define name="TACODE"   value="3403"   type="string"/> <!-- digits 1 to 7 -->
-    <define name="COMPANY"  value="NON"    type="string"/> 
+    <define name="COMPANY"  value="AVA"    type="string"/> 
     <define name="MODEL"    value="UAVA"   type="string"/>  
   </section>
 

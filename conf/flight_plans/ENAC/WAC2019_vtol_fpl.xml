@@ -1,14 +1,14 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="182" ground_alt="150" lat0="43.6230150" lon0="1.3785282" max_dist_from_home="8000" name="WAC2019_vtol_fpl" security_height="25">
+<flight_plan alt="182" ground_alt="150" lat0="43.622743" lon0="1.379013" max_dist_from_home="8000" name="WAC2019_vtol_fpl" security_height="25">
   <header>
 #include "autopilot.h"
 </header>
   <waypoints>
-    <waypoint name="HOME" x="0.0" y="0.0"/>
-    <waypoint name="CLIMB" x="0.0" y="0.0"/>
-    <waypoint lat="43.623015" lon="1.3785282" name="STDBY"/>
-    <waypoint lat="43.622301" lon="1.378892" name="P1"/>
+    <waypoint name="HOME" x="38.1" y="-31.0"/>
+    <waypoint name="CLIMB" x="38.3" y="-31.0"/>
+    <waypoint lat="43.622743" lon="1.379013" name="STDBY"/>
+    <waypoint lat="43.620989" lon="1.380396" name="P1"/>
     <waypoint lat="43.619159" lon="1.382151" name="P2"/>
     <waypoint lat="43.617282" lon="1.388186" name="P3"/>
     <waypoint lat="43.6165588" lon="1.3919818" name="P4"/>
