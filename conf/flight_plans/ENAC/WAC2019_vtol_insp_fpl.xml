@@ -76,7 +76,8 @@
       <path wpts="P10,P11"/>
       <stay wp="P11" until="stage_time > 5"/>
       <path wpts="P11,P12,P13"/>
-      <stay wp="P14" />
+      <go wp="STDBY"/>
+      <deroute block="land here"/>
     </block>
     <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
       <call_once fun="NavSetWaypointHere(WP_TD)"/>
@@ -87,6 +88,7 @@
     </block>
     <block name="flare">
       <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+      <exception cond="2 > stateGetPositionEnu_f()->z" deroute="landed"/>
     </block>
     <block name="landed">
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>

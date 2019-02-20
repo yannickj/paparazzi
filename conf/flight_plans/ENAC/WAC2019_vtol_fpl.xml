@@ -8,20 +8,20 @@
     <waypoint name="HOME" x="38.1" y="-31.0"/>
     <waypoint name="CLIMB" x="38.3" y="-31.0"/>
     <waypoint lat="43.622743" lon="1.379013" name="STDBY"/>
-    <waypoint lat="43.620989" lon="1.380396" name="P1"/>
-    <waypoint lat="43.619159" lon="1.382151" name="P2"/>
-    <waypoint lat="43.617282" lon="1.388186" name="P3"/>
-    <waypoint lat="43.6165588" lon="1.3919818" name="P4"/>
-    <waypoint lat="43.616257" lon="1.393229" name="P5"/>
-    <waypoint lat="43.6156697" lon="1.3942489" name="P6"/>
-    <waypoint lat="43.615388" lon="1.394820" name="P7"/>
-    <waypoint lat="43.615016" lon="1.395648" name="P8"/>
-    <waypoint lat="43.614506" lon="1.396924" name="P9"/>
-    <waypoint lat="43.6141076" lon="1.3982990" name="P10"/>
-    <waypoint lat="43.613992" lon="1.399629" name="P11"/>
-    <waypoint lat="43.613619" lon="1.400796" name="P12"/>
-    <waypoint lat="43.613375" lon="1.400328" name="P13"/>
-    <waypoint lat="43.613264" lon="1.400090" name="P14"/>
+    <waypoint lat="43.620989" lon="1.380396" name="P1" alt="230"/>
+    <waypoint lat="43.619159" lon="1.382151" name="P2" alt="230"/>
+    <waypoint lat="43.617282" lon="1.388186" name="P3" alt="230"/>
+    <waypoint lat="43.6165588" lon="1.3919818" name="P4" alt="230"/>
+    <waypoint lat="43.616257" lon="1.393229" name="P5" alt="230"/>
+    <waypoint lat="43.6156697" lon="1.3942489" name="P6" alt="230"/>
+    <waypoint lat="43.615388" lon="1.394820" name="P7" alt="230"/>
+    <waypoint lat="43.615016" lon="1.395648" name="P8" alt="230"/>
+    <waypoint lat="43.614506" lon="1.396924" name="P9" alt="230"/>
+    <waypoint lat="43.6141076" lon="1.3982990" name="P10" alt="230"/>
+    <waypoint lat="43.613992" lon="1.399629" name="P11" alt="230"/>
+    <waypoint lat="43.613619" lon="1.400796" name="P12" alt="230"/>
+    <waypoint lat="43.613375" lon="1.400328" name="P13" alt="230"/>
+    <waypoint lat="43.613264" lon="1.400090" name="P14" alt="230"/>
     <waypoint alt="162.0" lat="43.613264" lon="1.400090" name="TD"/>
   </waypoints>
   <blocks>
@@ -52,8 +52,9 @@
     </block>
     <block group="extra_patern" name="route" strip_button="P1..." strip_icon="path.png">
       <set value="false" var="force_forward"/>
-      <path wpts="P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13"/>
-      <stay wp="P14"/>
+      <path wpts="P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14"/>
+      <!--stay wp="P14"/-->
+      <deroute block="land"/>
     </block>
     <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
       <call_once fun="NavSetWaypointHere(WP_TD)"/>
@@ -64,6 +65,7 @@
     </block>
     <block name="flare">
       <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+      <exception cond="2 > stateGetPositionEnu_f()->z" deroute="landed"/>
     </block>
     <block name="landed">
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
