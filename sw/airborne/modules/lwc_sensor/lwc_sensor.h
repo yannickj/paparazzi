@@ -20,8 +20,5 @@
 extern void lwc_sensor_init(void);
 extern void LWC_sensor_in_out_callback(void);
 
-static float denormalized(int);
-static int IvytoInt(uint8_t *);
-
 #endif
 

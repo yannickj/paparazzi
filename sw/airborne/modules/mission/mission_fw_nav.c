@@ -64,7 +64,15 @@ bool mission_point_of_lla(struct EnuCoor_f *point, struct LlaCoor_i *lla)
 }
 
 // navigation time step
+#if !USE_GENERATED_AUTOPILOT
 static const float dt_navigation = 1.0 / ((float)NAVIGATION_FREQUENCY);
+
+/////////////TO ASK////////////////////
+/////////////////////////////////////////////////////////////////////////
+#else
+static const float dt_navigation = 1.0 / ((float)CONTROL_FREQUENCY);
+#endif
+/////////////////////////////////////////////////////////////////////////
 
 // dirty hack to comply with nav_approaching_xy function
 struct EnuCoor_f last_wp_f = { 0., 0., 0. };
