@@ -1,0 +1,24 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="modemtester">
+  <doc>
+    <description>This module uses a serial line to test a modem. It requires a ground program in order to drive the tests.</description>
+        <configure name="MODEMTEST_UART" value="UARTx" description="UART where the modem to test is connected to (UART1, UART2, etc)"/>
+        <configure name="MODEMTEST_DL_BAUD" value="B57600" description="UART baud rate"/>
+  </doc>
+  <header>
+    <file name="modemtester.h"/>
+  </header>
+  <init fun="init_modemtester()"/>
+  <makefile target="!fbw|sim|nps|hitl">
+      <configure name="MODEMTEST_UART" case="upper|lower"/>
+      <define name="USE_$(MODEMTEST_UART_UPPER)"/>
+      <define name="MODEMTEST_UART_DEV" value="$(MODEMTEST_UART_LOWER)"/>
+      <define name="$(MODEMTEST_UART_UPPER)_BAUD" value="$(MODEMTEST_DL_BAUD)"/>
+      <define name="SEND_DEBUG_MSG" value="1"/>
+      
+    <file name="modemtester.c"/>
+    <file name="fsm.c"/>
+  </makefile>
+</module>
+
