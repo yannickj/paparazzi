@@ -61,6 +61,7 @@
 
 extern void jevois_init(void);
 extern void jevois_event(void);
+extern void jevois_report(void);
 
 /** Start and stop streaming
  * @param[in] activate enable or disable streaming

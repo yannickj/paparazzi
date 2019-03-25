@@ -29,6 +29,8 @@
 #include "mcu_periph/uart.h"
 #include "subsystems/abi.h"
 #include "math/pprz_algebra_float.h"
+#include "subsystems/datalink/downlink.h"
+#include <string.h>
 #include <stdio.h>
 
 int jevois_mapping_setting;
@@ -76,6 +78,31 @@ struct jevois_t {
 
 struct jevois_t jevois;
 
+// reporting function, send telemetry message
+void jevois_report(void)
+{
+  float quat[4] = {
+    jevois.msg.quat.qi,
+    jevois.msg.quat.qx,
+    jevois.msg.quat.qy,
+    jevois.msg.quat.qz
+  };
+  uint8_t len = strlen(jevois.msg.id);
+  char none[] = "None";
+  char *id = jevois.msg.id;
+  if (len == 0) {
+    id = none;
+    len = 5;
+  }
+  DOWNLINK_SEND_JEVOIS(DefaultChannel, DefaultDevice,
+      &jevois.msg.type,
+      &jevois.msg.nb,
+      jevois.msg.coord,
+      jevois.msg.dim,
+      quat,
+      len+1, id);
+}
+
 // initialization
 void jevois_init(void)
 {
@@ -92,6 +119,10 @@ void jevois_init(void)
 // send specific message if requested
 static void jevois_send_message(void)
 {
+#if JEVOIS_SEND_MSG
+  // send pprzlink JEVOIS message
+  jevois_report();
+#endif
 #if JEVOIS_SEND_FOLLOW_TARGET
   float cam_heading = (JEVOIS_HFOV / (2.f * JEVOIS_NORM)) * (float)(jevois.msg.coord[0]);
   float cam_height = (JEVOIS_VFOV / (2.f * JEVOIS_NORM)) * (float)(jevois.msg.coord[1]);
@@ -257,10 +288,10 @@ static void jevois_parse(struct jevois_t *jv, char c)
     case JV_QUAT:
       if (JEVOIS_CHECK_DELIM(c)) {
         jv->buf[jv->idx] = '\0';
-        float q = 0.f;//(float) atof(jv->buf);
+        float q = (float)atof(jv->buf);
         switch (jv->n) {
           case 0:
-            jv->msg.quat.qi = q; // TODO check quaternion order
+            jv->msg.quat.qi = q;
             break;
           case 1:
             jv->msg.quat.qx = q;
