@@ -74,6 +74,7 @@ struct jevois_t {
   uint8_t idx; // temp buffer index
   uint8_t n; // temp coordinates/dimension index
   struct jevois_msg_t msg; // last decoded message
+  bool data_available; // new data to report
 };
 
 struct jevois_t jevois;
@@ -81,6 +82,11 @@ struct jevois_t jevois;
 // reporting function, send telemetry message
 void jevois_report(void)
 {
+  if (jevois.data_available == false) {
+    // no new data, return
+    return;
+  }
+
   float quat[4] = {
     jevois.msg.quat.qi,
     jevois.msg.quat.qx,
@@ -92,15 +98,16 @@ void jevois_report(void)
   char *id = jevois.msg.id;
   if (len == 0) {
     id = none;
-    len = 5;
+    len = 4;
   }
   DOWNLINK_SEND_JEVOIS(DefaultChannel, DefaultDevice,
       &jevois.msg.type,
+      len, id,
       &jevois.msg.nb,
-      jevois.msg.coord,
+      Max(jevois.msg.nb,1), jevois.msg.coord,
       jevois.msg.dim,
-      quat,
-      len+1, id);
+      quat);
+  jevois.data_available = false;
 }
 
 // initialization
@@ -113,6 +120,7 @@ void jevois_init(void)
   jevois.state = JV_SYNC;
   jevois.idx = 0;
   jevois.n = 0;
+  jevois.data_available = false;
   memset(jevois.buf, 0, JEVOIS_MAX_LEN);
 }
 
@@ -231,7 +239,7 @@ static void jevois_parse(struct jevois_t *jv, char c)
       if (JEVOIS_CHECK_DELIM(c)) {
         jv->buf[jv->idx] = '\0'; // end string
         jv->msg.coord[jv->n++] = (int16_t)atoi(jv->buf); // store value
-        if (jv->n == 2 * jv->msg.nb) {
+        if (jv->n == jv->msg.nb) {
           // got all coordinates, go to next state
           jv->n = 0; // reset number of received elements
           jv->idx = 0; // reset index
@@ -341,6 +349,7 @@ static void jevois_parse(struct jevois_t *jv, char c)
           jv->msg.extra);
       // also send specific messages if needed
       jevois_send_message();
+      jv->data_available = true;
       jv->state = JV_SYNC;
       break;
     default:

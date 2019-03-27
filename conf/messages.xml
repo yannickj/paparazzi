@@ -661,11 +661,11 @@
 
     <message name="JEVOIS" id="80">
       <field name="type" type="uint8"/>
+      <field name="id" type="char[]"/>
       <field name="nb" type="uint8"/>
-      <field name="coord" type="int16[18]"/>
+      <field name="coord" type="int16[]"/>
       <field name="dim" type="uint16[3]"/>
       <field name="quat" type="float[4]"/>
-      <field name="id" type="char[]"/>
     </message>
 
     <message name="GENERIC_COM" id="81">
