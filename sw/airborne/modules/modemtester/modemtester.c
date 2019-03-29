@@ -46,27 +46,38 @@ static __attribute__((noreturn)) void modem_tester (void *arg)
   msg.sender_id = AC_ID;
   msg.receiver_id = 0; // To ground
   msg.component_id = 0;
-  uint8_t data[3];
+  uint8_t data[4];
+
+  data[0]=(UART6_BAUD>>24)&0xFF;
+  data[1]=(UART6_BAUD>>16)&0xFF;
+  data[2]=(UART6_BAUD>>8)&0xFF;
+  data[3]=UART6_BAUD&0xFF;
+  
+  pprzlink_msg_v2_send_DEBUG(&msg,4,data);
   
   while(true) {
     if (uart_char_available(modem_tester_dev)) {
       uint8_t command=uart_getch(modem_tester_dev);
+#if SEND_DEBUG_MSG
       if (command >= end_standard_codes) {
 	data[0]='D';
 	data[1]=command;
 	data[2]=getCurrentStateId();
 	pprzlink_msg_v2_send_DEBUG(&msg,3,data);
-	}
+      }
       dispatch(command);
+#endif
     }
     else {
-      chThdSleepMilliseconds(500);
+      chThdSleepMilliseconds(1);
     }
   }
 }
 
 void init_modemtester() 
 {
+  
+  PPRZ_MUTEX_INIT(modemtester_mutex);
   chThdCreateStatic(wa_modem_tester, sizeof(wa_modem_tester), NORMALPRIO + 2 , modem_tester, NULL);
 }
 

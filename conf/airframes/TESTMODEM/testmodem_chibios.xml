@@ -14,12 +14,12 @@
 
     <!-- Communication -->
     <module name="telemetry" type="xbee_api">
-    <configure name="MODEM_BAUD" value="B57600"/>
+      <configure name="MODEM_BAUD" value="B57600"/>
     </module>
 
     <module name="modemtester">
         <configure name="MODEMTEST_UART" value="UART6"/>
-        <configure name="MODEMTEST_DL_BAUD" value="B9600"/>
+        <configure name="MODEMTEST_DL_BAUD" value="B57600"/>
     </module>
 
     <!-- Battery checking -->

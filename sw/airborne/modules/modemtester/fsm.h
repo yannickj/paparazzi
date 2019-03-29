@@ -18,11 +18,16 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#ifndef MODEMTESTER_FSM_H
+#define MODEMTESTER_FSM_H
+
 /**
  * @file /modules/modemtester/fsm.h
  * Header file with all definitions for the finite
  * state machine used in modemtester module.
  */
+
+#include "pprz_mutex.h"
 
 /**
  * Defines the possible states of the FSM.
@@ -76,6 +81,14 @@ void dispatch(fsm_event_id_t e);
 /**
  * Reinitialise the FSM
  */
-void init(void);
+void fsm_init_fsm(int val);
+
+/**
+ *
+ */ 
+extern int modemtester_fsm_reset;
 
 fsm_state_id_t getCurrentStateId(void);
+
+PPRZ_MUTEX_DECL(modemtester_mutex);
+#endif //MODEMTESTER_FSM_H

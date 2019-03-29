@@ -6,8 +6,18 @@
         <configure name="MODEMTEST_UART" value="UARTx" description="UART where the modem to test is connected to (UART1, UART2, etc)"/>
         <configure name="MODEMTEST_DL_BAUD" value="B57600" description="UART baud rate"/>
   </doc>
+
+  <settings>
+    <dl_settings>
+      <dl_settings name="modem_tester">
+	<dl_setting min="1" max="1" step="1" var="modemtester_fsm_reset" shortname="reset" handler="init_fsm" module="modules/modemtester/fsm"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
+
   <header>
     <file name="modemtester.h"/>
+    <file name="fsm.h"/>
   </header>
   <init fun="init_modemtester()"/>
   <makefile target="!fbw|sim|nps|hitl">
@@ -15,6 +25,7 @@
       <define name="USE_$(MODEMTEST_UART_UPPER)"/>
       <define name="MODEMTEST_UART_DEV" value="$(MODEMTEST_UART_LOWER)"/>
       <define name="$(MODEMTEST_UART_UPPER)_BAUD" value="$(MODEMTEST_DL_BAUD)"/>
+      
       <define name="SEND_DEBUG_MSG" value="1"/>
       
     <file name="modemtester.c"/>

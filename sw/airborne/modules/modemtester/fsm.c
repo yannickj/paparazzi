@@ -22,8 +22,13 @@
 #include "fsm.h"
 #include "pprzlink/messages.h"
 #include "subsystems/datalink/telemetry.h"
+#include "pprz_mutex.h"
 
 static int ack_timer_id;
+
+int modemtester_fsm_reset=1;
+
+PPRZ_MUTEX(modemtester_mutex);
 
 /**
  * Defines the current state of the FSM
@@ -52,6 +57,7 @@ static inline void send_debug_msg(fsm_state_id_t id)
  */
 static void transition(fsm_state_t* state)
 {
+  PPRZ_MUTEX_LOCK(modemtester_mutex);
   if (current_state_ptr->exit!=NULL) {
       current_state_ptr->exit();
     }
@@ -62,6 +68,7 @@ static void transition(fsm_state_t* state)
 #if SEND_DEBUG_MSG
   send_debug_msg(state->state_id);
 #endif
+  PPRZ_MUTEX_UNLOCK(modemtester_mutex);
 }
 
 // Forward declarations for the states (react, entry and exit functions)
@@ -233,7 +240,7 @@ static fsm_state_t * current_state_ptr = &idle_state;
 void dispatch(fsm_event_id_t e)
 {
   if (e==end_test){
-    init();
+    fsm_init_fsm(1);
   }
   else {
     current_state_ptr->react(e);
@@ -243,17 +250,23 @@ void dispatch(fsm_event_id_t e)
 /**
  * Reinitialise the FSM
  */
-void init(void)
+void fsm_init_fsm(int val)
 {
-  // TODO More to do ? (cancel timers, ...)
-  current_state_ptr->exit();
+  modemtester_fsm_reset = val;
+  PPRZ_MUTEX_LOCK(modemtester_mutex);
+  if (current_state_ptr->exit!=NULL) {
+    current_state_ptr->exit();
+  }
   current_state_ptr = &idle_state;
+  PPRZ_MUTEX_UNLOCK(modemtester_mutex);
 #if SEND_DEBUG_MSG
   send_debug_msg(current_state_ptr->state_id);
 #endif
 }
 
+
 fsm_state_id_t getCurrentStateId(void)
 {
   return current_state_ptr->state_id;
 }
+
