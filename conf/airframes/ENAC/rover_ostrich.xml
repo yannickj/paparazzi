@@ -10,7 +10,7 @@
     <define name="LOW_NOISE_THRESHOLD" value="3500"/>
     <define name="LOW_NOISE_TIME" value="10"/>
 
-    <target name="ap" board="apogee_1.0_chibios">
+    <target name="ap" board="chimera_1.0">
     </target>
 
     <module name="radio_control" type="datalink">
