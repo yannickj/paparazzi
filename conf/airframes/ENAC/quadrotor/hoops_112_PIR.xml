@@ -322,7 +322,7 @@
   </section>
 
   <section name="JEVOIS" prefix="JEVOIS_">
-    <define name="ARUCO_SIZE_CMD" value="setpar markerlen 154" type="string"/>
+    <define name="ARUCO_SIZE_CMD" value="setpar markerlen 154\r\n" type="string"/>
   </section>
 
 </airframe>

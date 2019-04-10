@@ -61,26 +61,26 @@ static inline void joystick_handler(uint8_t sender_id __attribute__((unused)), i
       <call_once fun="NavKillThrottle()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Start Engine">
+    <block name="Start Engine" strip_button="Start Engine" strip_icon="resurrect.png" group="home">
       <call_once fun="NavResurrect()"/>
       <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png" group="home">
       <exception cond="stateGetPositionEnu_f()->z > 1.0" deroute="Standby"/>
       <call_once fun="NavSetWaypointHere(WP_STDBY)"/>
       <stay climb="nav_climb_vspeed" vmode="climb" wp="STDBY"/>
     </block>
-    <block name="Standby" strip_button="Standby" strip_icon="home.png">
+    <block name="Standby" strip_button="Standby" strip_icon="home.png" group="home">
       <stay wp="STDBY"/>
     </block>
-    <block name="START" strip_button="Go" strip_icon="lookfore.png">
+    <block name="START" strip_button="Go" strip_icon="lookdown.png" group="mission">
       <call_once fun="jevois_send_string(JEVOIS_ARUCO_SIZE_CMD)"/>
       <call_once fun="NavSetWaypointHere(WP_GOAL)"/>
     </block>
     <block name="StayGoal">
       <stay wp="GOAL"/>
     </block>
-    <block name="Joystick" strip_button="J">
+    <block name="Joystick" strip_button="Joystick" group="mission">
       <set var="horizontal_mode" value="HORIZONTAL_MODE_ATTITUDE"/>
       <set var="vertical_mode" value="VERTICAL_MODE_CLIMB"/>
       <set var="joystick_block" value="nav_block"/>
@@ -94,7 +94,7 @@ static inline void joystick_handler(uint8_t sender_id __attribute__((unused)), i
       <call_once fun="nav_survey_rectangle_rotorcraft_setup(WP_S1, WP_S3, 1, WE)"/>
       <deroute block="Survey RECTANGLE RUN"/>
     </block>
-    <block group="extra_pattern" name="Survey RECTANGLE RUN" strip_button="SvySweep CONT" strip_icon="survey_rect_run.png">
+    <block group="extra_pattern" name="Survey RECTANGLE RUN">
       <exception cond="rectangle_survey_sweep_num == 1" deroute="Standby"/>
       <call fun="nav_survey_rectangle_rotorcraft_run(WP_S1, WP_S3)"/>
    </block>
