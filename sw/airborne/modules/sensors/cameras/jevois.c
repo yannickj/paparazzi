@@ -371,7 +371,7 @@ void jevois_event(void)
 }
 
 // utility function to send a string
-static void send_string(char *s)
+void jevois_send_string(char *s)
 {
   uint8_t i = 0;
   while (s[i]) {
@@ -384,9 +384,9 @@ void jevois_stream(bool activate)
 {
   jevois_stream_setting = activate;
   if (activate) {
-    send_string("streamon\r\n");
+    jevois_send_string("streamon\r\n");
   } else {
-    send_string("streamoff\r\n");
+    jevois_send_string("streamoff\r\n");
   }
 }
 
@@ -394,13 +394,13 @@ void jevois_setmapping(int number)
 {
   jevois_mapping_setting = number;
   jevois_stream(false);
-  send_string("setmapping ");
+  jevois_send_string("setmapping ");
   char s[4];
 #ifndef SITL
   itoa(number, s, 10);
 #endif
-  send_string(s);
-  send_string("\r\n");
+  jevois_send_string(s);
+  jevois_send_string("\r\n");
   jevois_stream(true);
 }
 
