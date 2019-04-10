@@ -260,8 +260,8 @@
     <define name="HOVER_KP" value="150"/>
     <define name="HOVER_KD" value="80"/>
     <define name="HOVER_KI" value="20"/>
-    <define name="NOMINAL_HOVER_THROTTLE" value="0.35"/>
-    <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
+    <define name="NOMINAL_HOVER_THROTTLE" value="0.60"/>
+    <define name="ADAPT_THROTTLE_ENABLED" value="FALSE"/>
   </section>
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
@@ -319,6 +319,10 @@
     <define name="ANCHORS_POS_Z" value="0., 0., 0." type="float[]"/>
     <define name="OFFSET" value="0.64, 0.9, 0.85" type="float[]"/>
     <define name="SCALE" value="1.0, 1.0, 1.0" type="float[]"/>
+  </section>
+
+  <section name="JEVOIS" prefix="JEVOIS_">
+    <define name="ARUCO_SIZE_CMD" value="setpar markerlen 154" type="string"/>
   </section>
 
 </airframe>

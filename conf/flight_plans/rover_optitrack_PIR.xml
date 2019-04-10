@@ -9,10 +9,12 @@
     <waypoint name="GOAL" x="2.0" y="2.0"/>
     <waypoint name="STDBY" x="-0.7" y="-0.8"/>
     <waypoint name="TD" x="0.8" y="-1.7"/>
-    <waypoint name="S1" x="3" y="4"/>
-    <waypoint name="S2" x="3" y="-4"/>
-    <waypoint name="S3" x="-3" y="-4"/>
-    <waypoint name="S4" x="-3" y="4"/>
+    <waypoint name="P1" x="-1" y="-4"/>
+    <waypoint name="P2" x="-1" y="4"/>
+    <waypoint name="_S1" x="3" y="4"/>
+    <waypoint name="_S2" x="3" y="-4"/>
+    <waypoint name="_S3" x="-3" y="-4"/>
+    <waypoint name="_S4" x="-3" y="4"/>
     <waypoint name="_N1" x="4.5" y="5.2"/>
     <waypoint name="_N2" x="4.5" y="-5.2"/>
     <waypoint name="_N3" x="-4.5" y="-5.2"/>
@@ -26,15 +28,15 @@
       <corner name="_N4"/>
     </sector>
     <sector name="Survey" color="green" type="dynamic">
-      <corner name="S1"/>
-      <corner name="S2"/>
-      <corner name="S3"/>
-      <corner name="S4"/>
+      <corner name="_S1"/>
+      <corner name="_S2"/>
+      <corner name="_S3"/>
+      <corner name="_S4"/>
     </sector>
   </sectors>
-  <!--modules>
-    <module name="nav" type="survey_rectangle_rotorcraft"/>
-  </modules-->
+  <variables>
+    <variable var="turn_rate" init="10." min="0." max="50." step="1.0"/>
+  </variables>
   <blocks>
     <block name="Wait GPS">
       <call_once fun="NavKillThrottle()"/>
@@ -44,50 +46,27 @@
       <call_once fun="NavKillThrottle()"/>
       <attitude roll="0" throttle="0" until="FALSE" vmode="throttle"/>
     </block>
-    <block name="Start Engine">
-      <call_once fun="NavResurrect()"/>
-      <attitude roll="0" throttle="0" until="FALSE" vmode="throttle"/>
-    </block>
     <block name="Standby" strip_button="Standby" strip_icon="home.png">
       <stay wp="STDBY"/>
     </block>
-    <block name="stay_S1">
-      <stay wp="S1"/>
-    </block>
-    <block name="go_S2">
-      <go wp="S2"/>
-      <call_once fun="nav_set_heading_deg(90)"/>
-      <deroute block="stay_S1"/>
-    </block>
-    <block name="line_S1_S2">
-      <go from="S1" hmode="route" wp="S2"/>
-      <stay wp="S2" until="stage_time>10"/>
-      <go from="S2" hmode="route" wp="S1"/>
-      <deroute block="stay_S1"/>
-    </block>
-    <block name="route">
-      <go from="S1" hmode="route" wp="S3"/>
-      <go from="S3" hmode="route" wp="S4"/>
-      <go from="S4" hmode="route" wp="S1"/>
-      <deroute block="stay_S1"/>
+    <block name="line_P1_P2">
+      <go wp="P1" approaching_time="0"/>
+      <while cond="TRUE">
+        <go from="P1" hmode="route" wp="P2" approaching_time="0"/>
+        <stay wp="P2" until="stage_time>10"/>
+        <go from="P2" hmode="route" wp="P1" approaching_time="0"/>
+      </while>
     </block>
     <block name="circle">
       <circle radius="nav.radius" wp="STDBY"/>
     </block>
-    <block name="oval">
-      <oval p1="S1" p2="S2" radius="1."/>
+    <block name="line_P1_P2_turn">
+      <go wp="P1" approaching_time="0"/>
+      <while cond="TRUE">
+        <go from="P1" hmode="route" wp="P2" approaching_time="0" pre_call="nav_set_heading_deg(turn_rate*block_time)"/>
+        <stay wp="P2" until="stage_time>10" pre_call="nav_set_heading_deg(turn_rate*block_time)"/>
+        <go from="P2" hmode="route" wp="P1" approaching_time="0" pre_call="nav_set_heading_deg(turn_rate*block_time)"/>
+      </while>
     </block>
-    <!--block group="extra_pattern" name="Survey S1-S2 Sweep NS SET" strip_button="SvySweep-NS" strip_icon="survey_rect_ns.png">
-      <call_once fun="nav_survey_rectangle_rotorcraft_setup(WP_S1, WP_S3, 1, NS)"/>
-      <deroute block="Survey RECTANGLE RUN"/>
-    </block>
-    <block group="extra_pattern" name="Survey S1-S2 Sweep WE SET" strip_button="SvySweep-WE" strip_icon="survey_rect_we.png">
-      <call_once fun="nav_survey_rectangle_rotorcraft_setup(WP_S1, WP_S3, 1, WE)"/>
-      <deroute block="Survey RECTANGLE RUN"/>
-    </block>
-    <block group="extra_pattern" name="Survey RECTANGLE RUN" strip_button="SvySweep CONT" strip_icon="survey_rect_run.png">
-      <exception cond="rectangle_survey_sweep_num == 1" deroute="Standby"/>
-      <call fun="nav_survey_rectangle_rotorcraft_run(WP_S1, WP_S3)"/>
-    </block!-->
   </blocks>
 </flight_plan>
