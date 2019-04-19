@@ -74,7 +74,7 @@
   
     <define name="GYRO_P_SIGN" value="1"/>
     <define name="GYRO_Q_SIGN" value="-1"/>
-    <define name="GYRO_R_SIGN" value="1"/> <!-- ugly hack for dead accel -->
+    <define name="GYRO_R_SIGN" value="-1"/> <!-- ugly hack for dead accel -->
 
     <define name="ACCEL_X_SIGN" value="1"/>
     <define name="ACCEL_Y_SIGN" value="-1"/>

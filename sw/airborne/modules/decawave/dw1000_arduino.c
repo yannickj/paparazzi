@@ -126,7 +126,7 @@
 #endif
 
 #ifndef DW1000_EKF_Q
-#define DW1000_EKF_Q 1.0f
+#define DW1000_EKF_Q 4.0f
 #endif
 
 #ifndef DW1000_EKF_R_DIST

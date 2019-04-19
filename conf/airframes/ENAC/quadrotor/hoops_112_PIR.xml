@@ -260,7 +260,7 @@
     <define name="HOVER_KP" value="150"/>
     <define name="HOVER_KD" value="80"/>
     <define name="HOVER_KI" value="20"/>
-    <define name="NOMINAL_HOVER_THROTTLE" value="0.60"/>
+    <define name="NOMINAL_HOVER_THROTTLE" value="0.54"/>
     <define name="ADAPT_THROTTLE_ENABLED" value="FALSE"/>
   </section>
 
@@ -306,18 +306,18 @@
   </section>
 
   <section name="GCS">
-    <define name="ALT_SHIFT_PLUS_PLUS" value="5"/>
-    <define name="ALT_SHIFT_PLUS" value="1"/>
-    <define name="ALT_SHIFT_MINUS" value="-1"/>
+    <define name="ALT_SHIFT_PLUS_PLUS" value="2"/>
+    <define name="ALT_SHIFT_PLUS" value="0.5"/>
+    <define name="ALT_SHIFT_MINUS" value="-0.5"/>
     <define name="AC_ICON" value="quadrotor_x"/>
   </section>
 
    <section name="DW1000" prefix="DW1000_">
     <define name="ANCHORS_IDS" value="1, 3, 4" type="int[]"/>
-    <define name="ANCHORS_POS_X" value="5., 0., 0." type="float[]"/>
-    <define name="ANCHORS_POS_Y" value="0., 2.5, -2.5" type="float[]"/>
+    <define name="ANCHORS_POS_X" value="0.495, -0.235, -0.235" type="float[]"/>
+    <define name="ANCHORS_POS_Y" value="0., 0.465, -0.47" type="float[]"/>
     <define name="ANCHORS_POS_Z" value="0., 0., 0." type="float[]"/>
-    <define name="OFFSET" value="0.64, 0.9, 0.85" type="float[]"/>
+    <define name="OFFSET" value="0.58, 0.6, 0.64" type="float[]"/>
     <define name="SCALE" value="1.0, 1.0, 1.0" type="float[]"/>
   </section>
 
