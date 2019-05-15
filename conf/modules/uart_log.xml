@@ -1,0 +1,26 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="uart_log">
+  <doc>
+    <description>
+      Log output from uart on sdcard
+    </description>
+    <!--define name="UART_SDLOG"/-->
+    <configure name="UARTLOG_PORT" value="UARTX" description="UART use to get data to log"/>
+    <configure name="UARTLOG_BAUD" value="B57600" description="UART baud rate"/>
+  </doc>
+  <header>
+    <file name="uart_log.h"/>
+  </header>
+  <init fun="uart_log_init()"/>
+  <periodic fun="uart_log_periodic()" freq="10" autorun="TRUE"/>
+  <event fun="uart_log_event()"/>
+  <makefile target="ap">
+    <configure name="UARTLOG_PORT" case="upper|lower"/>
+    <define name="USE_$(UARTLOG_PORT_UPPER)"/>
+    <define name="UARTLOG_DEV" value="$(UARTLOG_PORT_LOWER)"/>
+    <define name="$(UARTLOG_PORT_UPPER)_BAUD" value="$(UARTLOG_BAUD)"/>
+    <file name="uart_log.c"/>
+    <define name="UART_SDLOG" cond="ifneq (FALSE,$(findstring $(UART_SDLOG),FALSE))"/>
+  </makefile>
+</module>

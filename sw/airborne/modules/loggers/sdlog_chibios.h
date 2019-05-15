@@ -45,6 +45,12 @@ extern FileDes pprzLogFile;
 // if activated, will log specific telemetry process
 extern FileDes flightRecorderLogFile;
 #endif
+#if UART_SDLOG
+extern FileDes uartLogFile;
+#endif
+#if LOG_RAW_GPS
+extern FileDes gpsLogFile;
+#endif
 
 extern void sdlog_chibios_init(void);
 extern void sdlog_chibios_finish(bool flush);

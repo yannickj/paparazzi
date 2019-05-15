@@ -21,7 +21,7 @@
         <configure name="MODEMTEST_UART" value="UART6"/>
         <configure name="MODEMTEST_DL_BAUD" value="B57600"/>
     </module>
-
+    
     <!-- Battery checking -->
     <module name="bat_checker">
       <define name="BAT_CHECKER_LED" value="4"/>

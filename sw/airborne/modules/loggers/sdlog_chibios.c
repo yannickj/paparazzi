@@ -92,6 +92,19 @@ static const char FR_LOG_DIR[] = "FLIGHT_RECORDER";
 FileDes flightRecorderLogFile = -1;
 #endif
 
+#if UART_SDLOG
+struct chibios_sdlog chibios_sdlog_uart;
+static const char UART_LOG_NAME[] = "uart_";
+static const char UART_LOG_DIR[] = "UART_LOGGER";
+FileDes uartLogFile = -1;
+#endif
+#if LOG_RAW_GPS
+struct chibios_sdlog chibios_sdlog_gps;
+static const char GPS_LOG_NAME[] = "gps_";
+static const char GPS_LOG_DIR[] = "GPS";
+FileDes gpsLogFile = -1;
+#endif
+
 /** sdlog status
  */
 static enum {
@@ -191,6 +204,12 @@ void sdlog_chibios_finish(const bool flush)
 #if FLIGHTRECORDER_SDLOG
     flightRecorderLogFile = 0;
 #endif
+#if UART_SDLOG
+    uartLogFile = 0;
+#endif
+#if LOG_RAW_GPS
+    gpsLogFile = -1;
+#endif
   }
   chibios_sdlog_status = SDLOG_STOPPED;
 }
@@ -209,6 +228,12 @@ static void thd_startlog(void *arg)
 
   // Init sdlog struct
   chibios_sdlog_init(&chibios_sdlog, &pprzLogFile);
+#if UART_SDLOG
+  chibios_sdlog_init(&chibios_sdlog_uart, &uartLogFile);
+#endif
+#if LOG_RAW_GPS
+  chibios_sdlog_init(&chibios_sdlog_gps, &gpsLogFile);
+#endif
 
   // Check for init errors
   sdOk = true;
@@ -227,6 +252,22 @@ static void thd_startlog(void *arg)
     if (sdLogOpenLog(&flightRecorderLogFile, FR_LOG_DIR, FLIGHTRECORDER_LOG_NAME,
 		     SDLOG_AUTO_FLUSH_PERIOD, false,
 		      SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
+      sdOk = false;
+    }
+#endif
+#if UART_SDLOG
+    removeEmptyLogs(UART_LOG_DIR, UART_LOG_NAME, 50);
+    if (sdLogOpenLog(&uartLogFile, UART_LOG_DIR,
+		     UART_LOG_NAME, SDLOG_AUTO_FLUSH_PERIOD, true,
+		     SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
+      sdOk = false;
+    }
+#endif
+#if LOG_RAW_GPS
+    removeEmptyLogs(GPS_LOG_DIR, GPS_LOG_NAME, 50);
+    if (sdLogOpenLog(&gpsLogFile, GPS_LOG_DIR,
+		     GPS_LOG_NAME, SDLOG_AUTO_FLUSH_PERIOD, true,
+		     SDLOG_CONTIGUOUS_STORAGE_MEM, false) != SDLOG_OK) {
       sdOk = false;
     }
 #endif
