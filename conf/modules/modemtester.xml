@@ -26,7 +26,7 @@
       <define name="MODEMTEST_UART_DEV" value="$(MODEMTEST_UART_LOWER)"/>
       <define name="$(MODEMTEST_UART_UPPER)_BAUD" value="$(MODEMTEST_DL_BAUD)"/>
       
-      <define name="SEND_DEBUG_MSG" value="1"/>
+      <define name="SEND_DEBUG_MSG" value="0"/>
       
     <file name="modemtester.c"/>
     <file name="fsm.c"/>

@@ -58,6 +58,8 @@ static __attribute__((noreturn)) void modem_tester (void *arg)
   while(true) {
     if (uart_char_available(modem_tester_dev)) {
       uint8_t command=uart_getch(modem_tester_dev);
+      /* TODO Test original code and remove ugly patch ! (also uncomment the following)*/
+      /*
 #if SEND_DEBUG_MSG
       if (command >= end_standard_codes) {
 	data[0]='D';
@@ -65,8 +67,10 @@ static __attribute__((noreturn)) void modem_tester (void *arg)
 	data[2]=getCurrentStateId();
 	pprzlink_msg_v2_send_DEBUG(&msg,3,data);
       }
-      dispatch(command);
 #endif
+      dispatch(command);
+      */
+      uart_put_buffer(modem_tester_dev,0,&command,1);
     }
     else {
       chThdSleepMilliseconds(1);
