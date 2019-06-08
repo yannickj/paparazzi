@@ -26,7 +26,7 @@ uint8_t test;
 float lwc_value;
 bool io_cloud;
 float curve_radius;
-float radius_error = 10;
+float radius_error = 30;
 float rot_angle;
 float radius_sign;
 int16_t border_point_nr;
@@ -143,10 +143,10 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 	struct EnuCoor_f new_point;
 	new_point.x = position->x + (cos(rot_angle + uav_direction) * curve_radius);
 	new_point.y = position->y + (sin(rot_angle + uav_direction) * curve_radius);
-	//new_point.z = position->z + ground_alt ;
+	new_point.z = position->z + ground_alt + 5;
 
 	//ALTITUDE FIXE
-	new_point.z = 200 + ground_alt;
+	//new_point.z = 200 + ground_alt;
 
 	return new_point;
 }
@@ -194,6 +194,7 @@ static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, fl
 }
 
 static void insert_new_point_rosette_circle(struct EnuCoor_f new_coord, struct _mission_element new_e, float ext_radius){
+
 	new_e.type = MissionCircle;
 	new_e.element.mission_circle.center.center_f.x = new_coord.x;
 	new_e.element.mission_circle.center.center_f.y = new_coord.y;
@@ -209,21 +210,54 @@ static void insert_new_point_rosette_circle(struct EnuCoor_f new_coord, struct _
 
 static void insert_new_point_rosette_straight(struct EnuCoor_f new_coord, struct _mission_element new_e, struct EnuCoor_f *position){
 
-	new_e.type = MissionPath;
-  	new_e.element.mission_path.path.path_f[0].x = position->x;
-  	new_e.element.mission_path.path.path_f[0].y = position->y;
-  	new_e.element.mission_path.path.path_f[0].z = position->z;
-  	new_e.element.mission_path.path.path_f[1].x = new_coord.x;
-  	new_e.element.mission_path.path.path_f[1].y = new_coord.y;
-  	new_e.element.mission_path.path.path_f[1].z = new_coord.z;
-	new_e.element.mission_path.nb = 2;
-	new_e.element.mission_path.path_idx = 0;
+	// uint8_t ac_id = 24;
+	// uint8_t insert = 3;
+	// float WPA_x = position->x;
+	// float WPA_y = position->y;
+	// float WPB_x = new_coord.x;
+	// float WPB_y = new_coord.y;
+	// float WP_alt = new_coord.z;
+	// float duration = 0.0;
+	// uint8_t index = 1;
+
+	new_e.type = MissionSegment;
+	new_e.element.mission_segment.from.from_f.x = position->x;
+	new_e.element.mission_segment.from.from_f.y = position->y;
+	new_e.element.mission_segment.from.from_f.z = ground_alt;
+	new_e.element.mission_segment.to.to_f.x = new_coord.x;
+	new_e.element.mission_segment.to.to_f.y = new_coord.y;
+	new_e.element.mission_segment.to.to_f.z = new_coord.z;
   	new_e.duration = 0;
 	new_e.index = 1;
 
 	enum MissionInsertMode insert = ReplaceCurrent;
+
+	// DOWNLINK_SEND_MISSION_SEGMENT(DefaultChannel, DefaultDevice,
+	// 							&ac_id,
+	// 							&insert,
+	// 							&WPA_x,
+	// 							&WPA_y,
+	// 							&WPB_x,
+	// 							&WPB_y,
+	// 							&WP_alt,
+	// 							&duration,
+	// 							&index);
+
+	// <message name="MISSION_SEGMENT" id="24" link="forwarded">
+ //      <field name="ac_id" type="uint8"/>
+ //      <field name="insert" type="uint8" values="APPEND|PREPEND|REPLACE_CURRENT|REPLACE_ALL"/>
+ //      <field name="segment_east_1" type="float" unit="m"/>
+ //      <field name="segment_north_1" type="float" unit="m"/>
+ //      <field name="segment_east_2" type="float" unit="m"/>
+ //      <field name="segment_north_2" type="float" unit="m"/>
+ //      <field name="segment_alt" type="float" unit="m">altitude above geoid (MSL)</field>
+ //      <field name="duration" type="float" unit="s"/>
+ //      <field name="index" type="uint8"/>
+ //    </message>
+
+	
 	mission_insert(insert, &new_e);
-	printf("Path RS from (X:%.1f ; Y:%.1f ; Z:%.1f) to (X:%.1f ; Y:%.1f ; Z:%.1f) inserted \n",position->x, position->y, position->z, new_coord.x, new_coord.y, new_coord.z);
+	printf("Path RS from (X:%.1f ; Y:%.1f ; Z:%.1f) to (X:%.1f ; Y:%.1f ; Z:%.1f) inserted \n",position->x, position->y, position->z + ground_alt, new_coord.x, new_coord.y, new_coord.z);
 }
 
 void lwc_sensor_init(void) {
@@ -241,7 +275,7 @@ void lwc_sensor_init(void) {
 	me.type = MissionWP;
   	me.element.mission_wp.wp.wp_f.x = 350.0;
   	me.element.mission_wp.wp.wp_f.y = 300.0;
-  	me.element.mission_wp.wp.wp_f.z = 385.0;
+  	me.element.mission_wp.wp.wp_f.z = 315.0;
   	me.duration = 0;
   	me.index = 1;
 

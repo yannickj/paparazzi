@@ -1,30 +1,29 @@
 <!DOCTYPE airframe SYSTEM "../../airframe.dtd">
 
+<!-- Slicer (http://www.recherche.enac.fr/wiki/index.php/Image:Slicer.jpg)
+     Two ailevons
+     Tiny 1.1, tilted infrared sensor, roll gyro, unconfigured GPS at 9600
+     3 cells lipo
+     Fixed camera pointing down -->
 
-<!-- this is the Zagi Titouan CHIMERA fixed wing airframe file
--->
+<airframe name="Pelican based on Minimag">
 
-<airframe name="zagi_titouan">
-  
-  <autopilot name="fixedwing_autopilot.xml"/>
   <firmware name="fixedwing">
-      
-    <define name="CONTROL_FREQUENCY" value="60"/>
-
-    <target name="ap" board="chimera_1.0">
-      <module name="radio_control" type="sbus"/>
+    <configure name="PERIODIC_FREQUENCY" value="100"/>
+    <target name="ap" board="apogee_1.0_chibios">
+    <module name="radio_control" type="sbus"/>
     </target>
     <target name="nps" board="pc">
       <module name="radio_control" type="ppm"/>
       <module name="fdm"           type="jsbsim"/>
     </target>
 
-    <module name="imu" type="chimera"/>
+    <module name="imu" type="apogee"/>
     <module name="ahrs" type="float_dcm"/> <!--Attitude and heading reference system-->
     <module name="telemetry" type="xbee_api"/> 
 
     <module name="gps"     type="ublox">
-     <configure name="GPS_BAUD" value="B38400"/>
+     <configure name="GPS_BAUD" value="B115200"/>
     </module>
 
     <module name="control" type="new"/>
@@ -37,14 +36,12 @@
     </module>
 
     <module name="navigation"/>
-    <module name="nav" type="flower"/>
     <module name="takeoff_detect"/>
 
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger"  type="sd_chibios"/>
-    <!--module name="lwc_sensor"/-->
-    <!--module name="flightrecorder"/-->
+    <module name="flight_recorder"/>
 
   </firmware>
 
@@ -52,31 +49,38 @@
     <axis name="THROTTLE" failsafe_value="0"/>
     <axis name="ROLL"     failsafe_value="0"/>
     <axis name="PITCH"    failsafe_value="0"/>
+    <axis name="YAW"    failsafe_value="0"/>
   </commands>
 
   <servos>
-    <servo name="MOTOR"         no="0" min="1040" neutral="1040" max="2000"/>
-    <servo name="AILEVON_RIGHT" no="1" min="1100" neutral="1500" max="1900"/>
-    <servo name="AILEVON_LEFT"  no="2" min="1900" neutral="1500" max="1100"/>
+    <servo name="MOTOR"    no="0" min="1200" neutral="1200" max="1800"/>
+    <servo name="AILERON_LEFT"  no="2" min="1000" neutral="1430" max="2000"/>
+    <servo name="AILERON_RIGHT" no="3" min="1000" neutral="1471" max="2000"/> 
+    <servo name="TAIL_ELEVATOR"  no="4" min="1800" neutral="1574" max="1200"/>
+    <servo name="TAIL_RUDDER" no="5" min="1100" neutral="1500" max="1900"/>
   </servos>
 
   <rc_commands>
     <set command="THROTTLE" value="@THROTTLE"/>
     <set command="ROLL"     value="@ROLL"/>
     <set command="PITCH"    value="@PITCH"/>
+    <set command="YAW"    value="@YAW"/>
   </rc_commands>
 
   <section name="MIXER">
-    <define name="AILEVON_AILERON_RATE"  value="0.75"/>
-    <define name="AILEVON_ELEVATOR_RATE" value="0.75"/>
+
+    <define name="AILERON_RATE"  value="0.75"/>
+    <define name="ELEVATOR_RATE" value="0.75"/>
+    <define name="RUDDER_RATE" value="0.75"/>
+    <define name="COMBI_SWITCH" value="1.0"/>
   </section>
 
   <command_laws>
-    <let var="aileron"         value="@ROLL  * AILEVON_AILERON_RATE"/>
-    <let var="elevator"        value="@PITCH * AILEVON_ELEVATOR_RATE"/>
     <set servo="MOTOR"         value="@THROTTLE"/>
-    <set servo="AILEVON_LEFT"  value="$elevator + $aileron"/>
-    <set servo="AILEVON_RIGHT" value="$elevator + $aileron"/>
+    <set servo="AILERON_LEFT"  value="@ROLL  * AILERON_RATE"/>
+    <set servo="AILERON_RIGHT" value="@ROLL  * AILERON_RATE"/>
+    <set servo="TAIL_RUDDER"  value="@YAW * RUDDER_RATE + @ROLL * COMBI_SWITCH"/>
+    <set servo="TAIL_ELEVATOR" value="@PITCH"/>
   </command_laws>
 
   <section name="AUTO1" prefix="AUTO1_">
@@ -86,20 +90,20 @@
 
   <section name="IMU" prefix="IMU_">
 
-    <define name="GYRO_P_SIGN" value="-1"/>
+    <define name="GYRO_P_SIGN" value="1"/>
     <define name="GYRO_Q_SIGN" value="-1"/>
-    <define name="GYRO_R_SIGN" value="1"/>
+    <define name="GYRO_R_SIGN" value="-1"/>
 
-    <define name="ACCEL_X_SIGN"    value="-1"/>
-    <define name="ACCEL_Y_SIGN"    value="-1"/>
-    <define name="ACCEL_Z_SIGN"    value="1"/>
+    <define name="ACCEL_X_SIGN" value="1"/>
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="-1"/>
 
-    <define name="ACCEL_X_NEUTRAL" value="26"/>
-    <define name="ACCEL_Y_NEUTRAL" value="-28"/>
-    <define name="ACCEL_Z_NEUTRAL" value="253"/>
-    <define name="ACCEL_X_SENS"    value="2.44377554254" integer="16"/>
-    <define name="ACCEL_Y_SENS"    value="2.45827623443" integer="16"/>
-    <define name="ACCEL_Z_SENS"    value="2.44550194945" integer="16"/>
+    <define name="ACCEL_X_NEUTRAL" value="-70"/>
+    <define name="ACCEL_Y_NEUTRAL" value="-1"/>
+    <define name="ACCEL_Z_NEUTRAL" value="-39"/>
+    <define name="ACCEL_X_SENS" value="2.44179562422" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.45190500621" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.42384287054" integer="16"/>
 
     <define name="MAG_X_NEUTRAL" value="-1619"/>
     <define name="MAG_Y_NEUTRAL" value="1"/>
@@ -125,7 +129,7 @@
     <define name="CRITIC_BAT_LEVEL" value="9.6" unit="V"/>
     <define name="LOW_BAT_LEVEL" value="9.9" unit="V"/>
     <define name="MAX_BAT_LEVEL" value="12.5" unit="V"/>
-    <define name="MilliAmpereOfAdc(_adc)" value="(_adc-620)*4.536"/>
+    <define name="MilliAmpereOfAdc(_adc)" value="(_adc-620)*4.536"/> <!-- TO ASK-->
   </section>
 
   <section name="MISC">
@@ -140,9 +144,9 @@
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="3."/>
     <!-- auto throttle inner loop -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.5"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.35"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
-    <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
+    <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.6"/>
     <define name="AUTO_THROTTLE_CLIMB_THROTTLE_INCREMENT" value="0.08" unit="%/(m/s)"/>
     <define name="AUTO_THROTTLE_PGAIN" value="0.007"/>
     <define name="AUTO_THROTTLE_IGAIN" value="0.008"/>
@@ -158,10 +162,10 @@
     <define name="COURSE_PGAIN" value="0.4"/>
     <define name="PITCH_MAX_SETPOINT" value="30." unit="deg"/>
     <define name="PITCH_MIN_SETPOINT" value="-30." unit="deg"/>
-    <define name="PITCH_PGAIN" value="7000"/>
+    <define name="PITCH_PGAIN" value="10210"/>
     <define name="PITCH_IGAIN" value="322"/>
-    <define name="PITCH_DGAIN" value="1200"/>
-    
+    <define name="PITCH_DGAIN" value="1485"/>
+
     <define name="ROLL_MAX_SETPOINT"  value="41.0000004297" unit="deg"/>
     <define name="ROLL_ATTITUDE_GAIN" value="10041"/>
   </section>
@@ -179,5 +183,4 @@
     <define name="JSBSIM_MODEL" value="easystar" type="string"/>
     <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
   </section>
-
 </airframe>
