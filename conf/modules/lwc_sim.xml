@@ -1,0 +1,19 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="lwc_sim" dir="meteo">
+  <doc>
+    <description>
+      This module fetch the Liquid Water Content (LWC) given by the python agent basedon the MesoNh cloud simulation.
+      Since data are received from datalink, it can be used in real flight with a virtual cloud.
+    </description>
+  </doc>
+  <header>
+    <file name="lwc_sim.h"/>
+  </header>
+  <init fun="lwc_sim_init()"/>
+  <datalink message="PAYLOAD_COMMAND" fun="lwc_sim_msg_callback()"/>
+  <makefile>
+    <file name="lwc_sim.c"/>
+  </makefile>
+</module>
+
