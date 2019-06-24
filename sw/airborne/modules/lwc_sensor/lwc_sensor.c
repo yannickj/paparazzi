@@ -36,7 +36,7 @@ struct EnuCoor_f calculated_point;
 struct _mission_element me;
 float direction;
 
-int running_pattern = 1;
+int running_pattern = 0;
 
 struct EnuCoor_f barycenter;
 int nb_border_point = 0;
