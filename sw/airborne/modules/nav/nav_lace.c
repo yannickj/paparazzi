@@ -88,14 +88,15 @@ static struct NavLace nav_lace;
 
 static bool nav_lace_mission(uint8_t nb, float *params, bool init)
 {
-  if (nb != 4) {
+  if (nb != 5) {
     return false; // wrong number of parameters
   }
   if (init) {
     struct EnuCoor_f start = { params[0], params[1], params[2] };
     int first_turn = params[3];
-    int vertical_speed = params[4];
-    nav_lace_setup(start, first_turn, vertical_speed);
+    float circle_radius = params[4];
+    int vertical_speed = params[5];
+    nav_lace_setup(start, first_turn, circle_radius, vertical_speed);
   }
   return nav_lace_run();
 }
@@ -116,11 +117,12 @@ void nav_lace_init(void)
 #endif
 }
 
-void nav_lace_setup(struct EnuCoor_f start_point, int turn, int vert_speed)
+void nav_lace_setup(struct EnuCoor_f start_point, int turn, float desired_radius, int vert_speed)
 {
   nav_lace.target = start_point;
   nav_lace.status = LACE_ENTER;
   nav_lace.inside_cloud = false;
+  nav_lace.radius = desired_radius;
   nav_lace.v_speed = vert_speed;
 
   if(turn == 1){
@@ -140,7 +142,7 @@ bool nav_lace_run(void)
 
   switch (nav_lace.status) {
     case LACE_ENTER:
-      nav_route_xy(nav_lace.actual->x, nav_lace.actual->y, target.x, target.y); /*Attention il faut du enucoor_i et pas f? */
+      nav_route_xy(nav_lace.actual->x, nav_lace.actual->y, target.x, target.y);
       if (nav_lace.inside_cloud){
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = stateGetPositionEnu_f();
