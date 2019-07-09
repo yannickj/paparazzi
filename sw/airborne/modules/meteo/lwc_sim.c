@@ -38,15 +38,20 @@
 #include "modules/mission/mission_common.h"
 #include "math/pprz_geodetic_float.h"
 #include "subsystems/gps.h"
+#include "subsystems/abi.h"
 
 // LWC threshold for cloud border
 #ifndef LWC_BORDER_THRESHOLD
 #define LWC_BORDER_THRESHOLD 0.05
 #endif
 
+// Type of data
+#define LWC_SIM_RAW 0 // LWC value
+#define LWC_SIM_BORDER 1 // crossing border
+
 struct LWCSim lwc_sim;
 
-static int IvytoInt(uint8_t * buffer)
+static int IvytoInt(uint8_t *buffer)
 {
   int i, res;
   res = 0;
@@ -60,9 +65,9 @@ static int IvytoInt(uint8_t * buffer)
 
 static float denormalized(int value)
 {
-	float res1 = (float)value / 255.0;
-	float res = (float)res1 * 0.6;
-	return res;
+  float res1 = (float)value / 255.0;
+  float res = (float)res1 * 0.6;
+  return res;
 }
 
 static inline void border_send_shot_position(void)
@@ -108,24 +113,26 @@ void lwc_sensor_init(void)
 void lwc_sim_msg_callback(void)
 {
 
-	if (DL_PAYLOAD_COMMAND_ac_id(dl_buffer) == AC_ID) {
+  if (DL_PAYLOAD_COMMAND_ac_id(dl_buffer) == AC_ID) {
+    uint32_t stamp = get_sys_time_usec();
 
     // get raw value from message
-		int raw = IvytoInt(dl_buffer);
-		lwc_sim.value = denormalized(raw);
+    int raw = IvytoInt(dl_buffer);
+    lwc_sim.value = denormalized(raw);
     lwc_sim.pos = *stateGetPositionEnu_f();
     lwc_sim.time = get_sys_time_float();
 
     // test border crossing
-		if (lwc_sim.value > LWC_BORDER_THRESHOLD && lwc_sim.inside_cloud == false) {
-			border_send_shot_position();
-			lwc_sim.inside_cloud = true;
-		}
-		else if (lwc_sim.value <= LWC_BORDER_THRESHOLD && lwc_sim.inside_cloud == true) {
-			border_send_shot_position();
-			lwc_sim.inside_cloud = false;
-		}
+    if (lwc_sim.value > LWC_BORDER_THRESHOLD && lwc_sim.inside_cloud == false) {
+      border_send_shot_position();
+      lwc_sim.inside_cloud = true;
+    } else if (lwc_sim.value <= LWC_BORDER_THRESHOLD && lwc_sim.inside_cloud == true) {
+      border_send_shot_position();
+      lwc_sim.inside_cloud = false;
+    }
 
-    // TODO send ABI message, for all values ? only border crossing ?
-	}
+    AbiSendMsgPAYLOAD_DATA(LWC_SIM_ID, stamp, LWC_SIM_RAW, sizeof(float), (uint8_t *)(&lwc_sim.value));
+    uint8_t inside = (uint8_t) lwc_sim.inside_cloud;
+    AbiSendMsgPAYLOAD_DATA(LWC_SIM_ID, stamp, LWC_SIM_BORDER, 1, &inside);
+  }
 }

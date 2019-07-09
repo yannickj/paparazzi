@@ -31,6 +31,7 @@
 #include "state.h"
 #include "autopilot.h"
 #include "generated/flight_plan.h"
+#include "subsystems/abi.h"
 
 enum LaceStatus {
   LACE_ENTER,
@@ -103,6 +104,19 @@ static bool nav_lace_mission(uint8_t nb, float *params, bool init)
 }
 #endif
 
+// ABI message
+
+#ifndef NAV_LACE_LWC_ID
+#define NAV_LACE_LWC_ID ABI_BROADCAST
+#endif
+
+static abi_event lwc_ev;
+
+static lwc_cb(uint8_t sender_id UNUSED, uint32_t stamp UNUSED, int32_t data_type, uint32_t size, uint8_t * data) {
+  if (data_type == 1 && size == 1) {
+    nav_lace.inside_cloud = (bool) data[0];
+  }
+}
 
 void nav_lace_init(void)
 {
@@ -110,8 +124,7 @@ void nav_lace_init(void)
   nav_lace.radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.inside_cloud = false;
 
-
-  // TODO bind to ABI message
+  AbiBindMsg(NAV_LACE_LWC_ID, &lwc_ev, lwc_cb);
 
 #if USE_MISSION
   mission_register(nav_lace_mission, "LACE");

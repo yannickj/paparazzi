@@ -441,4 +441,11 @@
 #define JOYSTICK_ID 1
 #endif
 
+/*
+ * PAYLOAD_DATA
+ */
+#ifndef LWC_SIM_ID
+#define LWC_SIM_ID 1
+#endif
+
 #endif /* ABI_SENDER_IDS_H */

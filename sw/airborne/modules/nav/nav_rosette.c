@@ -64,6 +64,20 @@ static bool nav_rosette_mission(uint8_t nb, float *params, bool init)
 }
 #endif
 
+// ABI message
+
+#ifndef NAV_ROSETTE_LWC_ID
+#define NAV_ROSETTE_LWC_ID ABI_BROADCAST
+#endif
+
+static abi_event lwc_ev;
+
+static lwc_cb(uint8_t sender_id UNUSED, uint32_t stamp UNUSED, int32_t data_type, uint32_t size, uint8_t * data) {
+  if (data_type == 1 && size == 1) {
+    nav_rosette.inside_cloud = (bool) data[0];
+  }
+}
+
 
 void nav_rosette_init(void)
 {
@@ -71,7 +85,7 @@ void nav_rosette_init(void)
   nav_rosette.radius = DEFAULT_CIRCLE_RADIUS;
   nav_rosette.inside_cloud = false;
 
-  // TODO bind to ABI message
+  AbiBindMsg(NAV_ROSETTE_LWC_ID, &lwc_ev, lwc_cb);
 
 #if USE_MISSION
   mission_register(nav_rosette_mission, "RSTT");
