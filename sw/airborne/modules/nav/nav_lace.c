@@ -39,8 +39,8 @@ enum LaceStatus {
 };
 
 enum RotationDir {
-  LEFT,
-  RIGHT
+  LACE_LEFT,
+  LACE_RIGHT
 };
 
 struct NavLace {
@@ -56,20 +56,21 @@ struct NavLace {
 
 };
 
-static float change_rep(float dir){
-  return M_PI_2-dir;
+static float change_rep(float dir)
+{
+  return M_PI_2 - dir;
 }
 
-static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float uav_direction){
+static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float uav_direction)
+{
   struct EnuCoor_f new_point;
   float rot_angle;
   float radius_sign;
 
-  if(nav_lace.rotation == RIGHT){
+  if (nav_lace.rotation == LACE_RIGHT) {
     rot_angle = -M_PI_2;
     radius_sign = 1.0;
-  }
-  else{
+  } else {
     rot_angle = M_PI_2;
     radius_sign = -1.0;
   }
@@ -125,25 +126,24 @@ void nav_lace_setup(struct EnuCoor_f start_point, int turn, float desired_radius
   nav_lace.radius = desired_radius;
   nav_lace.v_speed = vert_speed;
 
-  if(turn == 1){
-    nav_lace.rotation = RIGHT;
+  if (turn == 1) {
+    nav_lace.rotation = LACE_RIGHT;
+  } else {
+    nav_lace.rotation = LACE_LEFT;
   }
-  else{
-    nav_lace.rotation = LEFT;
-  }
-  
+
   nav_lace.actual = stateGetPositionEnu_f();
 }
 
 bool nav_lace_run(void)
 {
-  
+
   NavVerticalAutoThrottleMode(); /* Pitch set according to desired VSpeed */
 
   switch (nav_lace.status) {
     case LACE_ENTER:
       nav_route_xy(nav_lace.actual->x, nav_lace.actual->y, target.x, target.y);
-      if (nav_lace.inside_cloud){
+      if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
@@ -151,8 +151,8 @@ bool nav_lace_run(void)
       }
       break;
     case LACE_INSIDE:
-      nav_circle_xy(nav_lace.circle.x, nav_circle_xy.y , nav_lace.radius);
-      if(!nav_lace.inside_cloud){
+      nav_circle_xy(nav_lace.circle.x, nav_circle_xy.y, nav_lace.radius);
+      if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE;
         nav_lace.actual = stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
@@ -160,8 +160,8 @@ bool nav_lace_run(void)
       }
       break;
     case LACE_OUTSIDE:
-      nav_circle_xy(nav_lace.circle.x, nav_circle_xy.y , nav_lace.radius);
-      if(nav_lace.inside_cloud){
+      nav_circle_xy(nav_lace.circle.x, nav_circle_xy.y, nav_lace.radius);
+      if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
