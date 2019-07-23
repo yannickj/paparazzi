@@ -27,7 +27,7 @@
  * Since data are received from datalink, it can be used in real flight with a virtual cloud.
  */
 
-#include "modules/lwc_sensor/lwc_sim.h"
+#include "modules/meteo/lwc_sim.h"
 
 #include "std.h"
 #include "paparazzi.h"
@@ -66,7 +66,7 @@ static int IvytoInt(uint8_t *buffer)
 static float denormalized(int value)
 {
   float res1 = (float)value / 255.0;
-  float res = (float)res1 * 0.6;
+  float res = (float)res1 * 0.65;
   return res;
 }
 
@@ -99,7 +99,7 @@ static inline void border_send_shot_position(void)
 }
 
 
-void lwc_sensor_init(void)
+void lwc_sim_init(void)
 {
   lwc_sim.value = 0.f;
   lwc_sim.pos.x = 0.f;

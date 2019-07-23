@@ -30,8 +30,10 @@
 
   <modules>
     <module name="mission" type="fw"/>
-    <module name="lwc_sensor"/>
+    <!--<module name="lwc_sensor"/>-->
     <module name="nav" type="flower"/>
+    <module name="nav" type="lace"/>
+    <module name="lwc_sim"/>
   </modules>
 
   <exceptions>
@@ -80,6 +82,11 @@
     <block name="FlowerTop">
       <call_once fun="nav_flower_setup(WP_Center2,WP_Edge2)"/>
       <call fun="nav_flower_run()"/>
+    </block>
+
+    <block name="Lace_mission">
+      <call_once fun="nav_lace_setup(350.0, 300.0, 365.0, 1, 80.0, 0.5)"/>
+      <call fun="nav_lace_run()"/>
     </block>
 
     <block key="F8" name="Figure 8 around wp 1" strip_button="Figure 8 (wp 1-2)" strip_icon="eight.png" group="base_pattern">
