@@ -72,10 +72,10 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 
   if (nav_lace.rotation == LACE_RIGHT) {
     rot_angle = -M_PI_2;
-    nav_lace.rotation = LEFT;
+    nav_lace.rotation = LACE_LEFT;
   } else{
     rot_angle = M_PI_2;
-    nav_lace.rotation = RIGHT;
+    nav_lace.rotation = LACE_RIGHT;
   }
 
   new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_lace.radius);
@@ -182,7 +182,6 @@ bool nav_lace_run(void)
     case LACE_OUTSIDE:
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
       if(nav_lace.inside_cloud){
->>>>>>> Stashed changes
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
