@@ -32,6 +32,7 @@
 #include "math/pprz_geodetic_float.h"
 #include "state.h"
 #include "subsystems/abi.h"
+#include "subsystems/datalink/downlink.h"
 
 // Default parameters
 // Camera is looking down and is placed at the center of the frame
@@ -79,6 +80,7 @@ struct target_loc_t {
 
 static struct target_loc_t target_loc;
 
+uint8_t target_localization_mark;
 
 // Abi bindings
 #ifndef TARGET_LOC_ID
@@ -90,25 +92,26 @@ abi_event detection_ev;
 static void detection_cb(uint8_t sender_id UNUSED,
     int16_t pixel_x, int16_t pixel_y,
     int16_t pixel_width UNUSED, int16_t pixel_height UNUSED,
-    int32_t quality, int16_t extra)
+    int32_t quality UNUSED, int16_t extra)
 {
   target_loc.px = pixel_x;
   target_loc.py = pixel_y;
 
   // Prepare rotation matrices
   struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
-  struct FloatRmat ltp_to_cam_rmat;
+  struct FloatRMat ltp_to_cam_rmat;
   float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &target_loc.body_to_cam);
   // Prepare cam world position
   // C_w = P_w + R_w2b * C_b
   struct FloatVect3 cam_pos_ltp;
   float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &target_loc.cam_pos);
-  VECT3_ADD(cam_pos_ltp, stateGetPositionNed_f());
+  VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
 
   // Compute target position here
 
   target_loc.type = (uint8_t) extra; // use 'extra' field to encode the type of target
   target_loc.valid = true;
+
 }
 
 void target_localization_init(void)
@@ -123,14 +126,16 @@ void target_localization_init(void)
     TARGET_LOC_BODY_TO_CAM_PSI
   };
   float_rmat_of_eulers(&target_loc.body_to_cam, &euler);
-  VECT3_ASSIGN(target_loc.camera_pos,
+  VECT3_ASSIGN(target_loc.cam_pos,
       TARGET_LOC_CAM_POS_X,
       TARGET_LOC_CAM_POS_Y,
       TARGET_LOC_CAM_POS_Z);
 
-  VECT3_ZERO(target_loc.target);
+  FLOAT_VECT3_ZERO(target_loc.target);
 
   target_loc.valid = false;
+
+  target_localization_mark = 0;
 
   // Bind to ABI message
   AbiBindMsgVISUAL_DETECTION(TARGET_LOC_ID, &detection_ev, detection_cb);
@@ -138,10 +143,22 @@ void target_localization_init(void)
 
 void target_localization_report(void)
 {
-  if (taget_loc.valid) {
-    DOWNLINK_SEND_MARK(DefaultChannel, DefaultDevice, &taget_loc.type,
+  if (target_loc.valid) {
+    DOWNLINK_SEND_MARK(DefaultChannel, DefaultDevice, &target_loc.type,
         &target_loc.pos_lla.lat, &target_loc.pos_lla.lon);
     target_loc.valid = false;
   }
+}
+
+void cv_target_localization_report_mark(uint8_t mark)
+{
+  // report current position as a given mark
+  // mostly for testing
+  target_localization_mark = mark;
+  struct LlaCoor_f *pos = stateGetPositionLla_f();
+  float lat_deg = DegOfRad(pos->lat);
+  float lon_deg = DegOfRad(pos->lon);
+  DOWNLINK_SEND_MARK(DefaultChannel, DefaultDevice, &target_localization_mark,
+        &lat_deg, &lon_deg);
 }
 

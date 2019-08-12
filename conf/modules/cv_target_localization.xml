@@ -8,11 +8,18 @@
       Based on the VISUAL_DETECTION ABI message.
     </description>
   </doc>
+  <settings>
+    <dl_settings>
+      <dl_settings NAME="Target Loc">
+        <dl_setting MAX="4" MIN="1" STEP="1" VAR="target_localization_mark" shortname="mark" module="modules/computer_vision/cv_target_localization" handler="report_mark" values="RED|BLUE|YELLOW|ORANGE"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
   <header>
     <file name="cv_target_localization.h"/>
   </header>
   <init fun="target_localization_init()"/>
-  <periodic fun="taget_localization_report()" freq="1" autorun="TRUE"/>
+  <periodic fun="target_localization_report()" freq="1" autorun="TRUE"/>
   <makefile>
     <file name="cv_target_localization.c"/>
   </makefile>

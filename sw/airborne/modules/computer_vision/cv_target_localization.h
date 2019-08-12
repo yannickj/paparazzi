@@ -29,7 +29,14 @@
 #ifndef CV_TARGET_LOCALIZATION_H
 #define CV_TARGET_LOCALIZATION_H
 
+#include "std.h"
+
 extern void target_localization_init(void);
+extern void target_localization_report(void);
+
+// settings and handlers
+extern uint8_t target_localization_mark;
+extern void cv_target_localization_report_mark(uint8_t mark);
 
 #endif
 
