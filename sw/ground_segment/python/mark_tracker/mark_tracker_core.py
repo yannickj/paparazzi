@@ -121,8 +121,9 @@ class Tracker(Ui_MainWindow):
                 print('from ',ac_id,':',msg)
             # update mark and send shape
             mark_id = int(msg['ac_id']) # abuse ac_id field
-            lat = msg['lat']
-            lon = msg['long']
+            lat = float(msg['lat'])
+            lon = float(msg['long'])
+            # TODO find which ORANGE mark we have found
             self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
             self.update_shape(self.marks[mark_id])
         self.connect.ivy.subscribe(mark_cb,PprzMessage("telemetry", "MARK"))
@@ -158,6 +159,34 @@ class Tracker(Ui_MainWindow):
             if self.verbose:
                 print('WP YELLOW not found')
 
+    def update_pos_label(self, mark):
+        if mark.id == MARK_RED:
+            self.pos_red.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+        elif mark.id == MARK_BLUE:
+            self.pos_blue.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+        elif mark.id == MARK_YELLOW:
+            self.pos_yellow.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+        elif mark.id == MARK_ORANGE_1:
+            self.pos_orange_1.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+        elif mark.id == MARK_ORANGE_2:
+            self.pos_orange_2.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+        elif mark.id == MARK_ORANGE_3:
+            self.pos_orange_3.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+
+    def clear_pos_label(self, mark):
+        if mark.id == MARK_RED:
+            self.pos_red.setText("lat / lon")
+        elif mark.id == MARK_BLUE:
+            self.pos_blue.setText("lat / lon")
+        elif mark.id == MARK_YELLOW:
+            self.pos_yellow.setText("lat / lon")
+        elif mark.id == MARK_ORANGE_1:
+            self.pos_orange_1.setText("lat / lon")
+        elif mark.id == MARK_ORANGE_2:
+            self.pos_orange_2.setText("lat / lon")
+        elif mark.id == MARK_ORANGE_3:
+            self.pos_orange_3.setText("lat / lon")
+
     def send_mark(self, mark_id, wp_id):
         ''' send mark to selected uab cb '''
         mark = self.marks[mark_id]
@@ -192,21 +221,23 @@ class Tracker(Ui_MainWindow):
 
     def update_shape(self, mark):
         ''' create or update a shape on the GCS map '''
+        self.update_pos_label(mark)
         msg = PprzMessage("ground", "SHAPE")
         msg['id'] = mark.id
         msg['linecolor'] = mark.color
         msg['fillcolor'] = mark.color
-        msg['opacity'] = 0 # no fill color
+        msg['opacity'] = 1 # fill color
         msg['shape'] = 0 # circle
         msg['status'] = 0 # create or update
-        msg['latarr'] = [int(10**7 * mark.lat)]
-        msg['lonarr'] = [int(10**7 * mark.lon)]
-        msg['radius'] = 1.
+        msg['latarr'] = [int(10**7 * mark.lat),0]
+        msg['lonarr'] = [int(10**7 * mark.lon),0]
+        msg['radius'] = 2.
         msg['text'] = mark.name
         self.connect.ivy.send(msg)
 
     def clear_shape(self, mark):
         ''' delete a shape on the GCS map '''
+        self.clear_pos_label(mark)
         msg = PprzMessage("ground", "SHAPE")
         msg['id'] = mark.id
         msg['linecolor'] = mark.color
