@@ -4,6 +4,7 @@ from ui.mainwindow import Ui_MainWindow
 import traceback
 from time import sleep
 import numpy as np
+from math import cos, sqrt
 
 import sys
 from os import path, getenv
@@ -131,7 +132,9 @@ class Tracker(Ui_MainWindow):
             mark_id = int(msg['ac_id']) # abuse ac_id field
             lat = float(msg['lat'])
             lon = float(msg['long'])
-            # TODO find which ORANGE mark we have found
+            # find which ORANGE mark we have found
+            if mark_id in [MARK_ORANGE_1, MARK_ORANGE_2, MARK_ORANGE_3]:
+                mark_id = self.find_closest_orange(mark_id, lat, lon)
             self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
             self.update_shape(self.marks[mark_id])
         self.connect.ivy.subscribe(mark_cb,PprzMessage("telemetry", "MARK"))
@@ -271,4 +274,30 @@ class Tracker(Ui_MainWindow):
         msg['text'] = 'NULL'
         self.connect.ivy.send(msg)
 
+    def find_closest_orange(self, current_id, lat, lon):
+        ''' try to find the correct orange mark based on distances '''
+        def dist_ll(mark):
+            ''' distances between two lat/lon position using simple pythagore '''
+            if mark.nb_sample > 0:
+                x = (lon - mark.lon) * cos(pi * (lat + mark.lat) / (2. * 180.))
+                y = lat - mark.lat
+                z = sqrt(x*x + y*y) # "distance" in degree
+                d = 1852 * 60 * z # convert to meters
+                return d
+            else:
+                return None
+
+        mark_id = None
+        min_dist = None
+        for i in [MARK_ORANGE_1, MARK_ORANGE_2, MARK_ORANGE_3]:
+            dist = dist_ll(self.marks[i])
+            if dist is not None and (min_dist is None or dist < min_dist):
+                min_dist = dist # better solution
+                mark_id = i
+            elif dist is None and mark_id is None:
+                mark_id = i # first run and empty slot
+        if mark_id is None:
+            return current_id
+        else:
+            return mark_id
 
