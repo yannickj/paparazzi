@@ -61,7 +61,6 @@ class Mark():
         self.lon = np.mean(self.lon_arr)
         self.alt = alt
         self.nb_sample = self.nb_sample + 1
-        print(self.nb_sample)
 
     def clear(self):
         self.lat_arr = np.array([])
@@ -139,7 +138,8 @@ class Tracker(Ui_MainWindow):
                     mark_id = i
                 else:
                     mark_id = None
-                    print("Orange mark error")
+                    if self.verbose:
+                        print("Orange mark error")
             if mark_id is not None:
                 # update if valid ID
                 self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
@@ -309,10 +309,9 @@ class Tracker(Ui_MainWindow):
                 return None
 
         mark_id = None
-        min_dist = 5. # max dist to consider same mark
+        min_dist = float(self.orange_threshold.sliderPosition()) # max dist to consider same mark
         for i in [MARK_ORANGE_1, MARK_ORANGE_2, MARK_ORANGE_3]:
             dist = dist_ll(self.marks[i])
-            print(i, dist, mark_id, min_dist)
             if dist is not None and dist < min_dist:
                 min_dist = dist # better solution
                 mark_id = i
