@@ -4,7 +4,7 @@ from ui.mainwindow import Ui_MainWindow
 import traceback
 from time import sleep
 import numpy as np
-from math import cos, sqrt
+from math import cos, sqrt, pi
 
 import sys
 from os import path, getenv
@@ -134,9 +134,16 @@ class Tracker(Ui_MainWindow):
             lon = float(msg['long'])
             # find which ORANGE mark we have found
             if mark_id in [MARK_ORANGE_1, MARK_ORANGE_2, MARK_ORANGE_3]:
-                mark_id = self.find_closest_orange(mark_id, lat, lon)
-            self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
-            self.update_shape(self.marks[mark_id])
+                i = self.find_closest_orange(lat, lon)
+                if i is not None:
+                    mark_id = i
+                else:
+                    mark_id = None
+                    print("Orange mark error")
+            if mark_id is not None:
+                # update if valid ID
+                self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
+                self.update_shape(self.marks[mark_id])
         self.connect.ivy.subscribe(mark_cb,PprzMessage("telemetry", "MARK"))
 
     def closing(self):
@@ -274,7 +281,7 @@ class Tracker(Ui_MainWindow):
         msg['text'] = 'NULL'
         self.connect.ivy.send(msg)
 
-    def find_closest_orange(self, current_id, lat, lon):
+    def find_closest_orange(self, lat, lon):
         ''' try to find the correct orange mark based on distances '''
         def dist_ll(mark):
             ''' distances between two lat/lon position using simple pythagore '''
@@ -288,16 +295,14 @@ class Tracker(Ui_MainWindow):
                 return None
 
         mark_id = None
-        min_dist = None
+        min_dist = 5. # max dist to consider same mark
         for i in [MARK_ORANGE_1, MARK_ORANGE_2, MARK_ORANGE_3]:
             dist = dist_ll(self.marks[i])
-            if dist is not None and (min_dist is None or dist < min_dist):
+            print(i, dist, mark_id, min_dist)
+            if dist is not None and dist < min_dist:
                 min_dist = dist # better solution
                 mark_id = i
             elif dist is None and mark_id is None:
                 mark_id = i # first run and empty slot
-        if mark_id is None:
-            return current_id
-        else:
-            return mark_id
+        return mark_id
 
