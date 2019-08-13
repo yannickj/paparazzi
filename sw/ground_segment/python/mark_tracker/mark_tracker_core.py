@@ -99,9 +99,9 @@ class Tracker(Ui_MainWindow):
         self.clear_orange_1.clicked.connect(lambda:self.clear_mark(MARK_ORANGE_1))
         self.clear_orange_2.clicked.connect(lambda:self.clear_mark(MARK_ORANGE_2))
         self.clear_orange_3.clicked.connect(lambda:self.clear_mark(MARK_ORANGE_3))
-        self.send_red.clicked.connect(lambda:self.send_mark(MARK_RED, self.combo_wp_red.currentIndex()+1))
-        self.send_blue.clicked.connect(lambda:self.send_mark(MARK_BLUE, self.combo_wp_blue.currentIndex()+1))
-        self.send_yellow.clicked.connect(lambda:self.send_mark(MARK_YELLOW, self.combo_wp_yellow.currentIndex()+1))
+        self.send_red.clicked.connect(lambda:self.send_mark(MARK_RED))
+        self.send_blue.clicked.connect(lambda:self.send_mark(MARK_BLUE))
+        self.send_yellow.clicked.connect(lambda:self.send_mark(MARK_YELLOW))
 
         ''' get aircraft config '''
         def connect_cb(conf):
@@ -144,6 +144,8 @@ class Tracker(Ui_MainWindow):
                 # update if valid ID
                 self.marks[mark_id].set_pos(lat, lon, self.alt_ref)
                 self.update_shape(self.marks[mark_id])
+                if self.auto_send_check.isChecked():
+                    self.send_mark(mark_id)
         self.connect.ivy.subscribe(mark_cb,PprzMessage("telemetry", "MARK"))
 
     def closing(self):
@@ -217,10 +219,22 @@ class Tracker(Ui_MainWindow):
             self.pos_orange_3.setText("lat / lon")
             self.nb_orange_3.setText("{}".format(mark.nb_sample))
 
-    def send_mark(self, mark_id, wp_id):
+    def get_wp_id(self, mark_id):
+        ''' get WP id from mark id '''
+        if mark_id == MARK_RED:
+            return self.combo_wp_red.currentIndex()+1
+        elif mark_id == MARK_BLUE:
+            return self.combo_wp_blue.currentIndex()+1
+        elif mark_id == MARK_YELLOW:
+            return self.combo_wp_yellow.currentIndex()+1
+        else:
+            return None
+
+    def send_mark(self, mark_id):
         ''' send mark to selected uab cb '''
         mark = self.marks[mark_id]
         uav_name = self.combo_uav.currentText()
+        wp_id = self.get_wp_id(mark_id)
         if uav_name is not '':
             try:
                 uav_id = self.connect.conf_by_name(uav_name).id
