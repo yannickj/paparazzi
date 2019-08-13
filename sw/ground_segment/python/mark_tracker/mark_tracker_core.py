@@ -3,6 +3,7 @@ from collections import namedtuple
 from ui.mainwindow import Ui_MainWindow
 import traceback
 from time import sleep
+import numpy as np
 
 import sys
 from os import path, getenv
@@ -47,16 +48,23 @@ class Mark():
         self.lat = 0.
         self.lon = 0.
         self.alt = 0.
+        self.lat_arr = np.array([])
+        self.lon_arr = np.array([])
 
     def set_pos(self, lat, lon, alt):
         ''' set pos '''
-        # TODO filtering
-        self.lat = lat
-        self.lon = lon
+        # filtering
+        self.lat_arr = np.append(self.lat_arr, [lat])
+        self.lon_arr = np.append(self.lon_arr, [lon])
+        self.lat = np.mean(self.lat_arr)
+        self.lon = np.mean(self.lon_arr)
         self.alt = alt
         self.nb_sample = self.nb_sample + 1
+        print(self.nb_sample)
 
     def clear(self):
+        self.lat_arr = np.array([])
+        self.lon_arr = np.array([])
         self.nb_sample = 0
 
     def __str__(self):
@@ -162,30 +170,42 @@ class Tracker(Ui_MainWindow):
     def update_pos_label(self, mark):
         if mark.id == MARK_RED:
             self.pos_red.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_red.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_BLUE:
             self.pos_blue.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_blue.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_YELLOW:
             self.pos_yellow.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_yellow.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_1:
             self.pos_orange_1.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_orange_1.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_2:
             self.pos_orange_2.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_orange_2.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_3:
             self.pos_orange_3.setText("{:.7f} / {:.7f}".format(mark.lat, mark.lon))
+            self.nb_orange_3.setText("{}".format(mark.nb_sample))
 
     def clear_pos_label(self, mark):
         if mark.id == MARK_RED:
             self.pos_red.setText("lat / lon")
+            self.nb_red.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_BLUE:
             self.pos_blue.setText("lat / lon")
+            self.nb_blue.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_YELLOW:
             self.pos_yellow.setText("lat / lon")
+            self.nb_yellow.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_1:
             self.pos_orange_1.setText("lat / lon")
+            self.nb_orange_1.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_2:
             self.pos_orange_2.setText("lat / lon")
+            self.nb_orange_2.setText("{}".format(mark.nb_sample))
         elif mark.id == MARK_ORANGE_3:
             self.pos_orange_3.setText("lat / lon")
+            self.nb_orange_3.setText("{}".format(mark.nb_sample))
 
     def send_mark(self, mark_id, wp_id):
         ''' send mark to selected uab cb '''
