@@ -162,3 +162,15 @@ void cv_target_localization_report_mark(uint8_t mark)
         &lat_deg, &lon_deg);
 }
 
+#include "modules/sensors/cameras/jevois.h"
+#include "stdio.h"
+
+void target_localization_send_pos_to_cam(void)
+{
+  char str[32];
+  int alt_mm = (int)(stateGetPositionEnu_f()->z * 1000.f);
+  Bound(alt_mm, 0, 999999);
+  sprintf(str, "alt %d\r\n", alt_mm);
+  jevois_send_string(str);
+}
+

@@ -32,6 +32,7 @@
 #include "std.h"
 
 extern void target_localization_init(void);
+extern void target_localization_send_pos_to_cam(void);
 extern void target_localization_report(void);
 
 // settings and handlers
