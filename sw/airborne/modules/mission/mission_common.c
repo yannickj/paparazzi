@@ -122,6 +122,22 @@ static struct _mission_registered *mission_get_registered(char *type)
   return NULL; // not found
 }
 
+// Returns a pointer to a mission element struct with matching index, NULL if not found
+static struct _mission_element *mission_get_from_index(uint8_t index)
+{
+  uint8_t i = mission.current_idx;
+  while (i != mission.insert_idx) {
+    if (mission.elements[i].index == index) {
+      return &mission.elements[i]; // return first next element with matching index
+    }
+    i++;
+    if (i == MISSION_ELEMENT_NB) {
+      i = 0;
+    }
+  }
+  return NULL; // not found
+}
+
 // Weak implementation of mission_element_convert (leave element unchanged)
 bool __attribute__((weak)) mission_element_convert(struct _mission_element *el __attribute__((unused))) { return true; }
 
@@ -376,6 +392,36 @@ int mission_parse_CUSTOM(void)
   enum MissionInsertMode insert = (enum MissionInsertMode)(DL_MISSION_CUSTOM_insert(dl_buffer));
 
   return mission_insert(insert, &me);
+}
+
+int mission_parse_UPDATE(void)
+{
+  if (DL_MISSION_UPDATE_ac_id(dl_buffer) != AC_ID) { return false; } // not for this aircraft
+
+  struct _mission_element *me = mission_get_from_index(DL_MISSION_UPDATE_index(dl_buffer));
+  if (me == NULL) {
+    return false; // unknown type
+  }
+
+  float duration = DL_MISSION_UPDATE_duration(dl_buffer);
+  if (duration > -2.f) { // no update should in fact be -9
+    me->duration = duration; // update
+  }
+
+  uint8_t nb = DL_MISSION_UPDATE_params_length(dl_buffer);
+  float *params = DL_MISSION_UPDATE_params(dl_buffer);
+  switch (me->type) {
+    case MissionCustom:
+      return me->element.mission_custom.reg->cb(nb, params, MissionUpdate);
+    case MissionWP:
+    case MissionCircle:
+    case MissionSegment:
+    case MissionPath:
+    default:
+      // TODO handle update param for standard patterns
+      break;
+  }
+  return true;
 }
 
 int mission_parse_GOTO_MISSION(void)

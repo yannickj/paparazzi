@@ -88,12 +88,12 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 #if USE_MISSION
 #include "modules/mission/mission_common.h"
 
-static bool nav_lace_mission(uint8_t nb, float *params, bool init)
+static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
   if (nb != 5) {
     return false; // wrong number of parameters
   }
-  if (init) {
+  if (flag == MissionInit) {
     float start_x = params[0];
     float start_y = params[1];
     float start_z = params[2];

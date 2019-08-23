@@ -50,6 +50,12 @@ enum MissionInsertMode {
   ReplaceNexts    ///< replace the next element and remove all the others
 };
 
+enum MissionRunFlag {
+  MissionRun = 0,   ///< normal run
+  MissionInit = 1,  ///< first exec
+  MissionUpdate = 2 ///< param update
+};
+
 struct _mission_wp {
   union {
     struct EnuCoor_f wp_f;
@@ -98,7 +104,7 @@ struct _mission_path {
  * @param[in] init true if the function is called for the first time
  * @return true until the function ends
  */
-typedef bool (*mission_custom_cb)(uint8_t nb, float *params, bool init);
+typedef bool (*mission_custom_cb)(uint8_t nb, float *params, enum MissionRunFlag flag);
 
 struct _mission_registered {
   mission_custom_cb cb;         ///< navigation/action function callback
@@ -214,6 +220,7 @@ extern int mission_parse_SEGMENT_LLA(void);
 extern int mission_parse_PATH(void);
 extern int mission_parse_PATH_LLA(void);
 extern int mission_parse_CUSTOM(void);
+extern int mission_parse_UPDATE(void);
 extern int mission_parse_GOTO_MISSION(void);
 extern int mission_parse_NEXT_MISSION(void);
 extern int mission_parse_END_MISSION(void);

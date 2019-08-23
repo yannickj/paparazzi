@@ -51,12 +51,12 @@ static struct NavRosette nav_rosette;
 #if USE_MISSION
 #include "modules/mission/mission_common.h"
 
-static bool nav_rosette_mission(uint8_t nb, float *params, bool init)
+static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
   if (nb != 2) {
     return false; // wrong number of parameters
   }
-  if (init) {
+  if (flag == MissionInit) {
     struct EnuCoor_f start = { params[0], params[1], params[2] };
     nav_rosette_setup(start);
   }

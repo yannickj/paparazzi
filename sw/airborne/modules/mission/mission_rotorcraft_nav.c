@@ -224,7 +224,11 @@ static inline bool mission_nav_path(struct _mission_element *el)
  */
 static inline bool mission_nav_custom(struct _mission_custom *custom, bool init)
 {
-  return custom->reg->cb(custom->nb, custom->params, init);
+  if (init) {
+    return custom->reg->cb(custom->nb, custom->params, MissionInit);
+  } else {
+    return custom->reg->cb(custom->nb, custom->params, MissionRun);
+  }
 }
 
 int mission_run()
