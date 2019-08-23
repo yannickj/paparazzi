@@ -71,7 +71,7 @@ struct target_loc_t {
   struct FloatRMat body_to_cam; ///< Body to camera rotation
   struct FloatVect3 cam_pos;    ///< Position of camera in body frame
 
-  struct FloatVect3 target;     ///< Target position in LTP-NED frame
+  struct NedCoor_f target;      ///< Target position in LTP-NED frame
   struct LlaCoor_f pos_lla;     ///< Target global position in LLA
 
   bool valid;                   ///< True if a target have been seen
@@ -108,9 +108,30 @@ static void detection_cb(uint8_t sender_id UNUSED,
   VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
 
   // Compute target position here
+  struct FloatVect3 target_img = {
+    .x = (float)target_loc.px,
+    .y = (float)target_loc.py,
+    .z = 1.f
+  };
+  struct FloatVect3 tmp; // before scale factor
+  float_rmat_transp_vmult(&tmp, &ltp_to_cam_rmat, &target_img); // R^-1 * v_img
 
-  target_loc.type = (uint8_t) extra; // use 'extra' field to encode the type of target
-  target_loc.valid = true;
+  if (fabsf(tmp.z) > 0.1f) {
+    float scale = cam_pos_ltp.z / tmp.z; // scale factor
+    VECT3_SUM_SCALED(target_loc.target, cam_pos_ltp, tmp, scale); // T_w = C_w + s*tmp
+    // now, T_w.z should be equal to zero as it is assumed that the target is on a flat ground
+    // compute absolute position
+    struct EcefCoor_f target_ecef;
+    ecef_of_ned_point_f(&target_ecef, &state.ned_origin_f, &target_loc.target);
+    lla_of_ecef_f(&target_loc.pos_lla, &target_ecef);
+
+    target_loc.type = (uint8_t) extra; // use 'extra' field to encode the type of target
+    target_loc.valid = true;
+  }
+  else {
+    // if too close from ground, don't do anything
+    target_loc.valid = false;
+  }
 
 }
 
