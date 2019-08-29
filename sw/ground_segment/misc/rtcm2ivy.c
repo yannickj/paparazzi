@@ -115,6 +115,7 @@ static void ivy_send_message(uint8_t packet_id, uint8_t len, uint8_t msg[])
       cpt++;
     }
 
+    usleep(50000);
     printf_debug("%s\n\n", gps_packet);
     IvySendMsg("%s", gps_packet);
     offset += (packet_size-6);
