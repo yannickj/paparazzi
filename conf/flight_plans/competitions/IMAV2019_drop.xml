@@ -1,0 +1,185 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="795" ground_alt="775" home_mode_height="15" lat0="40.1579607" lon0="-3.3813882" max_dist_from_home="400" name="IMAV2019 Drop" qfu="250." security_height="10">
+  <header>
+#include "subsystems/datalink/datalink.h"
+static inline bool delay_test_rc(bool test, int delay) {
+  static int nb = 0;
+  if (test) {
+    nb++;
+    if (nb == delay) {
+      nb = 0;
+      return true;
+    }
+    return false;
+  } else {
+    nb = 0;
+    return false;
+  }
+}
+static inline bool delay_test_gf(bool test, int delay) {
+  static int nb = 0;
+  if (test) {
+    nb++;
+    if (nb == delay) {
+      nb = 0;
+      return true;
+    }
+    return false;
+  } else {
+    nb = 0;
+    return false;
+  }
+}
+</header>
+  <waypoints>
+    <waypoint name="HOME" x="0" y="0"/>
+    <waypoint name="STDBY" x="11.7" y="10.6"/>
+    <waypoint name="TD" x="31.1" y="13.3"/>
+    <waypoint name="CLIMB" x="89.9" y="14.1"/>
+    <waypoint name="_NFZ1" x="241.1" y="65.2"/>
+    <waypoint name="_NFZ2" x="259.1" y="-43.6"/>
+    <waypoint name="_NFZ3" x="57.2" y="-204.1"/>
+    <waypoint name="_NFZ4" x="-138.0" y="-237.3"/>
+    <waypoint name="_NFZ5" x="-202.5" y="-133.7"/>
+    <waypoint name="_NFZ6" x="-133.9" y="0.7"/>
+    <waypoint name="S1" x="-105.5" y="-23.9"/>
+    <waypoint name="S2" x="28.7" y="-23.2"/>
+    <waypoint name="S3" x="28.1" y="-110.7"/>
+    <waypoint name="S4" x="-107.4" y="-113.7"/>
+    <waypoint name="RED" x="-41.2" y="-56.6"/>
+    <waypoint name="BLUE" x="-83.5" y="-50.8"/>
+    <waypoint name="YELLOW" x="-6.7" y="-55.8"/>
+    <waypoint name="HOUSE" x="7.5" y="-26.7"/>
+    <waypoint name="HERE" x="86.0" y="-117.2"/>
+  </waypoints>
+  <sectors>
+    <sector color="red" name="FlyZone" type="dynamic">
+      <corner name="_NFZ1"/>
+      <corner name="_NFZ2"/>
+      <corner name="_NFZ3"/>
+      <corner name="_NFZ4"/>
+      <corner name="_NFZ5"/>
+      <corner name="_NFZ5"/>
+      <corner name="_NFZ6"/>
+    </sector>
+    <sector color="orange" name="Search" type="dynamic">
+      <corner name="S1"/>
+      <corner name="S2"/>
+      <corner name="S3"/>
+      <corner name="S4"/>
+    </sector>
+  </sectors>
+  <variables>
+    <variable init="30." max="60." min="10." step="1." var="map_alt"/>
+  </variables>
+  <modules>
+    <module name="cv" type="target_localization"/>
+    <module name="nav" type="survey_rectangle_rotorcraft"/>
+  </modules>
+  <!--exceptions>
+    <exception cond="(delay_test_rc(RCLost(),20) &&
+      !(IndexOfBlock('Takeoff') > nav_block) &&
+      !(nav_block >= IndexOfBlock('Land Right AF-TD')) &&
+      (autopilot.launch == true) )" deroute="EmergencyLanding"/>
+    <exception cond="(datalink_time > 10 &&
+      !(IndexOfBlock('Takeoff') > nav_block) &&
+      !(nav_block >= IndexOfBlock('Land Right AF-TD')) &&
+      (autopilot.launch == true) )" deroute="EmergencyLanding"/>
+    <exception cond="(delay_test_gf(!InsideFlyZone(GetPosX(), GetPosY()),10) &&
+      !(IndexOfBlock('Takeoff') > nav_block) &&
+      !(nav_block >= IndexOfBlock('Land Right AF-TD')) &&
+      (autopilot.launch == true) )" deroute="EmergencyLanding"/>
+  </exceptions-->
+  <blocks>
+    <block name="Wait GPS">
+      <call_once fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+    </block>
+    <block name="Holding point">
+      <call_once fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" vmode="throttle" until="FALSE"/>
+    </block>
+    <block name="Start Engine" strip_button="Start Engine" strip_icon="resurrect.png" group="home">
+      <call_once fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" vmode="throttle" until="FALSE"/>
+    </block>
+    <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png" group="home">
+      <exception cond="stateGetPositionEnu_f()->z > 2.0" deroute="Standby"/>
+      <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay vmode="climb" climb="nav_climb_vspeed" wp="CLIMB"/>
+    </block>
+    <block name="Standby" strip_button="Standby" strip_icon="home.png" group="home">
+      <stay wp="STDBY"/>
+    </block>
+
+    <block group="extra_pattern" name="Survey-WE SET" strip_button="Survey-WE" strip_icon="survey_we.png">
+      <call_once fun="nav_survey_rectangle_rotorcraft_setup(WP_S1, WP_S3, sweep, WE)"/>
+      <deroute block="Survey RUN"/>
+    </block>
+    <block group="extra_pattern" name="Survey RUN">
+      <exception cond="rectangle_survey_sweep_num >= 1" deroute="Standby"/>
+      <call fun="nav_survey_rectangle_rotorcraft_run(WP_S1, WP_S3)"/>
+    </block>
+
+    <block name="Drop RED" strip_button="RED" group="drop">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_RED))"/>
+      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
+      <stay wp="HERE" until="GetPosAlt() @GT WaypointAlt(WP_RED)-5.0"/>
+      <go from="HERE" hmode="route" wp="RED"/>
+      <stay wp="RED" climb="-0.8" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 2.0"/>
+      <stay wp="RED" alt="GetAltRef()+2.0" until="stage_time @GT 3"/>
+      <!--call_once fun="drop()"/-->
+      <stay wp="RED" alt="GetAltRef()+5.0" until="stage_time @GT 2"/>
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <deroute block="land"/>
+    </block>
+    <block name="Drop BLUE" strip_button="BLUE" group="drop">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_BLUE))"/>
+      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
+      <stay wp="HERE" until="GetPosAlt() @GT WaypointAlt(WP_BLUE)-5.0"/>
+      <go from="HERE" hmode="route" wp="BLUE"/>
+      <stay wp="BLUE" climb="-0.8" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 2.0"/>
+      <stay wp="BLUE" alt="GetAltRef()+2.0" until="stage_time @GT 3"/>
+      <!--call_once fun="drop()"/-->
+      <stay wp="BLUE" alt="GetAltRef()+5.0" until="stage_time @GT 2"/>
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <deroute block="land"/>
+    </block>
+    <block name="Drop YELLOW" strip_button="YELLOW" group="drop">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_YELLOW))"/>
+      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
+      <stay wp="HERE" until="GetPosAlt() @GT WaypointAlt(WP_YELLOW)-5.0"/>
+      <go from="HERE" hmode="route" wp="YELLOW"/>
+      <stay wp="YELLOW" climb="-0.8" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 2.0"/>
+      <stay wp="YELLOW" alt="GetAltRef()+2.0" until="stage_time @GT 3"/>
+      <!--call_once fun="drop()"/-->
+      <stay wp="YELLOW" alt="GetAltRef()+5.0" until="stage_time @GT 2"/>
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <deroute block="land"/>
+    </block>
+
+    <block name="land here">
+      <call_once fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land" strip_button="Land" strip_icon="land-right.png">
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <exception cond="NavDetectGround()" deroute="Holding point"/>
+      <exception cond="!nav_is_in_flight()" deroute="landed"/>
+      <call_once fun="NavStartDetectGround()"/>
+      <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+    </block>
+    <block name="landed">
+      <attitude pitch="0" roll="0" throttle="0" vmode="throttle" until="FALSE"/>
+    </block>
+
+    <block name="EmergencyLanding">
+      <stay throttle="0.1" vmode="throttle" wp="HOME"/>
+    </block>
+  </blocks>
+</flight_plan>
