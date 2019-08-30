@@ -184,6 +184,11 @@ extern bool mission_element_convert(struct _mission_element *el);
  */
 extern struct _mission_element *mission_get(void);
 
+/** Get mission element by index
+ * @return return a pointer to the mission element or NULL if no more elements
+ */
+extern struct _mission_element *mission_get_from_index(uint8_t index);
+
 /** Get the ENU component of LLA mission point
  * This function is firmware specific.
  * @param point pointer to the output ENU point (float)

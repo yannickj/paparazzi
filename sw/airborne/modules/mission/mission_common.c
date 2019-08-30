@@ -136,7 +136,7 @@ static struct _mission_registered *mission_get_registered(char *type)
 }
 
 // Returns a pointer to a mission element struct with matching index, NULL if not found
-static struct _mission_element *mission_get_from_index(uint8_t index)
+struct _mission_element *mission_get_from_index(uint8_t index)
 {
   uint8_t i = mission.current_idx;
   while (i != mission.insert_idx) {
