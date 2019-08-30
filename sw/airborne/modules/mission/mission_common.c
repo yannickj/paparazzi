@@ -32,6 +32,11 @@
 #include "subsystems/datalink/datalink.h"
 #include "subsystems/datalink/downlink.h"
 
+// Check for unique ID by default
+#ifndef MISSION_CHECK_UNIQUE_ID
+#define MISSION_CHECK_UNIQUE_ID TRUE
+#endif
+
 struct _mission mission = { 0 };
 
 void mission_init(void)
@@ -55,6 +60,14 @@ void mission_init(void)
 bool mission_insert(enum MissionInsertMode insert, struct _mission_element *element)
 {
   uint8_t tmp;
+
+#if MISSION_CHECK_UNIQUE_ID
+  // check that the new element id is not already in the list
+  if (mission_get_from_index(element->index) != NULL) {
+    return false;
+  }
+#endif
+
   // convert element if needed, return FALSE if failed
   if (!mission_element_convert(element)) { return false; }
 
