@@ -192,6 +192,8 @@ void target_localization_send_pos_to_cam(void)
   int alt_mm = (int)(stateGetPositionEnu_f()->z * 1000.f);
   Bound(alt_mm, 0, 999999);
   sprintf(str, "alt %d\r\n", alt_mm);
+#ifndef SITL
   jevois_send_string(str);
+#endif
 }
 
