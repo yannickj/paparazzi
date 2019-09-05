@@ -128,8 +128,16 @@ static inline bool delay_test_gf(bool test, int delay) {
       <call fun="nav_survey_rectangle_rotorcraft_run(WP_S1, WP_S3)"/>
     </block>
     <block name="Visite Mailbox" strip_button="Visit WP" group="survey">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(10.)"/>
       <call_once fun="NavSetWaypointHere(WP_HERE)"/>
-      <path wpts="HERE,RED,BLUE,YELLOW,STDBY"/>
+      <go wp="RED" from="HERE" hmode="route"/>
+      <stay wp="RED" until="stage_time > 3"/>
+      <go wp="BLUE" from="RED" hmode="route"/>
+      <stay wp="BLUE" until="stage_time > 3"/>
+      <go wp="YELLOW" from="BLUE"/>
+      <stay wp="YELLOW" until="stage_time > 3"/>
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_STDBY))"/>
+      <go wp="STDBY" from="YELLOW"/>
       <deroute block="Standby"/>
     </block>
 
