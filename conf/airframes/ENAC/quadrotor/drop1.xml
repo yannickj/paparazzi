@@ -38,6 +38,7 @@
       <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
       <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_218HZ"/>
       <define name="IMU_MPU_SMPLRT_DIV" value="0"/>
+      <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module>
 
     <module name="gps" type="ublox">
@@ -66,6 +67,7 @@
       <define name="AHRS_ALIGNER_IMU_ID" value="IMU_F1E_ID"/>
     </module>
 
+    <module name="send_imu_mag_current"/>
   </firmware>
 
   <servos driver="DShot">
@@ -121,12 +123,12 @@
     <define name="MAG_X_SIGN" value="1"/>
     <define name="MAG_Y_SIGN" value="1"/>
     <define name="MAG_Z_SIGN" value="1"/>
-    <define name="MAG_X_NEUTRAL" value="2892"/>
-    <define name="MAG_Y_NEUTRAL" value="520"/>
-    <define name="MAG_Z_NEUTRAL" value="495"/>
-    <define name="MAG_X_SENS" value="0.777113432487" integer="16"/>
-    <define name="MAG_Y_SENS" value="0.798410802658" integer="16"/>
-    <define name="MAG_Z_SENS" value="0.748117006053" integer="16"/>
+    <define name="MAG_X_NEUTRAL" value="-69"/>
+    <define name="MAG_Y_NEUTRAL" value="-678"/>
+    <define name="MAG_Z_NEUTRAL" value="-446"/>
+    <define name="MAG_X_SENS" value="0.646115587139" integer="16"/>
+    <define name="MAG_Y_SENS" value="0.662911703941" integer="16"/>
+    <define name="MAG_Z_SENS" value="0.660219635038" integer="16"/>
 
     <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
@@ -141,6 +143,12 @@
       Normalize[{23759.6, 138.7, 39666.4}]
       Result(0.51385, 0.00299, 0.85787)
   -->
+
+  <section name="MAG" prefix="LIS3MDL_">
+    <define name="MAG_TO_IMU_PHI" value="0." unit="deg"/>
+    <define name="MAG_TO_IMU_THETA" value="0." unit="deg"/>
+    <define name="MAG_TO_IMU_PSI" value="-45." unit="deg"/>
+  </section>
 
   <section name="INS" prefix="INS_">
     <define name="H_X" value="0.51385"/>
@@ -197,9 +205,9 @@
     <define name="THETA_DGAIN" value="100"/>
     <define name="THETA_IGAIN" value="56"/>
 
-    <define name="PSI_PGAIN" value="806"/>
-    <define name="PSI_DGAIN" value="350"/>
-    <define name="PSI_IGAIN" value="20"/>
+    <define name="PSI_PGAIN" value="1000"/>
+    <define name="PSI_DGAIN" value="600"/>
+    <define name="PSI_IGAIN" value="30"/>
 
     <!-- feedforward -->
     <define name="PHI_DDGAIN" value="80"/>
@@ -220,6 +228,7 @@
    <define name="HOVER_KD" value="80"/>
    <define name="HOVER_KI" value="11"/>
    <define name="NOMINAL_HOVER_THROTTLE" value="0.37"/>
+   <define name="ADAPT_THROTTLE_ENABLED" value="FALSE"/>
    <define name="ADAPT_NOISE_FACTOR" value="1."/>
    <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.3"/>
   </section>
