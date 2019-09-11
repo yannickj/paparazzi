@@ -39,5 +39,7 @@ extern void target_localization_report(void);
 extern uint8_t target_localization_mark;
 extern void cv_target_localization_report_mark(uint8_t mark);
 
+// debug in simulation
+extern void target_localization_debug(void);
 #endif
 

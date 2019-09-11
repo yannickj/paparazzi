@@ -107,17 +107,17 @@ static void detection_cb(uint8_t sender_id UNUSED,
   float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &target_loc.cam_pos);
   VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
 
-  // Compute target position here
+  // Compute target position here (pixels in "mm" to meters)
   struct FloatVect3 target_img = {
-    .x = (float)target_loc.px,
-    .y = (float)target_loc.py,
+    .x = (float)target_loc.px / 1000.f,
+    .y = (float)target_loc.py / 1000.f,
     .z = 1.f
   };
   struct FloatVect3 tmp; // before scale factor
   float_rmat_transp_vmult(&tmp, &ltp_to_cam_rmat, &target_img); // R^-1 * v_img
 
   if (fabsf(tmp.z) > 0.1f) {
-    float scale = cam_pos_ltp.z / tmp.z; // scale factor
+    float scale = fabsf(cam_pos_ltp.z / tmp.z); // scale factor
     VECT3_SUM_SCALED(target_loc.target, cam_pos_ltp, tmp, scale); // T_w = C_w + s*tmp
     // now, T_w.z should be equal to zero as it is assumed that the target is on a flat ground
     // compute absolute position
@@ -165,8 +165,10 @@ void target_localization_init(void)
 void target_localization_report(void)
 {
   if (target_loc.valid) {
+  float lat_deg = DegOfRad(target_loc.pos_lla.lat);
+  float lon_deg = DegOfRad(target_loc.pos_lla.lon);
     DOWNLINK_SEND_MARK(DefaultChannel, DefaultDevice, &target_loc.type,
-        &target_loc.pos_lla.lat, &target_loc.pos_lla.lon);
+        &lat_deg, &lon_deg);
     target_loc.valid = false;
   }
 }
@@ -194,6 +196,55 @@ void target_localization_send_pos_to_cam(void)
   sprintf(str, "alt %d\r\n", alt_mm);
 #ifndef SITL
   jevois_send_string(str);
+#endif
+}
+
+#ifdef SITL
+#include "generated/flight_plan.h"
+#define WP_TARGET WP_HOUSE
+#include <stdio.h>
+#endif
+
+void target_localization_debug(void)
+{
+#ifdef SITL
+  // Compute image coordinates of a WP given fake camera parameters
+  struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
+  struct FloatRMat ltp_to_cam_rmat;
+  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &target_loc.body_to_cam);
+  // Prepare cam world position
+  // C_w = P_w + R_w2b * C_b
+  struct FloatVect3 cam_pos_ltp;
+  float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &target_loc.cam_pos);
+  VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
+  //printf("Cw %f %f %f\n", cam_pos_ltp.x, cam_pos_ltp.y, cam_pos_ltp.z);
+  // Target
+  struct NedCoor_f target_ltp;
+  ENU_OF_TO_NED(target_ltp, waypoints[WP_TARGET].enu_f);
+  target_ltp.z = 0.f; // force on the ground
+  //printf("Tw %f %f %f\n", target_ltp.x, target_ltp.y, target_ltp.z);
+  // Compute target in camera frame Pc = R * (Pw - C)
+  struct FloatVect3 target_cam, tmp;
+  VECT3_DIFF(tmp, target_ltp, cam_pos_ltp);
+  float_rmat_vmult(&target_cam, &ltp_to_cam_rmat, &tmp);
+  //printf("Tc %f %f %f\n", target_cam.x, target_cam.y, target_cam.z);
+  if (fabsf(target_cam.z) > 1.) {
+    // Compute target in image frame x = X/Z, y = X/Z
+    struct FloatVect3 target_img = {
+      .x = target_cam.x / target_cam.z,
+      .y = target_cam.y / target_cam.z,
+      .z = 1.f
+    };
+    //printf("Ti %f %f\n", target_img.x, target_img.y);
+    if (fabsf(target_img.x) < 1.f && fabsf(target_img.y) < 1.f) {
+      //printf("Sending Abi Msg\n");
+      AbiSendMsgVISUAL_DETECTION(42,
+          (int16_t)(target_img.x * 1000.f),
+          (int16_t)(target_img.y * 1000.f),
+          10, 10, 0, 1);
+    }
+  }
+  //fflush(stdout);
 #endif
 }
 
