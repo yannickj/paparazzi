@@ -33,6 +33,8 @@
 #include "state.h"
 #include "subsystems/abi.h"
 #include "subsystems/datalink/downlink.h"
+#include "subsystems/navigation/waypoints.h"
+#include "generated/flight_plan.h"
 
 // Default parameters
 // Camera is looking down and is placed at the center of the frame
@@ -82,6 +84,26 @@ static struct target_loc_t target_loc;
 
 uint8_t target_localization_mark;
 
+// Direct waypoint update
+bool target_localization_update_wp;
+
+#define TARGET_LOC_WP_T1 WP_RED
+#define TARGET_LOC_WP_T2 WP_BLUE
+#define TARGET_LOC_WP_T3 WP_YELLOW
+
+uint8_t target_loc_wp_tab[][2] = {
+#ifdef TARGET_LOC_WP_T1
+  { 1, TARGET_LOC_WP_T1 },
+#endif
+#ifdef TARGET_LOC_WP_T2
+  { 2, TARGET_LOC_WP_T2 },
+#endif
+#ifdef TARGET_LOC_WP_T3
+  { 3, TARGET_LOC_WP_T3 },
+#endif
+  { 0, 0 } // end of list (0 reserved)
+};
+
 // Abi bindings
 #ifndef TARGET_LOC_ID
 #define TARGET_LOC_ID ABI_BROADCAST
@@ -127,6 +149,17 @@ static void detection_cb(uint8_t sender_id UNUSED,
 
     target_loc.type = (uint8_t) extra; // use 'extra' field to encode the type of target
     target_loc.valid = true;
+    if (target_localization_update_wp) {
+      // look for waypoint to update
+      uint8_t i = 0;
+      while (target_loc_wp_tab[i][0] != 0) {
+        if (target_loc_wp_tab[i][0] == target_loc.type) {
+          // update WP (ENU) from target (NED)
+          waypoint_move_xy_i(target_loc_wp_tab[i][1], POS_BFP_OF_REAL(target_loc.target.y), POS_BFP_OF_REAL(target_loc.target.x));
+        }
+        i++;
+      }
+    }
   }
   else {
     // if too close from ground, don't do anything
@@ -157,6 +190,7 @@ void target_localization_init(void)
   target_loc.valid = false;
 
   target_localization_mark = 0;
+  target_localization_update_wp = false;
 
   // Bind to ABI message
   AbiBindMsgVISUAL_DETECTION(TARGET_LOC_ID, &detection_ev, detection_cb);
@@ -200,7 +234,6 @@ void target_localization_send_pos_to_cam(void)
 }
 
 #ifdef SITL
-#include "generated/flight_plan.h"
 #define WP_TARGET WP_HOUSE
 #include <stdio.h>
 #endif

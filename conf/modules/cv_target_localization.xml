@@ -11,6 +11,7 @@
   <settings>
     <dl_settings>
       <dl_settings NAME="Target Loc">
+        <dl_setting MAX="1" MIN="0" STEP="1" VAR="target_localization_update_wp" shortname="update_wp" module="modules/computer_vision/cv_target_localization" values="FALSE|TRUE"/>
         <dl_setting MAX="4" MIN="1" STEP="1" VAR="target_localization_mark" shortname="mark" module="modules/computer_vision/cv_target_localization" handler="report_mark" values="RED|BLUE|YELLOW|ORANGE"/>
       </dl_settings>
     </dl_settings>
