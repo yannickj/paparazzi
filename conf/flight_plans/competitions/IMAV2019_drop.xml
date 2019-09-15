@@ -54,7 +54,7 @@ static inline bool delay_test_gf(bool test, int delay) {
     <waypoint name="BLUE" x="-83.5" y="-50.8"/>
     <waypoint name="YELLOW" x="-6.7" y="-55.8"/>
     <waypoint name="HOUSE" x="7.5" y="-26.7"/>
-    <waypoint name="HERE" x="86.0" y="-117.2"/>
+    <waypoint name="_HERE" x="86.0" y="-117.2"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlyZone" type="dynamic">
@@ -129,8 +129,8 @@ static inline bool delay_test_gf(bool test, int delay) {
     </block>
     <block name="Visite Mailbox" strip_button="Visit WP" group="survey">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(10.)"/>
-      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
-      <go wp="RED" from="HERE" hmode="route"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <go wp="RED" from="_HERE" hmode="route"/>
       <stay wp="RED" until="stage_time > 3"/>
       <go wp="BLUE" from="RED" hmode="route"/>
       <stay wp="BLUE" until="stage_time > 3"/>
@@ -150,16 +150,25 @@ static inline bool delay_test_gf(bool test, int delay) {
     </block>
     <block name="Drop RED" strip_button="RED" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_RED))"/>
-      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
-      <stay wp="HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_RED)-5.0"/>
-      <go from="HERE" hmode="route" wp="RED"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_RED)-5.0"/>
+      <go from="_HERE" hmode="route" wp="RED"/>
+      <set value="true" var="target_localization_update_wp"/>
       <stay wp="RED" climb="-1.0" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 10.0"/>
       <stay wp="RED" climb="-0.5" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 3.0"/>
+      <set value="false" var="target_localization_update_wp"/>
       <stay wp="RED" alt="3.0" until="stage_time @GT 3"/>
       <call_once fun="SwitchServoOff()"/>
       <stay wp="RED" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
       <deroute block="land"/>
+    </block>
+    <block name="Stay RED">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_RED))"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_RED)-5.0"/>
+      <go from="_HERE" hmode="route" wp="RED"/>
+      <stay wp="RED"/>
     </block>
 
     <block name="Mission BLUE" strip_button="Start BLUE" group="start drop">
@@ -171,16 +180,25 @@ static inline bool delay_test_gf(bool test, int delay) {
     </block>
     <block name="Drop BLUE" strip_button="BLUE" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_BLUE))"/>
-      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
-      <stay wp="HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_BLUE)-5.0"/>
-      <go from="HERE" hmode="route" wp="BLUE"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_BLUE)-5.0"/>
+      <go from="_HERE" hmode="route" wp="BLUE"/>
+      <set value="true" var="target_localization_update_wp"/>
       <stay wp="BLUE" climb="-1.0" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 10.0"/>
       <stay wp="BLUE" climb="-0.5" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 3.0"/>
+      <set value="false" var="target_localization_update_wp"/>
       <stay wp="BLUE" alt="3.0" until="stage_time @GT 3"/>
       <call_once fun="SwitchServoOff()"/>
       <stay wp="BLUE" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
       <deroute block="land"/>
+    </block>
+    <block name="Stay BLUE">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_BLUE))"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_BLUE)-5.0"/>
+      <go from="_HERE" hmode="route" wp="BLUE"/>
+      <stay wp="BLUE"/>
     </block>
     
     <block name="Mission YELLOW" strip_button="Start YELLOW" group="start drop">
@@ -192,16 +210,52 @@ static inline bool delay_test_gf(bool test, int delay) {
     </block>
     <block name="Drop YELLOW" strip_button="YELLOW" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_YELLOW))"/>
-      <call_once fun="NavSetWaypointHere(WP_HERE)"/>
-      <stay wp="HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_YELLOW)-5.0"/>
-      <go from="HERE" hmode="route" wp="YELLOW"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_YELLOW)-5.0"/>
+      <go from="_HERE" hmode="route" wp="YELLOW"/>
+      <set value="true" var="target_localization_update_wp"/>
       <stay wp="YELLOW" climb="-1.0" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 10.0"/>
       <stay wp="YELLOW" climb="-0.5" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 3.0"/>
+      <set value="false" var="target_localization_update_wp"/>
       <stay wp="YELLOW" alt="3.0" until="stage_time @GT 3"/>
       <call_once fun="SwitchServoOff()"/>
       <stay wp="YELLOW" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
       <deroute block="land"/>
+    </block>
+    <block name="Stay YELLOW">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_YELLOW))"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_YELLOW)-5.0"/>
+      <go from="_HERE" hmode="route" wp="YELLOW"/>
+      <stay wp="YELLOW"/>
+    </block>
+
+    <block name="Mission HOUSE" strip_button="Start HOUSE" group="start drop">
+      <call_once fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" vmode="throttle" until="stage_time>2"/>
+      <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay vmode="climb" climb="nav_climb_vspeed" wp="CLIMB" until="stateGetPositionEnu_f()->z > 2.0"/>
+      <stay wp="CLIMB" until="GetPosAlt() > GetAltRef() + WaypointAlt(WP_CLIMB) - 5.0"/>
+    </block>
+    <block name="Drop HOUSE" strip_button="HOUSE" group="drop">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_HOUSE))"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_HOUSE)-5.0"/>
+      <go from="_HERE" hmode="route" wp="HOUSE"/>
+      <stay wp="HOUSE" climb="-1.0" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 10.0"/>
+      <stay wp="HOUSE" climb="-0.5" vmode="climb" until="GetPosAlt() @LT GetAltRef() + 1.5"/>
+      <call_once fun="SwitchServoOff()"/>
+      <stay wp="HOUSE" alt="5.0" until="stage_time @GT 4"/>
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <deroute block="land"/>
+    </block>
+    <block name="Stay HOUSE">
+      <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_HOUSE))"/>
+      <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_YELLOW)-5.0"/>
+      <go from="_HERE" hmode="route" wp="HOUSE"/>
+      <stay wp="HOUSE"/>
     </block>
 
     <block name="land here">
