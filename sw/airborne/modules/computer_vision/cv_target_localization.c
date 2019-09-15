@@ -65,6 +65,17 @@
 #define TARGET_LOC_CAM_POS_Z 0.f
 #endif
 
+// Convert pixel unit to m in image plane on x axis
+// from "mm" to meter by default
+#ifndef TARGET_LOC_PIXEL_TO_IMAGE_X
+#define TARGET_LOC_PIXEL_TO_IMAGE_X (1.f / 1000.f)
+#endif
+
+// Convert pixel unit to m in image plane on y axis (same as x by default)
+#ifndef TARGET_LOC_PIXEL_TO_IMAGE_Y
+#define TARGET_LOC_PIXEL_TO_IMAGE_Y TARGET_LOC_PIXEL_TO_IMAGE_X
+#endif
+
 // Detection and target
 struct target_loc_t {
   int16_t px;                   ///< Target in camera frame
@@ -86,7 +97,7 @@ uint8_t target_localization_mark;
 
 // Direct waypoint update
 bool target_localization_update_wp;
-
+// Lazy debug, to be removed
 #define TARGET_LOC_WP_T1 WP_RED
 #define TARGET_LOC_WP_T2 WP_BLUE
 #define TARGET_LOC_WP_T3 WP_YELLOW
@@ -131,8 +142,8 @@ static void detection_cb(uint8_t sender_id UNUSED,
 
   // Compute target position here (pixels in "mm" to meters)
   struct FloatVect3 target_img = {
-    .x = (float)target_loc.px / 1000.f,
-    .y = (float)target_loc.py / 1000.f,
+    .x = (float)target_loc.px * TARGET_LOC_PIXEL_TO_IMAGE_X,
+    .y = (float)target_loc.py * TARGET_LOC_PIXEL_TO_IMAGE_Y,
     .z = 1.f
   };
   struct FloatVect3 tmp; // before scale factor
