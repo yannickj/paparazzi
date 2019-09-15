@@ -33,6 +33,9 @@ static inline bool delay_test_gf(bool test, int delay) {
 }
 #ifdef SITL
 #define SwitchServoOff(_x) {}
+#ifdef NAV_C
+#define jevois_stream(_x) {}
+#endif
 #endif
 </header>
   <waypoints>
@@ -116,6 +119,7 @@ static inline bool delay_test_gf(bool test, int delay) {
       <stay vmode="climb" climb="nav_climb_vspeed" wp="CLIMB"/>
     </block>
     <block name="Standby" strip_button="Standby" strip_icon="home.png" group="home">
+      <call_once fun="jevois_stream(false)"/>
       <stay wp="STDBY"/>
     </block>
 
@@ -125,6 +129,7 @@ static inline bool delay_test_gf(bool test, int delay) {
     </block>
     <block name="Survey RUN">
       <exception cond="rectangle_survey_sweep_num >= 1" deroute="Standby"/>
+      <call_once fun="jevois_stream(true)"/>
       <call fun="nav_survey_rectangle_rotorcraft_run(WP_S1, WP_S3)"/>
     </block>
     <block name="Visite Mailbox" strip_button="Visit WP" group="survey">
@@ -151,6 +156,7 @@ static inline bool delay_test_gf(bool test, int delay) {
     <block name="Drop RED" strip_button="RED" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_RED))"/>
       <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <call_once fun="jevois_stream(true)"/>
       <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_RED)-5.0"/>
       <go from="_HERE" hmode="route" wp="RED"/>
       <set value="true" var="target_localization_update_wp"/>
@@ -161,6 +167,7 @@ static inline bool delay_test_gf(bool test, int delay) {
       <call_once fun="SwitchServoOff()"/>
       <stay wp="RED" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <call_once fun="jevois_stream(false)"/>
       <deroute block="land"/>
     </block>
     <block name="Stay RED">
@@ -181,6 +188,7 @@ static inline bool delay_test_gf(bool test, int delay) {
     <block name="Drop BLUE" strip_button="BLUE" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_BLUE))"/>
       <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <call_once fun="jevois_stream(true)"/>
       <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_BLUE)-5.0"/>
       <go from="_HERE" hmode="route" wp="BLUE"/>
       <set value="true" var="target_localization_update_wp"/>
@@ -191,6 +199,7 @@ static inline bool delay_test_gf(bool test, int delay) {
       <call_once fun="SwitchServoOff()"/>
       <stay wp="BLUE" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <call_once fun="jevois_stream(false)"/>
       <deroute block="land"/>
     </block>
     <block name="Stay BLUE">
@@ -211,6 +220,7 @@ static inline bool delay_test_gf(bool test, int delay) {
     <block name="Drop YELLOW" strip_button="YELLOW" group="drop">
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_YELLOW))"/>
       <call_once fun="NavSetWaypointHere(WP__HERE)"/>
+      <call_once fun="jevois_stream(true)"/>
       <stay wp="_HERE" until="GetPosAlt() @GT GetAltRef() + WaypointAlt(WP_YELLOW)-5.0"/>
       <go from="_HERE" hmode="route" wp="YELLOW"/>
       <set value="true" var="target_localization_update_wp"/>
@@ -221,6 +231,7 @@ static inline bool delay_test_gf(bool test, int delay) {
       <call_once fun="SwitchServoOff()"/>
       <stay wp="YELLOW" alt="5.0" until="stage_time @GT 2"/>
       <set var="nav_flight_altitude" value="POS_BFP_OF_REAL(WaypointAlt(WP_TD))"/>
+      <call_once fun="jevois_stream(false)"/>
       <deroute block="land"/>
     </block>
     <block name="Stay YELLOW">
