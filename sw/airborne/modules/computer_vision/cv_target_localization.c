@@ -50,7 +50,8 @@
 #endif
 
 #ifndef TARGET_LOC_BODY_TO_CAM_PSI
-#define TARGET_LOC_BODY_TO_CAM_PSI M_PI_2
+//#define TARGET_LOC_BODY_TO_CAM_PSI M_PI_2 FIXME
+#define TARGET_LOC_BODY_TO_CAM_PSI M_PI
 #endif
 
 #ifndef TARGET_LOC_CAM_POS_X
@@ -98,9 +99,15 @@ uint8_t target_localization_mark;
 // Direct waypoint update
 bool target_localization_update_wp;
 // Lazy debug, to be removed
+#ifdef WP_RED
 #define TARGET_LOC_WP_T1 WP_RED
+#endif
+#ifdef WP_BLUE
 #define TARGET_LOC_WP_T2 WP_BLUE
+#endif
+#ifdef WP_YELLOW
 #define TARGET_LOC_WP_T3 WP_YELLOW
+#endif
 
 uint8_t target_loc_wp_tab[][2] = {
 #ifdef TARGET_LOC_WP_T1
@@ -121,6 +128,9 @@ uint8_t target_loc_wp_tab[][2] = {
 #endif
 
 abi_event detection_ev;
+
+struct FloatVect3 tmp = {0.,0.,0.}; // global for debug FIXME
+float scale = 0.f; // scale factor FIXME
 
 static void detection_cb(uint8_t sender_id UNUSED,
     int16_t pixel_x, int16_t pixel_y,
@@ -146,11 +156,12 @@ static void detection_cb(uint8_t sender_id UNUSED,
     .y = (float)target_loc.py * TARGET_LOC_PIXEL_TO_IMAGE_Y,
     .z = 1.f
   };
-  struct FloatVect3 tmp; // before scale factor
+  //struct FloatVect3 tmp; // before scale factor FIXME
   float_rmat_transp_vmult(&tmp, &ltp_to_cam_rmat, &target_img); // R^-1 * v_img
 
   if (fabsf(tmp.z) > 0.1f) {
-    float scale = fabsf(cam_pos_ltp.z / tmp.z); // scale factor
+    //float scale = fabsf(cam_pos_ltp.z / tmp.z); // scale factor
+    scale = fabsf(cam_pos_ltp.z / tmp.z); // scale factor FIXME
     VECT3_SUM_SCALED(target_loc.target, cam_pos_ltp, tmp, scale); // T_w = C_w + s*tmp
     // now, T_w.z should be equal to zero as it is assumed that the target is on a flat ground
     // compute absolute position
@@ -215,6 +226,9 @@ void target_localization_report(void)
     DOWNLINK_SEND_MARK(DefaultChannel, DefaultDevice, &target_loc.type,
         &lat_deg, &lon_deg);
     target_loc.valid = false;
+    // debug
+    float tab[] = { target_loc.target.x, target_loc.target.y, target_loc.target.z, tmp.x, tmp.y, tmp.z, scale };
+    DOWNLINK_SEND_PAYLOAD_FLOAT(DefaultChannel, DefaultDevice, 7, tab);
   }
 }
 
