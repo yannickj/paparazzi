@@ -35,10 +35,10 @@
 
     <module name="board" type="tawaki">
       <configure name="BOARD_TAWAKI_ROTATED" value="TRUE"/>
-      <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
-      <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_218HZ"/>
+      <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_98HZ"/>
+      <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_44HZ"/>
       <define name="IMU_MPU_SMPLRT_DIV" value="1"/>
-      <!--configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/-->
+      <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module>
 
     <module name="gps" type="ublox">
@@ -123,19 +123,23 @@
     <define name="MAG_X_SIGN" value="1"/>
     <define name="MAG_Y_SIGN" value="1"/>
     <define name="MAG_Z_SIGN" value="1"/>
-    <define name="MAG_X_NEUTRAL" value="2782"/>
-    <define name="MAG_Y_NEUTRAL" value="1345"/>
-    <define name="MAG_Z_NEUTRAL" value="-797"/>
-    <define name="MAG_X_SENS" value="0.654927711788" integer="16"/>
-    <define name="MAG_Y_SENS" value="0.655047483015" integer="16"/>
-    <define name="MAG_Z_SENS" value="0.617471886813" integer="16"/>
+    <!--define name="MAG_X_NEUTRAL" value="2601"/>
+    <define name="MAG_Y_NEUTRAL" value="1461"/>
+    <define name="MAG_Z_NEUTRAL" value="-790"/>
+    <define name="MAG_X_SENS" value="0.678675346325" integer="16"/>
+    <define name="MAG_Y_SENS" value="0.692958413673" integer="16"/>
+    <define name="MAG_Z_SENS" value="0.657515263471" integer="16"/-->
 
-    <!--define name="MAG_X_NEUTRAL" value="0"/>
-    <define name="MAG_Y_NEUTRAL" value="-679"/>
-    <define name="MAG_Z_NEUTRAL" value="-393"/>
-    <define name="MAG_X_SENS" value="0.678021961372" integer="16"/>
-    <define name="MAG_Y_SENS" value="0.697464512652" integer="16"/>
-    <define name="MAG_Z_SENS" value="0.706955696315" integer="16"/-->
+    <define name="MAG_X_NEUTRAL" value="-583"/>
+    <define name="MAG_Y_NEUTRAL" value="-379"/>
+    <define name="MAG_Z_NEUTRAL" value="-400"/>
+    <define name="MAG_X_SENS" value="0.681344871532" integer="16"/>
+    <define name="MAG_Y_SENS" value="0.659328218017" integer="16"/>
+    <define name="MAG_Z_SENS" value="0.687585762082" integer="16"/>
+
+    <!--define name= "MAG_X_CURRENT_COEF" value="118.702992289"/>
+    <define name= "MAG_Y_CURRENT_COEF" value="135.416707118"/>
+    <define name= "MAG_Z_CURRENT_COEF" value="-301.422405936"/-->
 
     <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
@@ -151,11 +155,11 @@
       Result(0.51385, 0.00299, 0.85787)
   -->
 
-  <!--section name="MAG" prefix="LIS3MDL_">
+  <section name="MAG" prefix="LIS3MDL_">
     <define name="MAG_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="MAG_TO_IMU_THETA" value="0." unit="deg"/>
     <define name="MAG_TO_IMU_PSI" value="-45." unit="deg"/>
-  </section-->
+  </section>
 
   <section name="INS" prefix="INS_">
     <define name="H_X" value="0.51385"/>
