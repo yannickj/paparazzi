@@ -1,12 +1,12 @@
 <!DOCTYPE airframe SYSTEM "../../airframe.dtd">
 
-<airframe name="Quadricopter DROP_1">
+<airframe name="Anton">
 
   <description>
     * Autopilot:   Tawaki
-    * Actuators:   4 in 4 Holybro BLHELI ESC
+    * Actuators:   4 Kiss PWM
     * Telemetry:   XBee
-    * GPS:         datalink
+    * GPS:         UBlox RTK
     * RC:          Futaba
   </description>
 
@@ -29,14 +29,15 @@
 
     <module name="motor_mixing"/>
 
-    <module name="actuators" type="dshot">
-      <define name="DSHOT_SPEED" value="300"/>
+    <module name="actuators" type="pwm">
+      <define name="TIM1_SERVO_HZ" value="400"/>
+      <define name="STM32_PWM_USE_TIM5" value="TRUE"/>
+      <define name="USE_PWM13" value="TRUE"/>
     </module>
 
     <module name="board" type="tawaki">
-      <configure name="BOARD_TAWAKI_ROTATED" value="TRUE"/>
-      <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_98HZ"/>
-      <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_44HZ"/>
+      <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_188HZ"/>
+      <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_99HZ"/>
       <define name="IMU_MPU_SMPLRT_DIV" value="1"/>
       <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module>
@@ -57,9 +58,10 @@
       <configure name="JEVOIS_UART" value="UART3"/>
       <define name="JEVOIS_SEND_VISUAL_DETECTION"/>
     </module>
-    <module name="cv" type="target_localization"/>
+    <module name="cv" type="target_localization">
+      <define name="TARGET_LOC_BODY_TO_CAM_PSI" value="M_PI_4"/>
+    </module>
 
-    <module name="actuators" type="pwm"/>
     <module name="switch" type="servo"/>
 
     <!--module name="filter" type="1euro_imu">
@@ -67,18 +69,18 @@
       <define name="AHRS_ALIGNER_IMU_ID" value="IMU_F1E_ID"/>
     </module-->
 
-    <module name="send_imu_mag_current"/>
+    <!--module name="tlsf"/>
+    <module name="pprzlog"/>
+    <module name="logger" type="sd_chibios"/>
+    <module name="logger" type="tune_indi"/-->
   </firmware>
 
-  <servos driver="DShot">
-    <servo name="FRONT" no="2" min="0" neutral="100" max="2000"/>
-    <servo name="RIGHT" no="1" min="0" neutral="100" max="2000"/>
-    <servo name="BACK" no="3" min="0" neutral="100" max="2000"/>
-    <servo name="LEFT" no="4" min="0" neutral="100" max="2000"/>
-  </servos>
-
   <servos driver="Pwm">
-    <servo name="SWITCH" no="1" min="1000" neutral="1000" max="2000"/>
+    <servo name="FRONT" no="1" min="1000" neutral="1100" max="2000"/>
+    <servo name="RIGHT" no="2" min="1000" neutral="1100" max="2000"/>
+    <servo name="BACK" no="3" min="1000" neutral="1100" max="2000"/>
+    <servo name="LEFT" no="4" min="1000" neutral="1100" max="2000"/>
+    <servo name="SWITCH" no="13" min="1000" neutral="1000" max="2000"/>
   </servos>
 
   <commands>
@@ -89,11 +91,7 @@
   </commands>
 
   <section name="MIXING" prefix="MOTOR_MIXING_">
-    <!--define name="TRIM_ROLL" value="0"/>
-    <define name="TRIM_PITCH" value="-400"/>
-    <define name="TRIM_YAW" value="-500"/-->
     <define name="TYPE" value="QUAD_PLUS"/>
-    <!--define name="REVERSE" value="TRUE"/-->
   </section>
 
   <command_laws>
@@ -106,33 +104,29 @@
 
 
   <section name="IMU" prefix="IMU_">
-    <define name="GYRO_P_SIGN" value="-1"/>
-    <define name="GYRO_Q_SIGN" value="-1"/>
+    <define name="GYRO_P_SIGN" value="1"/>
+    <define name="GYRO_Q_SIGN" value="1"/>
     <define name="GYRO_R_SIGN" value="1"/>
 
-    <define name="ACCEL_X_SIGN" value="-1"/>
-    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_X_SIGN" value="1"/>
+    <define name="ACCEL_Y_SIGN" value="1"/>
     <define name="ACCEL_Z_SIGN" value="1"/>
-    <define name="ACCEL_X_NEUTRAL" value="-66"/>
-    <define name="ACCEL_Y_NEUTRAL" value="134"/>
-    <define name="ACCEL_Z_NEUTRAL" value="12"/>
-    <define name="ACCEL_X_SENS" value="2.45208261737" integer="16"/>
-    <define name="ACCEL_Y_SENS" value="2.64210954935" integer="16"/>
-    <define name="ACCEL_Z_SENS" value="2.45501830376" integer="16"/>
+    <define name="ACCEL_X_NEUTRAL" value="-80"/>
+    <define name="ACCEL_Y_NEUTRAL" value="63"/>
+    <define name="ACCEL_Z_NEUTRAL" value="40"/>
+    <define name="ACCEL_X_SENS" value="2.26964324207" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.44850358406" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.45136565314" integer="16"/>
 
     <define name="MAG_X_SIGN" value="1"/>
     <define name="MAG_Y_SIGN" value="1"/>
     <define name="MAG_Z_SIGN" value="1"/>
-    <define name="MAG_X_NEUTRAL" value="61"/>
-    <define name="MAG_Y_NEUTRAL" value="-643"/>
-    <define name="MAG_Z_NEUTRAL" value="-308"/>
-    <define name="MAG_X_SENS" value="0.677847523102" integer="16"/>
-    <define name="MAG_Y_SENS" value="0.69808834351" integer="16"/>
-    <define name="MAG_Z_SENS" value="0.692571212902" integer="16"/>
-
-    <!--define name= "MAG_X_CURRENT_COEF" value="118.702992289"/>
-    <define name= "MAG_Y_CURRENT_COEF" value="135.416707118"/>
-    <define name= "MAG_Z_CURRENT_COEF" value="-301.422405936"/-->
+    <define name="MAG_X_NEUTRAL" value="289"/>
+    <define name="MAG_Y_NEUTRAL" value="-778"/>
+    <define name="MAG_Z_NEUTRAL" value="564"/>
+    <define name="MAG_X_SENS" value="0.768580593631" integer="16"/>
+    <define name="MAG_Y_SENS" value="0.78140922256" integer="16"/>
+    <define name="MAG_Z_SENS" value="0.769483898826" integer="16"/>
 
     <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
@@ -143,11 +137,24 @@
       http://www.ngdc.noaa.gov/geomag-web/#igrfwmm
       http://www.wolframalpha.com
 
+      Aaechen : Lat 50.788812°N,Lon 6.046862°E
+      Normalize[{19701.3, 445.6, 44569.6}]
+      Result(0.40428, 0.00914, 0.91459)
+
       Enac : Lat 43.564080°N, Lon 1.481289°E
       Normalize[{23759.6, 138.7, 39666.4}]
       Result(0.51385, 0.00299, 0.85787)
   -->
 
+  <!-- Firmware Option (1) > 
+  <section name="INS" prefix="INS_"/>
+  <section name="AHRS" prefix="AHRS_">
+    <define name="H_X" value="0.51385"/>
+    <define name="H_Y" value="0.00299"/>
+    <define name="H_Z" value="0.85787"/>
+  </section-->   
+
+  <!-- Firmware Option (2) -->
   <section name="INS" prefix="INS_">
     <define name="H_X" value="0.51385"/>
     <define name="H_Y" value="0.00299"/>
@@ -195,21 +202,21 @@
     <define name="REF_MAX_RDOT" value="RadOfDeg(900.)"/>
 
    <!-- feedback -->
-    <define name="PHI_PGAIN" value="300"/>
-    <define name="PHI_DGAIN" value="300"/>
-    <define name="PHI_IGAIN" value="45"/>
+    <define name="PHI_PGAIN" value="200"/>
+    <define name="PHI_DGAIN" value="100"/>
+    <define name="PHI_IGAIN" value="50"/>
 
-    <define name="THETA_PGAIN" value="300"/>
-    <define name="THETA_DGAIN" value="300"/>
-    <define name="THETA_IGAIN" value="45"/>
+    <define name="THETA_PGAIN" value="200"/>
+    <define name="THETA_DGAIN" value="100"/>
+    <define name="THETA_IGAIN" value="50"/>
 
-    <define name="PSI_PGAIN" value="1000"/>
-    <define name="PSI_DGAIN" value="600"/>
-    <define name="PSI_IGAIN" value="30"/>
+    <define name="PSI_PGAIN" value="600"/>
+    <define name="PSI_DGAIN" value="300"/>
+    <define name="PSI_IGAIN" value="20"/>
 
     <!-- feedforward -->
-    <define name="PHI_DDGAIN" value="80"/>
-    <define name="THETA_DDGAIN" value="80"/>
+    <define name="PHI_DDGAIN" value="69"/>
+    <define name="THETA_DDGAIN" value="69"/>
     <define name="PSI_DDGAIN" value="170"/>
 
     <define name="PHI_AGAIN" value="0"/>
@@ -223,12 +230,12 @@
    <define name="REF_MIN_ZD" value="-1."/>
    <define name="REF_MAX_ZD" value=" 1.5"/>
    <define name="HOVER_KP" value="48"/>
-   <define name="HOVER_KD" value="80"/>
+   <define name="HOVER_KD" value="46"/>
    <define name="HOVER_KI" value="11"/>
-   <define name="NOMINAL_HOVER_THROTTLE" value="0.34"/>
+   <define name="NOMINAL_HOVER_THROTTLE" value="0.20"/>
    <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
    <define name="ADAPT_NOISE_FACTOR" value="1."/>
-   <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.3"/>
+   <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.15"/>
   </section>
 
 
@@ -266,15 +273,10 @@
     <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
   </section>
 
-  <section name="SWITCH_SERVO" prefix="SWITCH_SERVO_">
-    <define name="ON_VALUE" value="1000"/>
-    <define name="OFF_VALUE" value="2000"/>
-  </section>
-
   <section name="SIMULATOR" prefix="NPS_">
     <define name="ACTUATOR_NAMES" value="front_motor, right_motor, back_motor, left_motor" type="string[]"/>
     <define name="JSBSIM_MODEL" value="simple_quad" type="string"/>
-    <define name="SENSORS_PARAMS" value="nps_sensors_params_invariant.h" type="string"/>
+    <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
   </section>
 
 </airframe>
