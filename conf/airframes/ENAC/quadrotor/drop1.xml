@@ -57,7 +57,9 @@
       <configure name="JEVOIS_UART" value="UART3"/>
       <define name="JEVOIS_SEND_VISUAL_DETECTION"/>
     </module>
-    <module name="cv" type="target_localization"/>
+    <module name="cv" type="target_localization">
+      <define name="RECTANGLE_SURVEY_DEFAULT_SWEEP" value="20"/>
+    </module>
 
     <module name="actuators" type="pwm"/>
     <module name="switch" type="servo"/>
