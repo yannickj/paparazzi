@@ -276,9 +276,9 @@ static inline bool delay_test_gf(bool test, int delay) {
       <go wp="TD"/>
     </block>
     <block name="flare">
-      <exception cond="NavDetectGround()" deroute="Holding point"/>
+      <!--exception cond="NavDetectGround()" deroute="Holding point"/-->
       <exception cond="!nav_is_in_flight()" deroute="landed"/>
-      <call_once fun="NavStartDetectGround()"/>
+      <!--call_once fun="NavStartDetectGround()"/-->
       <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
     </block>
     <block name="landed">
