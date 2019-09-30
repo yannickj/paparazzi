@@ -59,7 +59,7 @@
       <define name="DC_AUTOSHOOT_DISTANCE_INIT" value="4"/>
     </module>
 
-    <module name="takeoff_detect.xml"/>
+    <module name="takeoff_detect"/>
   </firmware>
 
 <!-- commands section -->

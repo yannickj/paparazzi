@@ -53,16 +53,16 @@ static inline void set_expo(float e) {
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="92.5" y="-42.2"/>
-    <waypoint alt="775." name="TD" x="31.1" y="13.3"/>
-    <waypoint alt="790." name="AF" x="123.7" y="30.7"/>
+    <waypoint alt="775.0" name="TD" x="25.7" y="0.4"/>
+    <waypoint alt="790.0" name="AF" x="127.6" y="20.3"/>
     <waypoint name="_BASELEG" x="168.8" y="-13.8"/>
     <waypoint name="CLIMB" x="-49.6" y="-15.9"/>
-    <waypoint name="_NFZ1" x="241.1" y="65.2"/>
+    <waypoint name="_NFZ1" x="238.6" y="74.6"/>
     <waypoint name="_NFZ2" x="259.1" y="-43.6"/>
     <waypoint name="_NFZ3" x="57.2" y="-204.1"/>
     <waypoint name="_NFZ4" x="-138.0" y="-237.3"/>
     <waypoint name="_NFZ5" x="-202.5" y="-133.7"/>
-    <waypoint name="_NFZ6" x="-133.9" y="0.7"/>
+    <waypoint name="_NFZ6" x="-127.3" y="10.6"/>
     <waypoint name="_MAP1" x="11.6" y="-15.1"/>
     <waypoint name="_MAP2" x="42.1" y="-172.3"/>
     <waypoint name="_MAP3" x="-107.7" y="-201.1"/>
