@@ -63,12 +63,12 @@ static inline void set_expo(float e) {
     <waypoint name="_NFZ4" x="-138.0" y="-237.3"/>
     <waypoint name="_NFZ5" x="-202.5" y="-133.7"/>
     <waypoint name="_NFZ6" x="-127.3" y="10.6"/>
-    <waypoint name="_MAP1" x="11.6" y="-15.1"/>
+    <waypoint name="_MAP1" x="9.9" y="-4.5"/>
     <waypoint name="_MAP2" x="42.1" y="-172.3"/>
     <waypoint name="_MAP3" x="-107.7" y="-201.1"/>
-    <waypoint name="_MAP4" x="-106.4" y="-35.0"/>
-    <waypoint name="ZBC" x="-39.4" y="-110.1"/>
-    <waypoint name="ZBDIR" x="-86.0" y="-117.2"/>
+    <waypoint name="_MAP4" x="-105.9" y="-22.2"/>
+    <waypoint name="ZBC" x="-36.3" y="-99.1"/>
+    <waypoint name="ZBDIR" x="-83.3" y="-105.3"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlyZone" type="dynamic">

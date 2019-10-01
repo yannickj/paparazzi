@@ -49,13 +49,13 @@ static inline bool delay_test_gf(bool test, int delay) {
     <waypoint name="_NFZ4" x="-138.0" y="-237.3"/>
     <waypoint name="_NFZ5" x="-202.5" y="-133.7"/>
     <waypoint name="_NFZ6" x="-127.3" y="10.6"/>
-    <waypoint name="S1" x="-65.2" y="-24.1"/>
-    <waypoint name="S2" x="28.7" y="-23.2"/>
-    <waypoint name="S3" x="27.3" y="-126.7"/>
-    <waypoint name="S4" x="-64.4" y="-127.8"/>
+    <waypoint name="S1" x="-101.1" y="-7.9"/>
+    <waypoint name="S2" x="29.2" y="-7.1"/>
+    <waypoint name="S3" x="28.6" y="-73.1"/>
+    <waypoint name="S4" x="-101.4" y="-74.0"/>
     <waypoint name="RED" x="-41.2" y="-56.6"/>
     <waypoint name="BLUE" x="-83.5" y="-50.8"/>
-    <waypoint name="YELLOW" x="-6.7" y="-55.8"/>
+    <waypoint name="YELLOW" x="-8.2" y="-51.9"/>
     <waypoint name="HOUSE" x="7.5" y="-26.7"/>
     <waypoint name="_HERE" x="86.0" y="-117.2"/>
   </waypoints>
