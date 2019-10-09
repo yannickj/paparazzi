@@ -44,7 +44,7 @@ extern void nav_lace_init(void);
 /** Initialized the exploration with a first target point inside the cloud
  *  Called from flight plan or with mission parameters
  */
-extern void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, int vert_speed);
+extern void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vert_speed);
 
 /** Navigation function
  *  Called by flight plan or mission run function

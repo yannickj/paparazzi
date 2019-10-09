@@ -49,13 +49,13 @@ struct NavLace {
   enum LaceStatus status;
   enum RotationDir rotation;
   bool inside_cloud;
-  struct EnuCoor_f *actual;
+  struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
   float direction;
   float radius;
   float radius_sign;
-  int v_speed;
+  float v_speed;
 };
 
 static struct NavLace nav_lace;
@@ -99,7 +99,7 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float start_z = params[2];
     int first_turn = params[3];
     float circle_radius = params[4];
-    int vertical_speed = params[5];
+    float vertical_speed = params[5];
     nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vertical_speed);
   }
   return nav_lace_run();
@@ -114,7 +114,7 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
 
 static abi_event lwc_ev;
 
-static lwc_cb(uint8_t sender_id UNUSED, uint32_t stamp UNUSED, int32_t data_type, uint32_t size, uint8_t * data) {
+static void lwc_cb(uint8_t sender_id UNUSED, uint32_t stamp UNUSED, int32_t data_type, uint32_t size, uint8_t * data) {
   if (data_type == 1 && size == 1) {
     nav_lace.inside_cloud = (bool) data[0];
   }
@@ -133,7 +133,7 @@ void nav_lace_init(void)
 #endif
 }
 
-void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, int vert_speed)
+void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vert_speed)
 {
   struct EnuCoor_f start = {init_x, init_y, init_z};
   nav_lace.target = start;
@@ -150,42 +150,44 @@ void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float de
     nav_lace.radius_sign = -1.0f;
   }
 
-  nav_lace.actual = stateGetPositionEnu_f();
+  nav_lace.actual = *stateGetPositionEnu_f();
 }
 
 bool nav_lace_run(void)
 {
-  
-  //NavVerticalAutoThrottleMode(); /* Pitch set according to desired VSpeed */
+
+  NavVerticalAutoThrottleMode(0.f); /* Pitch set according to desired VSpeed */
 
   switch (nav_lace.status) {
     case LACE_ENTER:
-      nav_route_xy(nav_lace.actual->x, nav_lace.actual->y, nav_lace.target.x, nav_lace.target.y);
+      nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.target.x, nav_lace.target.y);
+      NavVerticalAltitudeMode(nav_lace.target.z, 0.f);
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
-        nav_lace.actual = stateGetPositionEnu_f();
+        nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(nav_lace.actual, nav_lace.direction);
-        NavVerticalClimbMode(nav_lace.v_speed);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
       }
       break;
     case LACE_INSIDE:
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
+      NavVerticalClimbMode(nav_lace.v_speed);
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE;
-        nav_lace.actual = stateGetPositionEnu_f();
+        nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(nav_lace.actual, nav_lace.direction);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
       break;
     case LACE_OUTSIDE:
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
+      NavVerticalClimbMode(nav_lace.v_speed);
       if(nav_lace.inside_cloud){
         nav_lace.status = LACE_INSIDE;
-        nav_lace.actual = stateGetPositionEnu_f();
+        nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(nav_lace.actual, nav_lace.direction);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
       break;
