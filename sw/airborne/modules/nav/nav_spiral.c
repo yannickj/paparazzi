@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011-2013  The Paparazzi Team
+ * Copyright (C) 2019 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi.
  *
@@ -47,6 +48,24 @@
 
 struct NavSpiral nav_spiral;
 
+#if USE_MISSION
+#include "modules/mission/mission_common.h"
+
+static bool nav_spiral_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
+{
+}
+#endif
+
+void nav_spiral_init(void)
+{
+  // no speed by default
+  FLOAT_VECT3_ZERO(nav_spiral.speed);
+
+#if USE_MISSION
+  mission_register(nav_spiral_mission, "SPIR");
+#endif
+}
+
 void nav_spiral_setup(uint8_t center_wp, uint8_t edge_wp, float radius_start, float radius_inc, float segments)
 {
   VECT2_COPY(nav_spiral.center, waypoints[center_wp]);    // center of the helix
@@ -81,6 +100,26 @@ void nav_spiral_setup(uint8_t center_wp, uint8_t edge_wp, float radius_start, fl
   if (nav_spiral.dist_from_center > nav_spiral.radius) {
     nav_spiral.status = SpiralOutside;
   }
+}
+
+void nav_spiral_setup2(float center_x, float center_y,
+                       float alt_start, float alt_stop,
+                       float radius_start, float radius_stop,
+                       float vx, float vy, float vz)
+{
+  VECT3_ASSIGN(nav_spiral.center, center_x, center_y, alt_start);
+  float dt = 1.f / NAVIGATION_FREQUENCY;
+  VECT3_ASSIGN(nav_spiral.pos_incr, vx*dt, vy*dt, vz*dt);
+  nav_spiral.radius_start = radius_start;
+  nav_spiral.radius_min = NAV_SPIRAL_MIN_CIRCLE_RADIUS;
+  if (nav_spiral.radius_start < nav_spiral.radius_min) {
+    nav_spiral.radius_start = nav_spiral.radius_min;
+  }
+  float r_stop = radius_stop;
+  if (r_stop < nav_spiral.radius_min) {
+    r_stop = nav_spiral.radius_min;
+  }
+  // Compute radius increment
 }
 
 bool nav_spiral_run(void)
