@@ -120,6 +120,8 @@ void nav_spiral_setup2(float center_x, float center_y,
     r_stop = nav_spiral.radius_min;
   }
   // Compute radius increment
+  // Rinc = deltaR / deltaT
+  // deltaT = deltaZ / Vz
 }
 
 bool nav_spiral_run(void)
