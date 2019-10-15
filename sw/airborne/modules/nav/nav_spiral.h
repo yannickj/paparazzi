@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011-2013  The Paparazzi Team
- * Copyright (C) 2019 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi.
  *
@@ -40,7 +39,6 @@ struct NavSpiral {
   struct FloatVect2 fly_from;
   struct FloatVect2 last_circle;
   struct FloatVect3 center;
-  struct FloatVect3 pos_incr;
   float dist_from_center;
   float alpha_limit;
   float segments;
@@ -53,30 +51,8 @@ struct NavSpiral {
 
 extern struct NavSpiral nav_spiral;
 
-extern void nav_spiral_init(void);
-
-/** Run spiral navigation
- */
 extern bool nav_spiral_run(void);
-
-/** Initialize spiral based on:
- *    - waypoints (center, edge)
- *    - start radius
- *    - increments
- */
 extern void nav_spiral_setup(uint8_t center_wp, uint8_t edge_wp, float radius_start,
                              float radius_inc, float segments);
 
-/** Initialize spiral based on:
- *    - position X, Y
- *    - start and stop altitude
- *    - start and stop radius
- *    - speeds (horizontal and vertical
- */
-extern void nav_spiral_setup2(float center_x, float center_y,
-                              float alt_start, float alt_stop,
-                              float radius_start, float radius_stop,
-                              float vx, float vy, float vz);
-
 #endif // NAV_SPIRAL_H
-
