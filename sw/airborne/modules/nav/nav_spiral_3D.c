@@ -68,6 +68,22 @@ static const float nav_dt = 1.f / NAVIGATION_FREQUENCY;
 
 static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
+  if (nb != 9) {
+    return false; // wrong number of parameters
+  }
+  if (flag == MissionInit) {
+    float cx = params[0];
+    float cy = params[1];
+    float alt_start = params[2];
+    float alt_stop = params[3];
+    float r_start = params[4];
+    float r_stop = params[5];
+    float vx = params[6];
+    float vy = params[7];
+    float vz = params[8];
+    nav_spiral_3D_setup(cx, cy, alt_start, alt_stop, r_stop, r_stop, vx, vy, vz);
+  }
+  return nav_spiral_3D_run();
 }
 #endif
 
