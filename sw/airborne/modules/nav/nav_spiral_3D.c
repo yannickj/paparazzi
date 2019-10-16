@@ -41,14 +41,16 @@
 #endif
 
 #ifndef NAV_SPIRAL_3D_MIN_CIRCLE_RADIUS
-#define NAV_SPIRAL_3D_MIN_CIRCLE_RADIUS 60.f
+#define NAV_SPIRAL_3D_MIN_CIRCLE_RADIUS 50.f
 #endif
 
-enum Spiral3DStatus { Spiral3DOutside, Spiral3DStartCircle, Spiral3DCircle };
+enum Spiral3DStatus { Spiral3DStart, Spiral3DCircle, Spiral3DFail };
 
 struct NavSpiral3D {
   struct FloatVect3 center;
   struct FloatVect3 pos_incr;
+  float alt_start;
+  float alt_stop;
   float radius;
   float radius_min;
   float radius_start;
@@ -72,7 +74,7 @@ static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag
 void nav_spiral_3D_init(void)
 {
   // no speed by default
-  FLOAT_VECT3_ZERO(nav_spiral_3D.speed);
+  FLOAT_VECT3_ZERO(nav_spiral_3D.pos_incr);
 
 #if USE_MISSION
   mission_register(nav_spiral_3D_mission, "SPIR3");
@@ -86,24 +88,49 @@ void nav_spiral_3D_setup(float center_x, float center_y,
 {
   // initial center position
   VECT3_ASSIGN(nav_spiral_3D.center, center_x, center_y, alt_start);
+  nav_spiral_3D.alt_start = alt_start;
+  nav_spiral_3D.alt_stop = alt_stop;
+  float deltaZ = alt_stop - alt_start;
+  if (deltaZ * vz < 0.f) {
+    // error vz and delta Z don't have the same sign
+    nav_spiral_3D.status = Spiral3DFail;
+    return;
+  }
   // increment based on speed
   VECT3_ASSIGN(nav_spiral_3D.pos_incr, vx*nav_dt, vy*nav_dt, vz*nav_dt);
+  // radius
+  nav_spiral_3D.radius_min = NAV_SPIRAL_3D_MIN_CIRCLE_RADIUS;
   nav_spiral_3D.radius_start = radius_start;
-  nav_spiral_3D.radius_min = NAV_SPIRAL_MIN_CIRCLE_RADIUS;
   if (nav_spiral_3D.radius_start < nav_spiral_3D.radius_min) {
     nav_spiral_3D.radius_start = nav_spiral_3D.radius_min;
   }
+  nav_spiral_3D.radius = nav_spiral_3D.radius_start; // start radius
   nav_spiral_3D.radius_stop = radius_stop;
   if (nav_spiral_3D.radius_stop < nav_spiral_3D.radius_min) {
     nav_spiral_3D.radius_stop = nav_spiral_3D.radius_min;
   }
   // Compute radius increment
-  // Rinc = deltaR / deltaT
-  // deltaT = deltaZ / Vz
-  float deltaZ = alt_stop - alt_start;
-  if (fabsf(deltaZ) < 1.f) {
+  float deltaR = radius_stop - radius_start;
+  float sign = deltaR < 0.f ? -1.f : 1.0;
+  if (fabsf(deltaZ) < 1.f && fabsf(vz) > 0.1f) {
     // alt diff is too small, use Vz as increment rate at fix altitude
-    nav_spiral_3D.radius_increment = x;
+    // Rinc = deltaR / deltaT
+    // deltaT = deltaR / Vz
+    // Rinc = Vz
+    nav_spiral_3D.pos_incr.z = 0.f;
+    nav_spiral_3D.radius_increment = sign * fabsf(vz) * nav_dt;
+  } else if (fabsf(vz) < 0.1f) {
+    // vz is too small, fail
+    nav_spiral_3D.status = Spiral3DFail;
+    return;
+  } else {
+    // normal case, vz and alt diff are large enough and in the same direction
+    // Rinc = deltaR / deltaT
+    // deltaT = deltaZ / Vz
+    // Rinc = deltaR * Vz / deltaZ;
+    nav_spiral_3D.radius_increment = deltaR * vz * nav_dt / deltaZ;
+  }
+  nav_spiral_3D.status = Spiral3DStart;
 }
 
 bool nav_spiral_3D_run(void)
@@ -114,31 +141,37 @@ bool nav_spiral_3D_run(void)
   VECT2_DIFF(pos_diff, pos_enu, nav_spiral_3D.center);
   float dist_to_center = float_vect2_norm(&pos_diff);
   float dist_diff, alt_diff;
+  float pre_climb = 0.f;
 
   switch (nav_spiral_3D.status) {
+    case Spiral3DFail:
+      // error during setup
+      return false;
+
     case Spiral3DStart:
       // fly to start circle until dist to center and alt are acceptable
       // flys until center of the helix is reached and start helix
       VECT2_DIFF(pos_diff, pos_enu, nav_spiral_3D.center);
       dist_diff = fabs(dist_to_center - nav_spiral_3D.radius_start);
-      alt_diff = fabs(stateGetPositionUtm_f()->alt - alt_start);
-      if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_start < NAV_SPIRAL_3D_ALT_DIFF) {
+      alt_diff = fabs(stateGetPositionUtm_f()->alt - nav_spiral_3D.alt_start);
+      if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_diff < NAV_SPIRAL_3D_ALT_DIFF) {
         nav_spiral_3D.status = Spiral3DCircle;
       }
       break;
 
-    case SpiralCircle:
+    case Spiral3DCircle:
       // increment center position
       VECT3_ADD(nav_spiral_3D.center, nav_spiral_3D.pos_incr);
       // increment radius
       nav_spiral_3D.radius += nav_spiral_3D.radius_increment;
       // test end condition
       dist_diff = fabs(dist_to_center - nav_spiral_3D.radius_stop);
-      alt_diff = fabs(stateGetPositionUtm_f()->alt - alt_stop);
-      if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_start < NAV_SPIRAL_3D_ALT_DIFF) {
+      alt_diff = fabs(stateGetPositionUtm_f()->alt - nav_spiral_3D.alt_stop);
+      if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_diff < NAV_SPIRAL_3D_ALT_DIFF) {
         // reaching desired altitude and radius
         return false; // spiral is finished
       }
+      pre_climb = nav_spiral_3D.pos_incr.z / nav_dt;
       break;
 
     default:
@@ -149,7 +182,7 @@ bool nav_spiral_3D_run(void)
   nav_circle_XY(nav_spiral_3D.center.x, nav_spiral_3D.center.y, nav_spiral_3D.radius);
   // vertical control setting
   NavVerticalAutoThrottleMode(0.); /* No pitch */
-  NavVerticalAltitudeMode(nav_spiral_3D.center.z, 0.); /* No preclimb */
+  NavVerticalAltitudeMode(nav_spiral_3D.center.z, pre_climb); /* No preclimb */
 
   return true;
 }
