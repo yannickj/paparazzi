@@ -52,13 +52,15 @@ struct NavLace {
   struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
+  struct FloatVect3 pos_incr;
   float direction;
   float radius;
   float radius_sign;
-  float v_speed;
 };
 
 static struct NavLace nav_lace;
+
+static const float nav_dt = 1.f / NAVIGATION_FREQUENCY;
 
 static float change_rep(float dir)
 {
@@ -99,8 +101,10 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float start_z = params[2];
     int first_turn = params[3];
     float circle_radius = params[4];
-    float vertical_speed = params[5];
-    nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vertical_speed);
+    float vx = params[5];
+    float vy = params[6];
+    float vz = params[7];
+    nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
   }
   return nav_lace_run();
 }
@@ -133,14 +137,20 @@ void nav_lace_init(void)
 #endif
 }
 
-void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vert_speed)
+void nav_lace_setup(float init_x, float init_y, 
+                    float init_z, int turn, 
+                    float desired_radius, float vx,
+                    float vy, float vz)
 {
   struct EnuCoor_f start = {init_x, init_y, init_z};
+  // increment based on speed
+  VECT3_ASSIGN(nav_lace.pos_incr, vx*nav_dt, vy*nav_dt, vz*nav_dt);
+
   nav_lace.target = start;
   nav_lace.status = LACE_ENTER;
   nav_lace.inside_cloud = false;
   nav_lace.radius = desired_radius;
-  nav_lace.v_speed = vert_speed;
+  
 
   if (turn == 1) {
     nav_lace.rotation = LACE_RIGHT;
@@ -155,13 +165,15 @@ void nav_lace_setup(float init_x, float init_y, float init_z, int turn, float de
 
 bool nav_lace_run(void)
 {
+  float pre_climb = 0.f;
 
-  NavVerticalAutoThrottleMode(0.f); /* Pitch set according to desired VSpeed */
+  NavVerticalAutoThrottleMode(0.f); /* No pitch */
 
   switch (nav_lace.status) {
     case LACE_ENTER:
       nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.target.x, nav_lace.target.y);
-      NavVerticalAltitudeMode(nav_lace.target.z, 0.f);
+      NavVerticalAltitudeMode(nav_lace.target.z, pre_climb);
+
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
@@ -170,8 +182,11 @@ bool nav_lace_run(void)
       }
       break;
     case LACE_INSIDE:
+      // increment center position
+      VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalClimbMode(nav_lace.v_speed);
+      NavVerticalAltitudeMode(nav_lace.circle.z, pre_climb);
+
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
@@ -179,10 +194,13 @@ bool nav_lace_run(void)
         nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
+      pre_climb = nav_lace.pos_incr.z / nav_dt;
       break;
     case LACE_OUTSIDE:
+      VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalClimbMode(nav_lace.v_speed);
+      NavVerticalAltitudeMode(nav_lace.circle.z, pre_climb);
+      
       if(nav_lace.inside_cloud){
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
@@ -190,6 +208,7 @@ bool nav_lace_run(void)
         nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
+      pre_climb = nav_lace.pos_incr.z / nav_dt;
       break;
     default:
       // error, leaving

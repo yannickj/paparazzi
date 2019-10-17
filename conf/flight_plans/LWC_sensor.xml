@@ -86,12 +86,12 @@
     </block>
 
     <block name="Lace_mission">
-      <call_once fun="nav_lace_setup(350.0, 300.0, 365.0, 1, 80.0, 0.5)"/>
+      <call_once fun="nav_lace_setup(350.0, 300.0, 315.0, 1, 80.0, 2.0, 2.0, 2.0)"/>
       <call fun="nav_lace_run()"/>
     </block>
 
     <block name="Rosette_mission">
-      <call_once fun="nav_rosette_setup(350.0, 300.0, 365.0, 1, 80.0, 0.0)"/>
+      <call_once fun="nav_rosette_setup(350.0, 300.0, 315.0, 1, 80.0, 2.0, 2.0, 2.0)"/>
       <call fun="nav_rosette_run()"/>
     </block>
 

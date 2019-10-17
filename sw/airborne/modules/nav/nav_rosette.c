@@ -52,16 +52,16 @@ struct NavRosette {
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
   struct EnuCoor_f barycenter;
+  struct FloatVect3 pos_incr;
   float direction;
   float radius;
   float radius_sign;
-  float v_speed;
   int nb_border_point;
-  float dis_min;
-  //bool first_init;
 };
 
 static struct NavRosette nav_rosette;
+
+static const float nav_dt = 1.f / NAVIGATION_FREQUENCY;
 
 static float change_rep(float dir)
 {
@@ -158,8 +158,10 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     float start_z = params[2];
     int first_turn = params[3];
     float circle_radius = params[4];
-    int vertical_speed = params[5];
-    nav_rosette_setup(start_x, start_y, start_z, first_turn, circle_radius, vertical_speed);
+    float vx = params[5];
+    float vy = params[6];
+    float vz = params[7];
+    nav_rosette_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
   }
   return nav_rosette_run();
 }
@@ -185,7 +187,6 @@ void nav_rosette_init(void)
   nav_rosette.status = RSTT_ENTER;
   nav_rosette.radius = DEFAULT_CIRCLE_RADIUS;
   nav_rosette.inside_cloud = false;
-  //nav_rosette.first_init = true;
 
   AbiBindMsgPAYLOAD_DATA(NAV_ROSETTE_LWC_ID, &lwc_ev, lwc_cb);
 
@@ -194,16 +195,19 @@ void nav_rosette_init(void)
 #endif
 }
 
-void nav_rosette_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vert_speed)
+void nav_rosette_setup(float init_x, float init_y, float init_z,
+                       int turn, float desired_radius,
+                       float vx, float vy, float vz)
 {
   struct EnuCoor_f start = {init_x, init_y, init_z};
+  // increment based on speed
+  VECT3_ASSIGN(nav_rosette.pos_incr, vx*nav_dt, vy*nav_dt, vz*nav_dt);
+
   nav_rosette.target = start;
   nav_rosette.status = RSTT_ENTER;
   nav_rosette.inside_cloud = false;
   nav_rosette.nb_border_point = 0;
   nav_rosette.radius = desired_radius;
-  nav_rosette.v_speed = vert_speed;
-  nav_rosette.dis_min = 100.0f;
 
   if (turn == 1)
   {
@@ -219,25 +223,25 @@ void nav_rosette_setup(float init_x, float init_y, float init_z, int turn, float
 
 bool nav_rosette_run(void)
 {
-  NavVerticalAutoThrottleMode(0.f); /* Pitch set according to desired VSpeed */
+  float pre_climb = 0.f;
+
+  NavVerticalAutoThrottleMode(0.f); /* No Pitch */
 
   switch (nav_rosette.status) {
     case RSTT_ENTER:
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
-      NavVerticalAltitudeMode(nav_rosette.target.z, 0.f);
+      NavVerticalAltitudeMode(nav_rosette.target.z, pre_climb);
 
       if (nav_rosette.inside_cloud)
       {
         nav_rosette.status = RSTT_CROSSING;
         nav_rosette.actual = *stateGetPositionEnu_f();
         update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
-        //NavVerticalClimbMode(nav_rosette.v_speed);
-        NavVerticalAltitudeMode(nav_rosette.target.z, 0.f);
       }
       break;
     case RSTT_CROSSING:
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
-      NavVerticalClimbMode(nav_rosette.v_speed);
+      NavVerticalAltitudeMode(nav_rosette.target.z, pre_climb);
 
       if (!nav_rosette.inside_cloud)
       {
@@ -246,12 +250,14 @@ bool nav_rosette_run(void)
         update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
-        //NavVerticalClimbMode(nav_rosette.v_speed);
-        NavVerticalAltitudeMode(nav_rosette.target.z, 0.f);
       }
+      pre_climb = nav_rosette.pos_incr.z / nav_dt;
       break;
     case RSTT_TURNING:
+      VECT3_ADD(nav_rosette.circle, nav_rosette.pos_incr);
       nav_circle_XY(nav_rosette.circle.x, nav_rosette.circle.y , nav_rosette.radius_sign * nav_rosette.radius);
+      NavVerticalAltitudeMode(nav_rosette.circle.z, pre_climb);
+
       if (nav_rosette.inside_cloud)
       {
         nav_rosette.status = RSTT_CROSSING;
@@ -259,11 +265,8 @@ bool nav_rosette_run(void)
         update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.target = nav_rosette.barycenter;
-        //nav_rosette.target = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
-        //NavVerticalClimbMode(nav_rosette.v_speed);
-        NavVerticalAltitudeMode(nav_rosette.target.z, 0.f);
       }
-
+      pre_climb = nav_rosette.pos_incr.z / nav_dt;
       break;
     default:
       // error, leaving
