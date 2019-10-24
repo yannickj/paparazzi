@@ -443,6 +443,9 @@ int mission_parse_GOTO_MISSION(void)
 
   uint8_t mission_id = DL_GOTO_MISSION_mission_id(dl_buffer);
   if (mission_id < MISSION_ELEMENT_NB) {
+    // reset timer
+    mission.element_time = 0.;
+    // set current index
     mission.current_idx = mission_id;
   } else { return false; }
 
@@ -455,6 +458,8 @@ int mission_parse_NEXT_MISSION(void)
 
   if (mission.current_idx == mission.insert_idx) { return false; } // already at the last position
 
+  // reset timer
+  mission.element_time = 0.;
   // increment current index
   mission.current_idx = (mission.current_idx + 1) % MISSION_ELEMENT_NB;
   return true;
@@ -464,6 +469,8 @@ int mission_parse_END_MISSION(void)
 {
   if (DL_END_MISSION_ac_id(dl_buffer) != AC_ID) { return false; } // not for this aircraft
 
+  // reset timer
+  mission.element_time = 0.;
   // set current index to insert index (last position)
   mission.current_idx = mission.insert_idx;
   return true;
