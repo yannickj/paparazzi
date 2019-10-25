@@ -84,16 +84,19 @@ bool mission_insert(enum MissionInsertMode insert, struct _mission_element *elem
       if (tmp == mission.insert_idx) { return false; } // no room to inser element
       mission.elements[tmp] = *element; // add element
       mission.current_idx = tmp; // move current index
+      mission.element_time = 0.; // reset timer
       break;
     case ReplaceCurrent:
       // current element can always be modified, index are not changed
       mission.elements[mission.current_idx] = *element;
+      mission.element_time = 0.; // reset timer
       break;
     case ReplaceAll:
       // reset queue and index
       mission.elements[0] = *element;
       mission.current_idx = 0;
       mission.insert_idx = 1;
+      mission.element_time = 0.; // reset timer
       break;
     case ReplaceNexts:
       tmp = (mission.current_idx + 1) % MISSION_ELEMENT_NB;
