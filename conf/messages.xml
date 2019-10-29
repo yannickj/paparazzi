@@ -664,7 +664,23 @@
       <field name="index_list" type="uint8[]"/>
     </message>
 
-    <!-- 80 is free -->
+    <message name="MINIMAL_COM" id="80">
+      <description>
+        Minimal information for correct display in the GCS, in particular the Strip
+      </description>
+      <field name="lat"         type="float" unit="deg">Lattitude</field>
+      <field name="lon"         type="float" unit="deg">Longitude</field>
+      <field name="hmsl"        type="float" unit="m">Altitude above mean sea level</field>
+      <field name="gspeed"      type="float" unit="m/s">Ground speed norm</field>
+      <field name="course"      type="float" unit="rad" alt_unit="deg">Ground speed direction</field>
+      <field name="climb"       type="float" unit="m/s">Vertical speed</field>
+      <field name="vsupply"     type="float" unit="V">Battery voltage</field>
+      <field name="throttle"    type="uint8" unit="%">Throttle level</field>
+      <field name="ap_mode"     type="uint8">Current autopilot mode</field>
+      <field name="nav_block"   type="uint8">Current navigation block</field>
+      <field name="gps_mode"    type="uint8">GPS fix flag</field>
+      <field name="flight_time" type="uint16">Flight time</field>
+    </message>
 
     <message name="GENERIC_COM" id="81">
       <field name="lat"      type="int32" unit="1e7deg" alt_unit="deg" alt_unit_coef="0.0000001"/>
