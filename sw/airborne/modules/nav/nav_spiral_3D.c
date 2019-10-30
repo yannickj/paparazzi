@@ -68,10 +68,7 @@ static const float nav_dt = 1.f / NAVIGATION_FREQUENCY;
 
 static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
-  if (nb != 9) {
-    return false; // wrong number of parameters
-  }
-  if (flag == MissionInit) {
+  if (flag == MissionInit && nb == 9) {
     float cx = params[0];
     float cy = params[1];
     float alt_start = params[2];
@@ -83,7 +80,33 @@ static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag
     float vz = params[8];
     nav_spiral_3D_setup(cx, cy, alt_start, alt_stop, r_start, r_stop, vx, vy, vz);
   }
-  return nav_spiral_3D_run();
+  else if (flag == MissionUpdate && nb == 4) {
+    // update current position and horizontal speed
+    float cx = params[0];
+    float cy = params[1];
+    float vx = params[2];
+    float vy = params[3];
+    nav_spiral_3D.center.x = cx;
+    nav_spiral_3D.center.y = cy;
+    nav_spiral_3D.pos_incr.x = vx * nav_dt;
+    nav_spiral_3D.pos_incr.y = vy * nav_dt;
+  }
+  else if (flag == MissionUpdate && nb == 2) {
+    // update horizontal speed
+    float vx = params[0];
+    float vy = params[1];
+    nav_spiral_3D.pos_incr.x = vx * nav_dt;
+    nav_spiral_3D.pos_incr.y = vy * nav_dt;
+  }
+  else if (flag == MissionUpdate && nb == 1) {
+    // update vertical speed
+    float vz = params[0];
+    nav_spiral_3D.pos_incr.z = vz * nav_dt;
+  }
+  else if (flag == MissionRun) {
+    return nav_spiral_3D_run();
+  }
+  return false; // not a valid case
 }
 #endif
 

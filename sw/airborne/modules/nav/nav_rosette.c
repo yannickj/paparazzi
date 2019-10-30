@@ -149,10 +149,7 @@ static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, fl
 
 static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
-  if (nb != 8) {
-    return false; // wrong number of parameters
-  }
-  if (flag == MissionInit) {
+  if (flag == MissionInit && nb == 8) {
     float start_x = params[0];
     float start_y = params[1];
     float start_z = params[2];
@@ -163,7 +160,22 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     float vz = params[7];
     nav_rosette_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
   }
-  return nav_rosette_run();
+  else if (flag == MissionUpdate && nb == 2) {
+    // update horizontal speed
+    float vx = params[0];
+    float vy = params[1];
+    nav_rosette.pos_incr.x = vx * nav_dt;
+    nav_rosette.pos_incr.y = vy * nav_dt;
+  }
+  else if (flag == MissionUpdate && nb == 1) {
+    // update vertical speed
+    float vz = params[0];
+    nav_rosette.pos_incr.z = vz * nav_dt;
+  }
+  else if (flag == MissionRun) {
+    return nav_rosette_run();
+  }
+  return false; // not a valid case
 }
 #endif
 

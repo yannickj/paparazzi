@@ -92,10 +92,7 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 
 static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag)
 {
-  if (nb != 8) {
-    return false; // wrong number of parameters
-  }
-  if (flag == MissionInit) {
+  if (flag == MissionInit && nb == 8) {
     float start_x = params[0];
     float start_y = params[1];
     float start_z = params[2];
@@ -106,7 +103,22 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float vz = params[7];
     nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
   }
-  return nav_lace_run();
+  else if (flag == MissionUpdate && nb == 2) {
+    // update horizontal speed
+    float vx = params[0];
+    float vy = params[1];
+    nav_lace.pos_incr.x = vx * nav_dt;
+    nav_lace.pos_incr.y = vy * nav_dt;
+  }
+  else if (flag == MissionUpdate && nb == 1) {
+    // update vertical speed
+    float vz = params[0];
+    nav_lace.pos_incr.z = vz * nav_dt;
+  }
+  else if (flag == MissionRun) {
+    return nav_lace_run();
+  }
+  return false; // not a valid case
 }
 #endif
 
@@ -137,8 +149,8 @@ void nav_lace_init(void)
 #endif
 }
 
-void nav_lace_setup(float init_x, float init_y, 
-                    float init_z, int turn, 
+void nav_lace_setup(float init_x, float init_y,
+                    float init_z, int turn,
                     float desired_radius, float vx,
                     float vy, float vz)
 {
@@ -150,7 +162,6 @@ void nav_lace_setup(float init_x, float init_y,
   nav_lace.status = LACE_ENTER;
   nav_lace.inside_cloud = false;
   nav_lace.radius = desired_radius;
-  
 
   if (turn == 1) {
     nav_lace.rotation = LACE_RIGHT;
@@ -200,7 +211,7 @@ bool nav_lace_run(void)
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
       NavVerticalAltitudeMode(nav_lace.circle.z, pre_climb);
-      
+
       if(nav_lace.inside_cloud){
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
