@@ -447,7 +447,15 @@
       <field name="groundspeed_sp" type="float" unit="m/s"/>
     </message>
 
-    <!-- 55 is free -->
+    <message name="METEO_STICK" id="55">
+      <description>
+        Data from the MeteoSitck sensor board
+      </description>
+      <field name="pressure" type="float" unit="Pa">absolute static pressure</field>
+      <field name="temperature" type="float" unit="deg C">temperature</field>
+      <field name="humidity" type="float" unit="%">relative humidity</field>
+      <field name="airspeed" type="float" unit="m/s">calibrated airspeed</field>
+    </message>
 
     <message name="BARO_ETS" id="56">
       <field name="adc" type="uint16"/>
