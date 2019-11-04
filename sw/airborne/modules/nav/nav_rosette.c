@@ -159,6 +159,7 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     float vy = params[6];
     float vz = params[7];
     nav_rosette_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
+    return true;
   }
   else if (flag == MissionUpdate && nb == 2) {
     // update horizontal speed
@@ -166,11 +167,13 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     float vy = params[1];
     nav_rosette.pos_incr.x = vx * nav_dt;
     nav_rosette.pos_incr.y = vy * nav_dt;
+    return true;
   }
   else if (flag == MissionUpdate && nb == 1) {
     // update vertical speed
     float vz = params[0];
     nav_rosette.pos_incr.z = vz * nav_dt;
+    return true;
   }
   else if (flag == MissionRun) {
     return nav_rosette_run();

@@ -102,6 +102,7 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float vy = params[6];
     float vz = params[7];
     nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
+    return true;
   }
   else if (flag == MissionUpdate && nb == 2) {
     // update horizontal speed
@@ -109,11 +110,13 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float vy = params[1];
     nav_lace.pos_incr.x = vx * nav_dt;
     nav_lace.pos_incr.y = vy * nav_dt;
+    return true;
   }
   else if (flag == MissionUpdate && nb == 1) {
     // update vertical speed
     float vz = params[0];
     nav_lace.pos_incr.z = vz * nav_dt;
+    return true;
   }
   else if (flag == MissionRun) {
     return nav_lace_run();

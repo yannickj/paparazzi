@@ -79,6 +79,7 @@ static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag
     float vy = params[7];
     float vz = params[8];
     nav_spiral_3D_setup(cx, cy, alt_start, alt_stop, r_start, r_stop, vx, vy, vz);
+    return true;
   }
   else if (flag == MissionUpdate && nb == 4) {
     // update current position and horizontal speed
@@ -90,6 +91,7 @@ static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag
     nav_spiral_3D.center.y = cy;
     nav_spiral_3D.pos_incr.x = vx * nav_dt;
     nav_spiral_3D.pos_incr.y = vy * nav_dt;
+    return true;
   }
   else if (flag == MissionUpdate && nb == 2) {
     // update horizontal speed
@@ -97,11 +99,13 @@ static bool nav_spiral_3D_mission(uint8_t nb, float *params, enum MissionRunFlag
     float vy = params[1];
     nav_spiral_3D.pos_incr.x = vx * nav_dt;
     nav_spiral_3D.pos_incr.y = vy * nav_dt;
+    return true;
   }
   else if (flag == MissionUpdate && nb == 1) {
     // update vertical speed
     float vz = params[0];
     nav_spiral_3D.pos_incr.z = vz * nav_dt;
+    return true;
   }
   else if (flag == MissionRun) {
     return nav_spiral_3D_run();
