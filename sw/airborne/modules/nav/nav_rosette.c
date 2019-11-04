@@ -161,6 +161,14 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     nav_rosette_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
     return true;
   }
+  else if (flag == MissionUpdate && nb == 3) {
+    // update barycenter 3D position (ENU frame, above ground alt)
+    float bx = params[0];
+    float by = params[1];
+    float bz = params[2] + ground_alt;
+    VECT3_ASSIGN(nav_rosette.barycenter, bx, by, bz);
+    return true;
+  }
   else if (flag == MissionUpdate && nb == 2) {
     // update horizontal speed
     float vx = params[0];
