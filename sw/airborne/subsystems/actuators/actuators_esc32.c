@@ -137,7 +137,7 @@ void actuators_esc32_init(void)
   }
 
   // Initialize the the can bus
-  ppz_can_init(actuators_esc32_can_rx_cb);
+  can_init(actuators_esc32_can_rx_cb);
 
   // Reset all devices on the bus
   actuators_esc32_send(ESC32_CAN_LCC_EXCEPTION | ESC32_CAN_TT_GROUP | ESC32_CAN_FID_RESET_BUS, 0, 0, 0);
@@ -194,7 +194,7 @@ static uint8_t actuators_esc32_send(uint32_t id, uint8_t tid, uint8_t length, ui
   uint8_t ret_idx = actuators_esc32.can_seq_idx;
   actuators_esc32.responses[ret_idx].fid = 0;
 
-  ppz_can_transmit((id >> 3) | ((tid & 0x1f) << 6) | actuators_esc32.can_seq_idx, data, length);
+  can_transmit((id >> 3) | ((tid & 0x1f) << 6) | actuators_esc32.can_seq_idx, data, length);
   actuators_esc32.can_seq_idx = (actuators_esc32.can_seq_idx + 1) % ESC32_RESPONSE_CNT;
   return ret_idx;
 }

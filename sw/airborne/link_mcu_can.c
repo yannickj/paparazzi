@@ -126,13 +126,13 @@ void link_mcu_send(void)
     imcu_cmd_ext.cmd[i] = ap_state->commands[4 + i];
   }
 
-  ppz_can_transmit(MSG_INTERMCU_COMMAND_MASTER_ID, imcu_cmd_mstr.data, 8);
-  ppz_can_transmit(MSG_INTERMCU_COMMAND_EXTRA_ID, imcu_cmd_ext.data, 8);
+  can_transmit(MSG_INTERMCU_COMMAND_MASTER_ID, imcu_cmd_mstr.data, 8);
+  can_transmit(MSG_INTERMCU_COMMAND_EXTRA_ID, imcu_cmd_ext.data, 8);
 
   imcu_trim.cmd[0] = ap_state->command_roll_trim;
   imcu_trim.cmd[1] = ap_state->command_pitch_trim;
   imcu_trim.cmd[2] = ap_state->command_yaw_trim;
-  RunOnceEvery(6, ppz_can_transmit(MSG_INTERMCU_TRIM_ID, imcu_trim.data, 6));
+  RunOnceEvery(6, can_transmit(MSG_INTERMCU_TRIM_ID, imcu_trim.data, 6));
 }
 #endif
 
@@ -150,7 +150,7 @@ void link_mcu_periodic_task(void)
   uint16_t vsupply = fbw_state->electrical.vsupply * 10;
   intermcu_tx_buff[3] = (uint8_t) vsupply;
   intermcu_tx_buff[4] = (uint8_t)((vsupply & 0xff00) >> 8);
-  ppz_can_transmit(MSG_INTERMCU_FBW_STATUS_ID, intermcu_tx_buff, 5);
+  can_transmit(MSG_INTERMCU_FBW_STATUS_ID, intermcu_tx_buff, 5);
 
 #if defined RADIO_CONTROL || RADIO_CONTROL_AUTO1
   // Copy the CHANNELS to the 2 CAN buffers
@@ -162,8 +162,8 @@ void link_mcu_periodic_task(void)
   }
 
   if (bit_is_set(fbw_state->status, RC_OK)) {
-    ppz_can_transmit(MSG_INTERMCU_RADIO_LOW_ID,  imcu_chan1.data, 8);
-    ppz_can_transmit(MSG_INTERMCU_RADIO_HIGH_ID, imcu_chan2.data, 8);
+    can_transmit(MSG_INTERMCU_RADIO_LOW_ID,  imcu_chan1.data, 8);
+    can_transmit(MSG_INTERMCU_RADIO_HIGH_ID, imcu_chan2.data, 8);
   }
 #endif
 }
@@ -215,7 +215,7 @@ static void send_fbw_status(struct transport_tx *trans, struct link_device *dev)
 
 void link_mcu_init(void)
 {
-  ppz_can_init((can_rx_callback_t)link_mcu_on_can_msg);
+  can_init((can_rx_callback_t)link_mcu_on_can_msg);
 
 #ifdef AP
 #if PERIODIC_TELEMETRY

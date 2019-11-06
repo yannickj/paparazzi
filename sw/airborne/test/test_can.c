@@ -72,14 +72,14 @@ static inline void main_init(void)
   sys_time_register_timer((0.5 / PERIODIC_FREQUENCY), NULL);
   downlink_init();
   pprz_dl_init();
-  ppz_can_init((can_rx_callback_t)main_on_can_msg);
+  can_init((can_rx_callback_t)main_on_can_msg);
 }
 
 static inline void main_periodic_task(void)
 {
 
   tx_data[0] += 1;
-  ppz_can_transmit(0, tx_data, 8);
+  can_transmit(0, tx_data, 8);
 
   LED_PERIODIC();
   DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);
