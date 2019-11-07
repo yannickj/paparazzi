@@ -41,79 +41,136 @@ struct CanInit {
   CANConfig *cfg;
   event_source_t *tx_request;
   mutex_t *mutex;
+  CANRxFrame rx_msg;
+  CANTxFrame tx_msg;
 };
+
+void _can_run_rx_callback(uint32_t id, uint8_t *buf, uint8_t len); // FIXME change generic API
 
 /**
  * RX handler
  */
 static handle_can_rx(struct CanInit *conf, CANRxFrame *rx_msg) {
-  if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_MS2I(100)) == 0)
-    continue;
   chMtxLock(conf->mutex);
   while (canReceive(conf->dev, CAN_ANY_MAILBOX, rx_msg, TIME_IMMEDIATE) == MSG_OK) {
     // Process message.
-    const uint32_t timestamp = TIME_I2US(chVTGetSystemTimeX());
-    memcpy(rx_frame->data, rx_msg->data8, 8);
-    rx_frame->data_len = rx_msg->DLC;
-    if(rx_msg->IDE) {
-      rx_frame->id = CANARD_CAN_FRAME_EFF | rx_msg->EID;
+    uint8_t len = rx_msg->DLC;
+    uint8_t buf[len];
+    memcpy(buf, rx_msg->data8, len);
+    uint32_t id;
+    if (rx_msg->IDE) {
+      id = rx_msg->EID;
     } else {
-      rx_frame->id = rx_msg->SID;
+      id = rx_msg->SID;
     }
-    // TODO callback
+    _can_run_rx_callback(id, buf, len); // TODO check if we run callback here ?
   }
   chMtxUnlock(conf->mutex);
+}
+
+static THD_FUNCTION(can_rx, p) {
+  struct CanInit *cfg = (struct CanInit *)p;
+  event_listener_t el;
+
+  chRegSetThreadName("can_rx");
+  chEvtRegister(&cfg->dev->rxfull_event, &el, EVENT_MASK(0));
+
+  while (true) {
+    if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_MS2I(100)) == 0)
+      continue;
+    handle_can_rx(cfg, &cfg->rx_msg);
+  }
+  chEvtUnregister(&cfg->dev->rxfull_event, &el);
 }
 
 /*
  * TX handler
  */
 static handle_can_tx(struct CanInit *conf, CANTxFrame *tx_msg) {
-  eventmask_t evts = chEvtWaitAnyTimeout(ALL_EVENTS, TIME_MS2I(100));
-  if (evts == 0) {
-    continue;
-  }
-
-  if (evts & EVENT_MASK(1)) { // FIXME
-    chEvtGetAndClearFlags(&txe);
-    continue;
-  }
-
   chMtxLock(conf->mutex);
-  for (const CanardCANFrame* txf = NULL; (txf = canardPeekTxQueue(&iface->canard)) != NULL;) {
-    CANTxFrame tx_msg;
-    tx_msg.DLC = txf->data_len;
-    memcpy(tx_msg.data8, txf->data, 8);
-    tx_msg.EID = txf->id & CANARD_CAN_EXT_ID_MASK;
-    tx_msg.IDE = CAN_IDE_EXT;
-    tx_msg.RTR = CAN_RTR_DATA;
-    if (canTransmit(iface->can_driver, CAN_ANY_MAILBOX, &tx_msg, TIME_IMMEDIATE) == MSG_OK) {
-      err_cnt = 0;
-      canardPopTxQueue(&iface->canard);
-    } else {
-      // After 5 retries giveup
-      if(err_cnt >= 5) {
-        err_cnt = 0;
-        canardPopTxQueue(&iface->canard);
-        continue;
-      }
-
-      // Timeout - just exit and try again later
-      chMtxUnlock(&iface->mutex);
-      err_cnt++;
-      canardPopTxQueue(&iface->canard);
-      chThdSleepMilliseconds(err_cnt * 5);
-      chMtxLock(&iface->mutex);
-      continue;
-    }
+  if (canTransmit(conf->dev, CAN_ANY_MAILBOX, tx_msg, TIME_IMMEDIATE) != MSG_OK) {
+    // handle error here ?
   }
-  chMtxUnlock(&iface->mutex);
+  chMtxUnlock(conf->mutex);
 }
 
+static THD_FUNCTION(can_tx, p) {
+  struct CanInit *cfg = (struct CanInit *)p;
+  event_listener_t txc, txe, txr;
 
+  chRegSetThreadName("can_tx");
+  chEvtRegister(&cfg->dev->txempty_event, &txc, EVENT_MASK(0));
+  chEvtRegister(&cfg->dev->error_event, &txe, EVENT_MASK(1));
+  chEvtRegister(cfg->tx_request, &txr, EVENT_MASK(2));
 
+  while (true) {
+    eventmask_t evts = chEvtWaitAnyTimeout(ALL_EVENTS, TIME_MS2I(100));
+    if (evts == 0) {
+      continue;
+    }
+    if (evts & EVENT_MASK(1)) {
+      chEvtGetAndClearFlags(&txe);
+      continue;
+    }
+    handle_can_tx(cfg, &cfg->tx_msg);
+  }
+}
+
+#if USE_CAN1
+
+static CANConfig can1_cfg = {
+  CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP,
+  CAN_BTR_SJW(0) | CAN_BTR_TS2(1) |
+  CAN_BTR_TS1(14) | CAN_BTR_BRP((STM32_PCLK1/18)/125000 - 1)
+}; // TODO check
+static MUTEX_DECL(can1_mtx);
+static EVENTSOURCE_SECL(can1_tx_ev);
+static THD_WORKING_AREA(wa_thd_can1_rx, CAN_THREAD_STACK_SIZE);
+static THD_WORKING_AREA(wa_thd_can1_tx, CAN_THREAD_STACK_SIZE);
+
+static struct CanInit can1_init = {
+  .cfg = &can1_cfg,
+  .dev = &CAND1,
+  .mutex = &can1_mtx,
+  .tx_request = &can1_tx_ev
+};
+
+#endif
+
+// Init all CAN periph
+void cam_hw_init(void)
+{
+#if USE_CAN1
+  canStart(can1_init.dev, can1_init.cfg);
+  chThdCreateStatic(wa_thd_can1_rx, sizeof(wa_thd_can1_rx), NORMALPRIO + 8, can_rx, (void *)(&can1_init));
+#endif
+}
+
+// Transmit message
+int can_hw_transmit(uint32_t id, const uint8_t *buf, uint8_t len)
+{
+#if USE_CAN1
+  if (len > 8) {
+    return -1; // frame is too long
+  }
+
+  // FIXME only work with CAN1 for now, arch indep API should be changed to have a can_periph structure
+  chMtxLock(can1_init.mutex);
+  can1_init.tx_msg.DLC = len;
+  memcpy(can1_init.tx_msg.data8, buf, len);
+  can1_init.tx_msg.EID = id;
+  can1_init.tx_msg.IDE = CAN_IDE_EXT;
+  can1_init.tx_msg.RTR = CAN_RTR_DATA;
+  chMtxUnlock(can1_init.mutex);
+  chEvtBroadcast(can1_init.tx_request);
+#endif
+
+  return 0;
+}
 
 /// UAVCAN PART TODO
+
+#if 0
 
 #include <canard.h>
 #include <string.h>
@@ -342,3 +399,6 @@ void actuators_uavcan_commit(void)
   transmit_esc_raw(&can2_iface, 10, 10);
   });
 }
+
+#endif
+
