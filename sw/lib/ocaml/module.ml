@@ -145,7 +145,7 @@ type periodic = {
 let parse_periodic = fun xml ->
   let get = fun x -> ExtXml.attrib_opt xml x in
   let geti = fun x ->  ExtXml.attrib_opt_int xml x in
-  let call = List.find (fun a -> Compat.bytes_lowercase a = "fun")
+  let call = List.find (fun a -> Compat.lowercase_ascii a = "fun")
       (fst (List.split (Xml.attribs xml))) in
   let call_regexp = Str.regexp "\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\(.*\\)" in
   let fname =
@@ -175,7 +175,7 @@ let fprint_period_freq = fun ch max_freq p ->
   let period, freq = match p.period_freq with
     | Unset -> 1. /. max_freq, max_freq
     | Set (p, f) -> p, f in
-  let cap_fname = Compat.bytes_uppercase p.fname in
+  let cap_fname = Compat.uppercase_ascii p.fname in
   Printf.fprintf ch "#define %s_PERIOD %f\n" cap_fname period;
   Printf.fprintf ch "#define %s_FREQ %f\n" cap_fname freq
 
