@@ -20,14 +20,38 @@
 /**
  * @file "modules/computer_vision/bebop_ae_awb.h"
  * @author Freek van Tienen, Kirk Scheper
- * Auto exposure and Auto white balancing for the Bebop 1 and 2
+ * Auto exposure and Auto white balancing for the front camera on the Parrot Bebop 1 and 2 and the Disco
  */
 
 #ifndef BEBOP_AE_AWB_H
 #define BEBOP_AE_AWB_H
 
+#include "std.h"
+
+struct ae_setting_t {
+  bool    active;
+  bool    prev_active;
+  float   exposure_gain;
+  float   bright_ignore;
+  float   dark_ignore;
+  uint8_t middle_index;
+  uint8_t dark_bins;
+  uint8_t bright_bins;
+};
+extern struct ae_setting_t ae_set;
+
+struct awb_setting_t {
+  bool  active;
+  bool  prev_active;
+  float gain;
+  bool  gain_scheduling;
+  float gain_scheduling_target;
+  float gain_scheduling_tolerance;
+  float gain_scheduling_step;
+};
+extern struct awb_setting_t awb_set;
+
 extern void bebop_ae_awb_init(void);
-extern void bebop_ae_awb_periodic(void);
 
 #endif
 

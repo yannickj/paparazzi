@@ -304,7 +304,7 @@ void Normalize(void)
   if (renorm < 1.5625f && renorm > 0.64f) {
     renorm = .5 * (3 - renorm);                                       //eq.21
   } else if (renorm < 100.0f && renorm > 0.01f) {
-    renorm = 1. / sqrt(renorm);
+    renorm = 1. / sqrtf(renorm);
 #if PERFORMANCE_REPORTING == 1
     renorm_sqrt_count++;
 #endif
@@ -321,7 +321,7 @@ void Normalize(void)
   if (renorm < 1.5625f && renorm > 0.64f) {
     renorm = .5 * (3 - renorm);                                              //eq.21
   } else if (renorm < 100.0f && renorm > 0.01f) {
-    renorm = 1. / sqrt(renorm);
+    renorm = 1. / sqrtf(renorm);
 #if PERFORMANCE_REPORTING == 1
     renorm_sqrt_count++;
 #endif
@@ -338,7 +338,7 @@ void Normalize(void)
   if (renorm < 1.5625f && renorm > 0.64f) {
     renorm = .5 * (3 - renorm);                                              //eq.21
   } else if (renorm < 100.0f && renorm > 0.01f) {
-    renorm = 1. / sqrt(renorm);
+    renorm = 1. / sqrtf(renorm);
 #if PERFORMANCE_REPORTING == 1
     renorm_sqrt_count++;
 #endif
@@ -357,12 +357,25 @@ void Normalize(void)
   }
 }
 
+// strong structural vibrations can prevent to perform the drift correction
+// so accel magnitude is filtered before computing the weighting heuristic
+#ifndef ACCEL_WEIGHT_FILTER
+#define ACCEL_WEIGHT_FILTER 8
+#endif
+
+// the weigthing is function of the length of a band of 1G by default
+// so <0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0
+// adjust the band size if needed, the value should be >0
+#ifndef ACCEL_WEIGHT_BAND
+#define ACCEL_WEIGHT_BAND 1.f
+#endif
 
 void Drift_correction()
 {
   //Compensation the Roll, Pitch and Yaw drift.
   static float Scaled_Omega_P[3];
   static float Scaled_Omega_I[3];
+  static float Accel_filtered = 0.f;
   float Accel_magnitude;
   float Accel_weight;
   float Integrator_magnitude;
@@ -377,9 +390,14 @@ void Drift_correction()
   // Calculate the magnitude of the accelerometer vector
   Accel_magnitude = sqrtf(accel_float.x * accel_float.x + accel_float.y * accel_float.y + accel_float.z * accel_float.z);
   Accel_magnitude = Accel_magnitude / GRAVITY; // Scale to gravity.
+#if ACCEL_WEIGHT_FILTER
+  Accel_filtered = (Accel_magnitude + (ACCEL_WEIGHT_FILTER - 1) * Accel_filtered) / ACCEL_WEIGHT_FILTER;
+#else // set ACCEL_WEIGHT_FILTER to 0 to disable filter
+  Accel_filtered = Accel_magnitude;
+#endif
   // Dynamic weighting of accelerometer info (reliability filter)
-  // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)
-  Accel_weight = Chop(1 - 2 * fabs(1 - Accel_magnitude), 0, 1); //
+  // Weight for accelerometer info according to band size (min value is 0.1 to prevent division by zero)
+  Accel_weight = Clip(1.f - (2.f / Max(0.1f,ACCEL_WEIGHT_BAND)) * fabsf(1.f - Accel_filtered), 0.f, 1.f);
 
 
 #if PERFORMANCE_REPORTING == 1
@@ -450,7 +468,7 @@ void Drift_correction()
 #endif
 
   //  Here we will place a limit on the integrator so that the integrator cannot ever exceed half the saturation limit of the gyros
-  Integrator_magnitude = sqrt(Vector_Dot_Product(Omega_I, Omega_I));
+  Integrator_magnitude = sqrtf(Vector_Dot_Product(Omega_I, Omega_I));
   if (Integrator_magnitude > RadOfDeg(300)) {
     Vector_Scale(Omega_I, Omega_I, 0.5f * RadOfDeg(300) / Integrator_magnitude);
   }

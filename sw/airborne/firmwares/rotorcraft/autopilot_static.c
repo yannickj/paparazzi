@@ -176,6 +176,7 @@ void autopilot_static_periodic(void)
     guidance_h_run(autopilot_in_flight());
     SetRotorcraftCommands(stabilization_cmd, autopilot.in_flight, autopilot.motors_on);
   }
+  autopilot.throttle = commands[COMMAND_THRUST];
 
 }
 
@@ -376,6 +377,8 @@ void autopilot_static_on_rc_frame(void)
   if (ap_ahrs_is_aligned()) {
     autopilot_arming_check_motors_on();
     autopilot.kill_throttle = ! autopilot.motors_on;
+  } else {
+    autopilot.arming_status = AP_ARMING_STATUS_AHRS_NOT_ALLIGNED;
   }
 
   /* if not in FAILSAFE or HOME mode, read RC and set commands accordingly */

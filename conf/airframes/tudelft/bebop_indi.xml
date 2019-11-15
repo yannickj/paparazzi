@@ -5,9 +5,12 @@
   </description>
 
   <firmware name="rotorcraft">
-    <target name="ap" board="bebop"/>
+    <target name="ap" board="bebop">
+      <define name="STABILIZATION_INDI_G2_R" value="0.1450"/>
+    </target>
 
     <target name="nps" board="pc">
+      <define name="STABILIZATION_INDI_G2_R" value="0.0"/>
       <module name="fdm" type="jsbsim"/>
       <module name="udp"/>
     </target>
@@ -31,16 +34,16 @@
     <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
     </module>
-  </firmware>
 
-  <modules main_freq="512">
+
     <module name="geo_mag"/>
     <module name="air_data"/>
     <module name="send_imu_mag_current"/>
     <module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module>
-  </modules>
+  </firmware>
+
 
   <commands>
     <axis name="PITCH" failsafe_value="0"/>
@@ -136,7 +139,6 @@
     <define name="G1_P" value="0.0639"/>
     <define name="G1_Q" value="0.0361"/>
     <define name="G1_R" value="0.0022"/>
-    <define name="G2_R" value="0.1450"/>
 
     <!-- reference acceleration for attitude control -->
     <define name="REF_ERR_P" value="600.0"/>

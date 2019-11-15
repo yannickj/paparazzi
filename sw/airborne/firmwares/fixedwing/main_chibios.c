@@ -54,17 +54,31 @@
 #endif
 
 /*
+ * Default autopilot thread stack size
+ */
+#ifndef AP_THREAD_STACK_SIZE
+#define AP_THREAD_STACK_SIZE 8192
+#endif
+
+/*
  * PPRZ/AP thread
  */
 static void thd_ap(void *arg);
-static THD_WORKING_AREA(wa_thd_ap, 8192);
+static THD_WORKING_AREA(wa_thd_ap, AP_THREAD_STACK_SIZE);
 static thread_t *apThdPtr = NULL;
+
+/*
+ * Default FBW thread stack size
+ */
+#ifndef FBW_THREAD_STACK_SIZE
+#define FBW_THREAD_STACK_SIZE 1024
+#endif
 
 /*
  * PPRZ/FBW thread
  */
 static void thd_fbw(void *arg);
-static THD_WORKING_AREA(wa_thd_fbw, 1024);
+static THD_WORKING_AREA(wa_thd_fbw, FBW_THREAD_STACK_SIZE);
 static thread_t *fbwThdPtr = NULL;
 
 /**
@@ -101,9 +115,7 @@ int main(void)
 #endif
 
   // Main loop, do nothing
-  while (TRUE) {
-    chThdSleepMilliseconds(1000);
-  }
+  chThdSleep(TIME_INFINITE);
   return 0;
 }
 
@@ -120,7 +132,14 @@ static void thd_ap(void *arg)
   while (!chThdShouldTerminateX()) {
     Ap(handle_periodic_tasks);
     Ap(event_task);
-    chThdSleepMicroseconds(500);
+    // In tick mode, the minimum step is 1e6 / CH_CFG_ST_FREQUENCY
+    // which means that whatever happens, if we do a sleep of this
+    // time step, the next wakeup will be "aligned" and we won't see
+    // jitter. The polling on event will also be as fast as possible
+    // Be careful that in tick-less mode, it will be required to use
+    // the chThdSleepUntil function with a correct computation of the
+    // wakeup time, in particular roll-over should be check.
+    chThdSleepMicroseconds(1000000 / CH_CFG_ST_FREQUENCY);
   }
 
   chThdExit(0);
@@ -139,7 +158,14 @@ static void thd_fbw(void *arg)
   while (!chThdShouldTerminateX()) {
     Fbw(handle_periodic_tasks);
     Fbw(event_task);
-    chThdSleepMicroseconds(500);
+    // In tick mode, the minimum step is 1e6 / CH_CFG_ST_FREQUENCY
+    // which means that whatever happens, if we do a sleep of this
+    // time step, the next wakeup will be "aligned" and we won't see
+    // jitter. The polling on event will also be as fast as possible
+    // Be careful that in tick-less mode, it will be required to use
+    // the chThdSleepUntil function with a correct computation of the
+    // wakeup time, in particular roll-over should be check.
+    chThdSleepMicroseconds(1000000 / CH_CFG_ST_FREQUENCY);
   }
 
   chThdExit(0);

@@ -26,6 +26,7 @@
  */
 
 #include "mcu_periph/i2c.h"
+#include "mcu_periph/sys_time.h"
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -205,6 +206,49 @@ static void send_i2c3_err(struct transport_tx *trans, struct link_device *dev)
 
 #endif /* USE_I2C3 */
 
+#if USE_I2C4
+
+struct i2c_periph i2c4;
+
+void i2c4_init(void)
+{
+  i2c_init(&i2c4);
+  i2c4_hw_init();
+}
+
+#if PERIODIC_TELEMETRY
+static void send_i2c4_err(struct transport_tx *trans, struct link_device *dev)
+{
+  uint16_t i2c4_wd_reset_cnt          = i2c4.errors->wd_reset_cnt;
+  uint16_t i2c4_queue_full_cnt        = i2c4.errors->queue_full_cnt;
+  uint16_t i2c4_ack_fail_cnt          = i2c4.errors->ack_fail_cnt;
+  uint16_t i2c4_miss_start_stop_cnt   = i2c4.errors->miss_start_stop_cnt;
+  uint16_t i2c4_arb_lost_cnt          = i2c4.errors->arb_lost_cnt;
+  uint16_t i2c4_over_under_cnt        = i2c4.errors->over_under_cnt;
+  uint16_t i2c4_pec_recep_cnt         = i2c4.errors->pec_recep_cnt;
+  uint16_t i2c4_timeout_tlow_cnt      = i2c4.errors->timeout_tlow_cnt;
+  uint16_t i2c4_smbus_alert_cnt       = i2c4.errors->smbus_alert_cnt;
+  uint16_t i2c4_unexpected_event_cnt  = i2c4.errors->unexpected_event_cnt;
+  uint32_t i2c4_last_unexpected_event = i2c4.errors->last_unexpected_event;
+  uint8_t _bus4 = 4;
+  pprz_msg_send_I2C_ERRORS(trans, dev, AC_ID,
+                           &i2c4_wd_reset_cnt,
+                           &i2c4_queue_full_cnt,
+                           &i2c4_ack_fail_cnt,
+                           &i2c4_miss_start_stop_cnt,
+                           &i2c4_arb_lost_cnt,
+                           &i2c4_over_under_cnt,
+                           &i2c4_pec_recep_cnt,
+                           &i2c4_timeout_tlow_cnt,
+                           &i2c4_smbus_alert_cnt,
+                           &i2c4_unexpected_event_cnt,
+                           &i2c4_last_unexpected_event,
+                           &_bus4);
+}
+#endif
+
+#endif /* USE_I2C4 */
+
 #if PERIODIC_TELEMETRY
 static void send_i2c_err(struct transport_tx *trans __attribute__((unused)),
                          struct link_device *dev __attribute__((unused)))
@@ -231,6 +275,11 @@ static void send_i2c_err(struct transport_tx *trans __attribute__((unused)),
       send_i2c3_err(trans, dev);
 #endif
       break;
+    case 4:
+#if USE_I2C4
+      send_i2c4_err(trans, dev);
+#endif
+      break;
     default:
       break;
   }
@@ -247,6 +296,7 @@ void i2c_init(struct i2c_periph *p)
   p->trans_insert_idx = 0;
   p->trans_extract_idx = 0;
   p->status = I2CIdle;
+  p->reg_addr = NULL;
 
 #if PERIODIC_TELEMETRY
   // the first to register do it for the others
@@ -256,7 +306,7 @@ void i2c_init(struct i2c_periph *p)
 
 
 bool i2c_transmit(struct i2c_periph *p, struct i2c_transaction *t,
-                    uint8_t s_addr, uint8_t len)
+                  uint8_t s_addr, uint8_t len)
 {
   t->type = I2CTransTx;
   t->slave_addr = s_addr;
@@ -266,7 +316,7 @@ bool i2c_transmit(struct i2c_periph *p, struct i2c_transaction *t,
 }
 
 bool i2c_receive(struct i2c_periph *p, struct i2c_transaction *t,
-                   uint8_t s_addr, uint16_t len)
+                 uint8_t s_addr, uint16_t len)
 {
   t->type = I2CTransRx;
   t->slave_addr = s_addr;
@@ -276,11 +326,79 @@ bool i2c_receive(struct i2c_periph *p, struct i2c_transaction *t,
 }
 
 bool i2c_transceive(struct i2c_periph *p, struct i2c_transaction *t,
-                      uint8_t s_addr, uint8_t len_w, uint16_t len_r)
+                    uint8_t s_addr, uint8_t len_w, uint16_t len_r)
 {
   t->type = I2CTransTxRx;
   t->slave_addr = s_addr;
   t->len_w = len_w;
   t->len_r = len_r;
   return i2c_submit(p, t);
+}
+
+/** Default timeout for blocking I2C transactions */
+#ifndef I2C_BLOCKING_TIMEOUT
+#define I2C_BLOCKING_TIMEOUT 1.f
+#endif
+
+bool i2c_blocking_transmit(struct i2c_periph *p, struct i2c_transaction *t,
+                           uint8_t s_addr, uint8_t len)
+{
+  t->type = I2CTransTx;
+  t->slave_addr = s_addr;
+  t->len_w = len;
+  t->len_r = 0;
+  if (!i2c_submit(p, t)) {
+    return false;
+  }
+
+  // Wait for transaction to complete
+  float start_t = get_sys_time_float();
+  while (t->status == I2CTransPending || t->status == I2CTransRunning) {
+    if (get_sys_time_float() - start_t > I2C_BLOCKING_TIMEOUT) {
+      break;  // timeout after 1 second
+    }
+  }
+  return true;
+}
+
+bool i2c_blocking_receive(struct i2c_periph *p, struct i2c_transaction *t,
+                          uint8_t s_addr, uint16_t len)
+{
+  t->type = I2CTransRx;
+  t->slave_addr = s_addr;
+  t->len_w = 0;
+  t->len_r = len;
+  if (!i2c_submit(p, t)) {
+    return false;
+  }
+
+  // Wait for transaction to complete
+  float start_t = get_sys_time_float();
+  while (t->status == I2CTransPending || t->status == I2CTransRunning) {
+    if (get_sys_time_float() - start_t > I2C_BLOCKING_TIMEOUT) {
+      break;  // timeout after 1 second
+    }
+  }
+  return true;
+}
+
+bool i2c_blocking_transceive(struct i2c_periph *p, struct i2c_transaction *t,
+                             uint8_t s_addr, uint8_t len_w, uint16_t len_r)
+{
+  t->type = I2CTransTxRx;
+  t->slave_addr = s_addr;
+  t->len_w = len_w;
+  t->len_r = len_r;
+  if (!i2c_submit(p, t)) {
+    return false;
+  }
+
+  // Wait for transaction to complete
+  float start_t = get_sys_time_float();
+  while (t->status == I2CTransPending || t->status == I2CTransRunning) {
+    if (get_sys_time_float() - start_t > I2C_BLOCKING_TIMEOUT) {
+      break;  // timeout after 1 second
+    }
+  }
+  return true;
 }

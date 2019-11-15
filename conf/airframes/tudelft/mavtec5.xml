@@ -9,17 +9,19 @@
 -->
 
 <airframe name="MAVTec5">
-  <description>MavTec with Piksi
+  <description>MavTec with INDI, DSM2 (DSM-X fails to bind), INDI gains high
   </description>
 
   <firmware name="rotorcraft">
-    <target name="ap" board="lisa_mx_2.1"/>
+    <target name="ap" board="lisa_mx_2.1">
+      <configure name="FLASH_MODE"   value="SWD"/>
+    </target>
     <target name="nps" board="pc">
       <module name="fdm" type="jsbsim"/>
     </target>
 
     <module name="radio_control" type="spektrum">
-      <define name="RADIO_KILL_SWITCH" value="RADIO_AUX2"/>
+      <define name="RADIO_KILL_SWITCH" value="RADIO_AUX1"/>
       <define name="RADIO_MODE" value="RADIO_GEAR"/>
     </module>
 
@@ -34,9 +36,8 @@
     <module name="stabilization" type="indi_simple"/>
     <module name="ahrs"          type="int_cmpl_quat"/>
     <module name="ins" type="hff"/>
-  </firmware>
 
-  <modules>
+
     <module name="geo_mag"/>
     <module name="air_data"/>
     <module name="switch" type="servo"/>
@@ -45,7 +46,7 @@
       <configure name="HS_LOG_SPI_DEV" value="SPI1"/>
       <configure name="HS_LOG_SPI_SLAVE_IDX" value="SPI_SLAVE1"/>
     </module>
-  </modules>
+  </firmware>
 
   <servos driver="Asctec_v2">
     <servo name="FRONT"   no="0" min="0" neutral="3" max="200"/>

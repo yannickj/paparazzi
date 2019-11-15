@@ -148,8 +148,7 @@ let ac_msg = fun messages_xml logging ac_name ac ->
       let (msg_id, values) = Tele_Pprz.values_of_string m in
       let msg = Tele_Pprz.message_of_id msg_id in
       log ?timestamp logging ac_name msg.PprzLink.name values;
-      Fw_server.log_and_parse ac_name ac msg values;
-      Rotorcraft_server.log_and_parse ac_name ac msg values
+      Parse_messages_v1.log_and_parse ac_name ac msg values
     with
         Telemetry_error (ac_name, msg) ->
           Ground_Pprz.message_send my_id "TELEMETRY_ERROR" ["ac_id", PprzLink.String ac_name;"message", PprzLink.String msg];
@@ -356,9 +355,6 @@ let send_moved_waypoints = fun a ->
     a.waypoints
 
 
-
-
-
 let send_aircraft_msg = fun ac ->
   try
     let a = Hashtbl.find aircrafts ac in
@@ -439,7 +435,7 @@ let send_aircraft_msg = fun ac ->
                   "temp", f a.temp;
                   "bat", f a.bat;
                   "amp", f a.amp;
-                  "energy", PprzLink.Int a.energy] in
+                  "charge", f a.charge] in
     Ground_Pprz.message_send my_id "ENGINE_STATUS" values;
 
     let ap_mode = get_indexed_value ~text:(if a.ap_mode = -2 then "FAIL" else "UNK") (modes_of_aircraft a) a.ap_mode in

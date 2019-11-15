@@ -117,8 +117,10 @@ typedef uint8_t unit_t;
         BoundInverted(_x, _min, _max)             \
       }
 #define BoundAbs(_x, _max) Bound(_x, -(_max), (_max))
-#define Chop(_x, _min, _max) ( (_x) < (_min) ? (_min) : (_x) > (_max) ? (_max) : (_x) )
-#define ChopAbs(x, max) Chop(x, -(max), (max))
+#define Clip(_x, _min, _max) ( (_x) < (_min) ? (_min) : (_x) > (_max) ? (_max) : (_x) )
+#define ClipAbs(x, max) Clip(x, -(max), (max))
+// Align makes the value of x a multiple of a1
+#define Align(_x, _a1) (_x%_a1 ? _x + (_a1 - (_x%_a1)) : _x )
 
 #define DeadBand(_x, _v) {            \
     if (_x > (_v))                    \
@@ -233,6 +235,12 @@ static inline bool str_equal(const char *a, const char *b)
 #else
 #  define UNUSED
 #  define WEAK
+#endif
+
+#if __GNUC__ >= 7
+#  define INTENTIONAL_FALLTHRU __attribute__ ((fallthrough));
+#else
+#  define INTENTIONAL_FALLTHRU
 #endif
 
 #endif /* STD_H */

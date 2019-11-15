@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Tom van Dijk
+ * Copyright (C) 2017 Tom van Dijk, Kirk Scheper
  *
  * This file is part of paparazzi.
  *
@@ -26,12 +26,6 @@
  * This is an FDM for NPS that uses Gazebo as the simulation engine.
  */
 
-// The transition from Gazebo 7 to 8 deprecates a large number of functions.
-// Ignore these errors for now...
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -39,27 +33,33 @@
 #include <sys/time.h>
 
 #include <gazebo/gazebo.hh>
-#include <gazebo/common/common.hh>
-#include <gazebo/math/gzmath.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/sensors/sensors.hh>
-#include <gazebo/gazebo_config.h>
 #include <sdf/sdf.hh>
+
+#include <gazebo/gazebo_config.h>
+#if GAZEBO_MAJOR_VERSION < 8
+#error "Paparazzi only supports gazebo versions > 7, please upgrade to a more recent version of Gazebo"
+#endif
 
 extern "C" {
 #include "nps_fdm.h"
 #include "nps_autopilot.h"
 
 #include "generated/airframe.h"
+#include "generated/flight_plan.h"
 #include "autopilot.h"
+#include "subsystems/abi.h"
 
 #include "math/pprz_isa.h"
 #include "math/pprz_algebra_double.h"
+#include "filters/low_pass_filter.h"
+#include "filters/high_pass_filter.h"
 
 #include "subsystems/actuators/motor_mixing_types.h"
 }
 
-#if defined(NPS_DEBUG_VIDEO) || defined(NPS_DEBUG_STEREOCAM)
+#if defined(NPS_DEBUG_VIDEO)
 // Opencv tools
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -82,6 +82,9 @@ extern "C" {
 #include "modules/computer_vision/video_thread_nps.h"
 #include "modules/computer_vision/lib/vision/image.h"
 #include "mcu_periph/sys_time.h"
+#include "boards/bebop/mt9f002.h"
+#include "boards/bebop/mt9v117.h"
+struct mt9f002_t mt9f002 __attribute__((weak)); // Prevent undefined reference errors when Bebop code is not linked.
 }
 
 static void init_gazebo_video(void);
@@ -95,16 +98,25 @@ struct gazebocam_t {
 };
 static struct gazebocam_t gazebo_cams[VIDEO_THREAD_MAX_CAMERAS] =
 { { NULL, 0 } };
+
+// Reduce resolution of the simulated MT9F002 sensor (Bebop) to improve runtime
+// performance at the cost of image resolution.
+// Recommended values: 1 (realistic), 2, 4 (fast but slightly blurry)
+#ifndef NPS_MT9F002_SENSOR_RES_DIVIDER
+#define NPS_MT9F002_SENSOR_RES_DIVIDER 1
 #endif
+#endif // NPS_SIMULATE_VIDEO
 
 struct gazebo_actuators_t {
   string names[NPS_COMMANDS_NB];
   double thrusts[NPS_COMMANDS_NB];
   double torques[NPS_COMMANDS_NB];
+  struct FirstOrderLowPass lowpass[NPS_COMMANDS_NB];
+  struct FirstOrderHighPass highpass[NPS_COMMANDS_NB];
+  double max_ang_momentum[NPS_COMMANDS_NB];
 };
 
-struct gazebo_actuators_t gazebo_actuators = {NPS_ACTUATOR_NAMES, NPS_ACTUATOR_THRUSTS, NPS_ACTUATOR_THRUSTS};
-
+struct gazebo_actuators_t gazebo_actuators = { NPS_ACTUATOR_NAMES, NPS_ACTUATOR_THRUSTS, NPS_ACTUATOR_TORQUES, { }, { }, { }};
 
 #if NPS_SIMULATE_LASER_RANGE_ARRAY
 extern "C" {
@@ -115,6 +127,8 @@ static void gazebo_init_range_sensors(void);
 static void gazebo_read_range_sensors(void);
 
 #endif
+
+std::shared_ptr<gazebo::sensors::SonarSensor> sonar = NULL;
 
 /// Holds all necessary NPS FDM state information
 struct NpsFdm fdm;
@@ -159,55 +173,55 @@ inline struct LlaCoor_d to_pprz_lla(ignition::math::Vector3d lla_i)
   return lla_p;
 }
 
-inline struct DoubleVect3 to_pprz_body(gazebo::math::Vector3 body_g)
+inline struct DoubleVect3 to_pprz_body(ignition::math::Vector3d body_g)
 {
   struct DoubleVect3 body_p;
-  body_p.x = body_g.x;
-  body_p.y = -body_g.y;
-  body_p.z = -body_g.z;
+  body_p.x = body_g.X();
+  body_p.y = -body_g.Y();
+  body_p.z = -body_g.Z();
   return body_p;
 }
 
-inline struct DoubleRates to_pprz_rates(gazebo::math::Vector3 body_g)
+inline struct DoubleRates to_pprz_rates(ignition::math::Vector3d body_g)
 {
   struct DoubleRates body_p;
-  body_p.p = body_g.x;
-  body_p.q = -body_g.y;
-  body_p.r = -body_g.z;
+  body_p.p = body_g.X();
+  body_p.q = -body_g.Y();
+  body_p.r = -body_g.Z();
   return body_p;
 }
 
-inline struct DoubleEulers to_pprz_eulers(gazebo::math::Quaternion quat)
+inline struct DoubleEulers to_pprz_eulers(ignition::math::Quaterniond quat)
 {
   struct DoubleEulers eulers;
-  eulers.psi = -quat.GetYaw();
-  eulers.theta = -quat.GetPitch();
-  eulers.phi = quat.GetRoll();
+  eulers.psi = -quat.Yaw();
+  eulers.theta = -quat.Pitch();
+  eulers.phi = quat.Roll();
   return eulers;
 }
 
-inline struct DoubleEulers to_global_pprz_eulers(gazebo::math::Quaternion quat)
+inline struct DoubleEulers to_global_pprz_eulers(ignition::math::Quaterniond quat)
 {
   struct DoubleEulers eulers;
-  eulers.psi = -quat.GetYaw() - M_PI / 2;
-  eulers.theta = -quat.GetPitch();
-  eulers.phi = quat.GetRoll();
+  eulers.psi = -quat.Yaw() - M_PI / 2;
+  eulers.theta = -quat.Pitch();
+  eulers.phi = quat.Roll();
   return eulers;
 }
 
-inline struct DoubleVect3 to_pprz_ltp(gazebo::math::Vector3 xyz)
+inline struct DoubleVect3 to_pprz_ltp(ignition::math::Vector3d xyz)
 {
   struct DoubleVect3 ltp;
-  ltp.x = xyz.y;
-  ltp.y = xyz.x;
-  ltp.z = -xyz.z;
+  ltp.x = xyz.Y();
+  ltp.y = xyz.X();
+  ltp.z = -xyz.Z();
   return ltp;
 }
 
 // External functions, interface with Paparazzi's NPS as declared in nps_fdm.h
 
 /**
- * Set JSBsim specific fields that are not used for Gazebo.
+ * Initialize actuator dynamics, set unused fields in fdm
  * @param dt
  */
 void nps_fdm_init(double dt)
@@ -215,6 +229,22 @@ void nps_fdm_init(double dt)
   fdm.init_dt = dt; // JSBsim specific
   fdm.curr_dt = dt; // JSBsim specific
   fdm.nan_count = 0; // JSBsim specific
+
+#ifdef NPS_ACTUATOR_TIME_CONSTANTS
+  // Set up low-pass filter to simulate delayed actuator response
+  const float tau[NPS_COMMANDS_NB] = NPS_ACTUATOR_TIME_CONSTANTS;
+  for (int i = 0; i < NPS_COMMANDS_NB; i++) {
+    init_first_order_low_pass(&gazebo_actuators.lowpass[i], tau[i], dt, 0.f);
+  }
+#ifdef NPS_ACTUATOR_MAX_ANGULAR_MOMENTUM
+  // Set up high-pass filter to simulate spinup torque
+  const float Iwmax[NPS_COMMANDS_NB] = NPS_ACTUATOR_MAX_ANGULAR_MOMENTUM;
+  for (int i = 0; i < NPS_COMMANDS_NB; i++) {
+    init_first_order_high_pass(&gazebo_actuators.highpass[i], tau[i], dt, 0.f);
+    gazebo_actuators.max_ang_momentum[i] = Iwmax[i];
+  }
+#endif
+#endif
 }
 
 /**
@@ -307,22 +337,73 @@ static void init_gazebo(void)
   string gazebodir = pprz_home + gazebo_home;
   cout << "Gazebo directory: " << gazebodir << endl;
 
+  if (getenv("ROS_MASTER_URI")) {
+    // Launch with ROS support
+    cout << "Add ROS plugins... ";
+    gazebo::addPlugin("libgazebo_ros_paths_plugin.so");
+    gazebo::addPlugin("libgazebo_ros_api_plugin.so");
+    cout << "ok" << endl;
+  }
+
   if (!gazebo::setupServer(0, NULL)) {
     cout << "Failed to start Gazebo, exiting." << endl;
     std::exit(-1);
   }
 
-  cout << "Add Paparazzi model path: " << gazebodir + "models/" << endl;
-  gazebo::common::SystemPaths::Instance()->AddModelPaths(
-    gazebodir + "models/");
+  cout << "Add Paparazzi paths: " << gazebodir << endl;
+  gazebo::common::SystemPaths::Instance()->AddModelPaths(gazebodir + "models/");
+  sdf::addURIPath("model://", gazebodir + "models/");
+  sdf::addURIPath("world://", gazebodir + "world/");
+
+  cout << "Add TU Delft paths: " << pprz_home + "/sw/ext/tudelft_gazebo_models/" << endl;
+  gazebo::common::SystemPaths::Instance()->AddModelPaths(pprz_home + "/sw/ext/tudelft_gazebo_models/models/");
+  sdf::addURIPath("model://", pprz_home + "/sw/ext/tudelft_gazebo_models/models/");
+  sdf::addURIPath("world://", pprz_home + "/sw/ext/tudelft_gazebo_models/world/");
 
   // get vehicles
-  cout << "Load vehicle: " << gazebodir + "models/" + NPS_GAZEBO_AC_NAME + "/" + NPS_GAZEBO_AC_NAME + ".sdf" << endl;
+  string vehicle_uri = "model://" + string(NPS_GAZEBO_AC_NAME) + "/" + string(NPS_GAZEBO_AC_NAME) + ".sdf";
+  string vehicle_filename = sdf::findFile(vehicle_uri, false);
+  if (vehicle_filename.empty()) {
+    cout << "ERROR, could not find vehicle " + vehicle_uri << endl;
+    std::exit(-1);
+  }
+  cout << "Load vehicle: " << vehicle_filename << endl;
   sdf::SDFPtr vehicle_sdf(new sdf::SDF());
   sdf::init(vehicle_sdf);
-  sdf::readFile(gazebodir + "models/" + NPS_GAZEBO_AC_NAME + "/" + NPS_GAZEBO_AC_NAME + ".sdf", vehicle_sdf);
+  if (!sdf::readFile(vehicle_filename, vehicle_sdf)) {
+    cout << "ERROR, could not read vehicle " + vehicle_filename << endl;
+    std::exit(-1);
+  }
 
-  // add sensors
+  // add or set up sensors before the vehicle gets loaded
+#if NPS_SIMULATE_VIDEO
+  // Cameras
+  sdf::ElementPtr link = vehicle_sdf->Root()->GetFirstElement()->GetElement("link");
+  while (link) {
+    if (link->Get<string>("name") == "front_camera" && link->GetElement("sensor")->Get<string>("name") == "mt9f002") {
+      if (NPS_MT9F002_SENSOR_RES_DIVIDER != 1) {
+        int w = link->GetElement("sensor")->GetElement("camera")->GetElement("image")->GetElement("width")->Get<int>();
+        int h = link->GetElement("sensor")->GetElement("camera")->GetElement("image")->GetElement("height")->Get<int>();
+        int env = link->GetElement("sensor")->GetElement("camera")->GetElement("lens")->GetElement("env_texture_size")->Get<int>();
+        link->GetElement("sensor")->GetElement("camera")->GetElement("image")->GetElement("width")->Set(w / NPS_MT9F002_SENSOR_RES_DIVIDER);
+        link->GetElement("sensor")->GetElement("camera")->GetElement("image")->GetElement("height")->Set(h / NPS_MT9F002_SENSOR_RES_DIVIDER);
+        link->GetElement("sensor")->GetElement("camera")->GetElement("lens")->GetElement("env_texture_size")->Set(env / NPS_MT9F002_SENSOR_RES_DIVIDER);
+      }
+      if (MT9F002_TARGET_FPS){
+        int fps = Min(MT9F002_TARGET_FPS, link->GetElement("sensor")->GetElement("update_rate")->Get<int>());
+        link->GetElement("sensor")->GetElement("update_rate")->Set(fps);
+      }
+    } else if  (link->Get<string>("name") == "bottom_camera" && link->GetElement("sensor")->Get<string>("name") == "mt9v117") {
+      if (MT9V117_TARGET_FPS){
+        int fps = Min(MT9V117_TARGET_FPS, link->GetElement("sensor")->GetElement("update_rate")->Get<int>());
+        link->GetElement("sensor")->GetElement("update_rate")->Set(fps);
+      }
+    }
+    link = link->GetNextElement("link");
+  }
+#endif
+
+  // laser range array
 #if NPS_SIMULATE_LASER_RANGE_ARRAY
   vehicle_sdf->Root()->GetFirstElement()->AddElement("include")->GetElement("uri")->Set("model://range_sensors");
   sdf::ElementPtr range_joint = vehicle_sdf->Root()->GetFirstElement()->AddElement("joint");
@@ -333,10 +414,19 @@ static void init_gazebo(void)
 #endif
 
   // get world
-  cout << "Load world: " << gazebodir + "world/" + NPS_GAZEBO_WORLD << endl;
+  string world_uri = "world://" + string(NPS_GAZEBO_WORLD);
+  string world_filename = sdf::findFile(world_uri, false);
+  if (world_filename.empty()) {
+    cout << "ERROR, could not find world " + world_uri << endl;
+    std::exit(-1);
+  }
+  cout << "Load world: " << world_filename << endl;
   sdf::SDFPtr world_sdf(new sdf::SDF());
   sdf::init(world_sdf);
-  sdf::readFile(gazebodir + "world/" + NPS_GAZEBO_WORLD, world_sdf);
+  if (!sdf::readFile(world_filename, world_sdf)) {
+    cout << "ERROR, could not read world " + world_filename << endl;
+    std::exit(-1);
+  }
 
   // add vehicles
   world_sdf->Root()->GetFirstElement()->InsertElement(vehicle_sdf->Root()->GetFirstElement());
@@ -350,7 +440,7 @@ static void init_gazebo(void)
   }
 
   cout << "Get pointer to aircraft: " << NPS_GAZEBO_AC_NAME << endl;
-  model = world->GetModel(NPS_GAZEBO_AC_NAME);
+  model = world->ModelByName(NPS_GAZEBO_AC_NAME);
   if (!model) {
     cout << "Failed to find '" << NPS_GAZEBO_AC_NAME << "', exiting."
          << endl;
@@ -363,10 +453,34 @@ static void init_gazebo(void)
   gazebo::runWorld(world, 1);
   cout << "Sensors initialized..." << endl;
 
-  // activate collision sensor
+  // Find sensors
+  // Contact sensor
   gazebo::sensors::SensorManager *mgr = gazebo::sensors::SensorManager::Instance();
   ct = static_pointer_cast < gazebo::sensors::ContactSensor > (mgr->GetSensor("contactsensor"));
   ct->SetActive(true);
+  // Sonar
+  sonar = static_pointer_cast<gazebo::sensors::SonarSensor>(mgr->GetSensor("sonarsensor"));
+  if(sonar) {
+    cout << "Found sonar" << endl;
+  }
+
+  gazebo::physics::LinkPtr sonar_link = model->GetLink("sonar");
+  if (sonar_link) {
+    // Get a pointer to the sensor using its full name
+    if (sonar_link->GetSensorCount() != 1) {
+      cout << "ERROR: Link '" << sonar_link->GetName()
+           << "' should only contain 1 sensor!" << endl;
+    } else {
+      string name = sonar_link->GetSensorName(0);
+      sonar = static_pointer_cast< gazebo::sensors::SonarSensor > (mgr->GetSensor(name));
+      if (!sonar) {
+        cout << "ERROR: Could not get pointer to '" << name << "'!" << endl;
+      } else {
+        // Activate sensor
+        sonar->SetActive(true);
+      }
+    }
+  }
 
   // Overwrite motor directions as defined by motor_mixing
 #ifdef MOTOR_MIXING_YAW_COEF
@@ -374,6 +488,7 @@ static void init_gazebo(void)
 
   for (uint8_t i = 0; i < NPS_COMMANDS_NB; i++) {
     gazebo_actuators.torques[i] = -fabs(gazebo_actuators.torques[i]) * yaw_coef[i] / fabs(yaw_coef[i]);
+    gazebo_actuators.max_ang_momentum[i] = -fabs(gazebo_actuators.max_ang_momentum[i]) * yaw_coef[i] / fabs(yaw_coef[i]);
   }
 #endif
   cout << "Gazebo initialized successfully!" << endl;
@@ -389,27 +504,25 @@ static void init_gazebo(void)
  */
 static void gazebo_read(void)
 {
-  static gazebo::math::Vector3 vel_prev;
+  static ignition::math::Vector3d vel_prev;
   static double time_prev;
 
   gazebo::physics::WorldPtr world = model->GetWorld();
-  gazebo::math::Pose pose = model->GetWorldPose(); // In LOCAL xyz frame
-  gazebo::math::Vector3 vel = model->GetWorldLinearVel();
-  gazebo::math::Vector3 ang_vel = model->GetWorldAngularVel();
-  gazebo::common::SphericalCoordinatesPtr sphere =
-    world->GetSphericalCoordinates();
-  gazebo::math::Quaternion local_to_global_quat(0, 0,
-      -sphere->HeadingOffset().Radian());
+  ignition::math::Pose3d pose = model->WorldPose(); // In LOCAL xyz frame
+  ignition::math::Vector3d vel = model->WorldLinearVel();
+  ignition::math::Vector3d ang_vel = model->WorldAngularVel();
+  gazebo::common::SphericalCoordinatesPtr sphere = world->SphericalCoords();
+  ignition::math::Quaterniond local_to_global_quat(0, 0, -sphere->HeadingOffset().Radian());
 
   /* Fill FDM struct */
-  fdm.time = world->GetSimTime().Double();
+  fdm.time = world->SimTime().Double();
 
   // Find world acceleration by differentiating velocity
   // model->GetWorldLinearAccel() does not seem to take the velocity_decay into account!
   // Derivation of the velocity also follows the IMU implementation of Gazebo itself:
   // https://bitbucket.org/osrf/gazebo/src/e26144434b932b4b6a760ddaa19cfcf9f1734748/gazebo/sensors/ImuSensor.cc?at=default&fileviewer=file-view-default#ImuSensor.cc-370
   double dt = fdm.time - time_prev;
-  gazebo::math::Vector3 accel = (vel - vel_prev) / dt;
+  ignition::math::Vector3d accel = (vel - vel_prev) / dt;
   vel_prev = vel;
   time_prev = fdm.time;
 
@@ -419,76 +532,64 @@ static void gazebo_read(void)
   // nan_count: unused
 
   /* position */
-  fdm.ecef_pos = to_pprz_ecef(
-                   sphere->PositionTransform(pose.pos.Ign(),
-                       gazebo::common::SphericalCoordinates::LOCAL,
-                       gazebo::common::SphericalCoordinates::ECEF));
-  fdm.ltpprz_pos = to_pprz_ned(
-                     sphere->PositionTransform(pose.pos.Ign(),
-                         gazebo::common::SphericalCoordinates::LOCAL,
-                         gazebo::common::SphericalCoordinates::GLOBAL));
-  fdm.lla_pos = to_pprz_lla(
-                  sphere->PositionTransform(pose.pos.Ign(),
-                      gazebo::common::SphericalCoordinates::LOCAL,
-                      gazebo::common::SphericalCoordinates::SPHERICAL));
-  fdm.hmsl = pose.pos.z;
+  fdm.ecef_pos = to_pprz_ecef(sphere->PositionTransform(pose.Pos(), gazebo::common::SphericalCoordinates::LOCAL,
+                              gazebo::common::SphericalCoordinates::ECEF));
+  fdm.ltpprz_pos = to_pprz_ned(sphere->PositionTransform(pose.Pos(), gazebo::common::SphericalCoordinates::LOCAL,
+                               gazebo::common::SphericalCoordinates::GLOBAL));
+  fdm.lla_pos = to_pprz_lla(sphere->PositionTransform(pose.Pos(), gazebo::common::SphericalCoordinates::LOCAL,
+                            gazebo::common::SphericalCoordinates::SPHERICAL));
+  fdm.hmsl = pose.Pos().Z();
+
   /* debug positions */
   fdm.lla_pos_pprz = fdm.lla_pos; // Don't really care...
   fdm.lla_pos_geod = fdm.lla_pos;
   fdm.lla_pos_geoc = fdm.lla_pos;
-  fdm.agl = pose.pos.z; // TODO Measure with sensor
+
+  if(sonar) {
+    double agl = sonar->Range();
+    if (agl > sonar->RangeMax()) agl = -1.0;
+    fdm.agl = agl;
+  } else {
+    fdm.agl = pose.Pos().Z(); // TODO Measure with sensor
+  }
 
   /* velocity */
-  fdm.ecef_ecef_vel = to_pprz_ecef(
-                        sphere->VelocityTransform(vel.Ign(),
-                            gazebo::common::SphericalCoordinates::LOCAL,
-                            gazebo::common::SphericalCoordinates::ECEF));
-  fdm.body_ecef_vel = to_pprz_body(pose.rot.RotateVectorReverse(vel)); // Note: unused
-  fdm.ltp_ecef_vel = to_pprz_ned(
-                       sphere->VelocityTransform(vel.Ign(),
-                           gazebo::common::SphericalCoordinates::LOCAL,
-                           gazebo::common::SphericalCoordinates::GLOBAL));
+  fdm.ecef_ecef_vel = to_pprz_ecef(sphere->VelocityTransform(vel, gazebo::common::SphericalCoordinates::LOCAL,
+                                   gazebo::common::SphericalCoordinates::ECEF));
+  fdm.body_ecef_vel = to_pprz_body(pose.Rot().RotateVectorReverse(vel)); // Note: unused
+  fdm.ltp_ecef_vel = to_pprz_ned(sphere->VelocityTransform(vel, gazebo::common::SphericalCoordinates::LOCAL,
+                                 gazebo::common::SphericalCoordinates::GLOBAL));
   fdm.ltpprz_ecef_vel = fdm.ltp_ecef_vel; // ???
 
   /* acceleration */
-  fdm.ecef_ecef_accel = to_pprz_ecef(
-                          sphere->VelocityTransform(accel.Ign(),
-                              gazebo::common::SphericalCoordinates::LOCAL,
-                              gazebo::common::SphericalCoordinates::ECEF)); // Note: unused
-  fdm.body_ecef_accel = to_pprz_body(pose.rot.RotateVectorReverse(accel));
-  fdm.ltp_ecef_accel = to_pprz_ned(
-                         sphere->VelocityTransform(accel.Ign(),
-                             gazebo::common::SphericalCoordinates::LOCAL,
-                             gazebo::common::SphericalCoordinates::GLOBAL)); // Note: unused
+  fdm.ecef_ecef_accel = to_pprz_ecef(sphere->VelocityTransform(accel, gazebo::common::SphericalCoordinates::LOCAL,
+                                     gazebo::common::SphericalCoordinates::ECEF)); // Note: unused
+  fdm.body_ecef_accel = to_pprz_body(pose.Rot().RotateVectorReverse(accel));
+  fdm.ltp_ecef_accel = to_pprz_ned(sphere->VelocityTransform(accel, gazebo::common::SphericalCoordinates::LOCAL,
+                                   gazebo::common::SphericalCoordinates::GLOBAL)); // Note: unused
   fdm.ltpprz_ecef_accel = fdm.ltp_ecef_accel; // ???
   fdm.body_inertial_accel = fdm.body_ecef_accel; // Approximate, unused.
-
-  fdm.body_accel = to_pprz_body(
-                     pose.rot.RotateVectorReverse(accel.Ign() - world->Gravity()));
+  fdm.body_accel = to_pprz_body(pose.Rot().RotateVectorReverse(accel - world->Gravity()));
 
   /* attitude */
   // ecef_to_body_quat: unused
-  fdm.ltp_to_body_eulers = to_global_pprz_eulers(local_to_global_quat * pose.rot);
+  fdm.ltp_to_body_eulers = to_global_pprz_eulers(local_to_global_quat * pose.Rot());
   double_quat_of_eulers(&(fdm.ltp_to_body_quat), &(fdm.ltp_to_body_eulers));
   fdm.ltpprz_to_body_quat = fdm.ltp_to_body_quat; // unused
   fdm.ltpprz_to_body_eulers = fdm.ltp_to_body_eulers; // unused
 
   /* angular velocity */
-  fdm.body_ecef_rotvel = to_pprz_rates(pose.rot.RotateVectorReverse(ang_vel));
+  fdm.body_ecef_rotvel = to_pprz_rates(pose.Rot().RotateVectorReverse(ang_vel));
   fdm.body_inertial_rotvel = fdm.body_ecef_rotvel; // Approximate
 
   /* angular acceleration */
   // body_ecef_rotaccel: unused
   // body_inertial_rotaccel: unused
   /* misc */
-  fdm.ltp_g = to_pprz_ltp(
-                sphere->VelocityTransform(-1 * world->Gravity(),
-                                          gazebo::common::SphericalCoordinates::LOCAL,
-                                          gazebo::common::SphericalCoordinates::GLOBAL)); // unused
-  fdm.ltp_h = to_pprz_ltp(
-                sphere->VelocityTransform(world->MagneticField(),
-                                          gazebo::common::SphericalCoordinates::LOCAL,
-                                          gazebo::common::SphericalCoordinates::GLOBAL));
+  fdm.ltp_g = to_pprz_ltp(sphere->VelocityTransform(-1 * world->Gravity(), gazebo::common::SphericalCoordinates::LOCAL,
+                          gazebo::common::SphericalCoordinates::GLOBAL)); // unused
+  fdm.ltp_h = to_pprz_ltp(sphere->VelocityTransform(world->MagneticField(), gazebo::common::SphericalCoordinates::LOCAL,
+                          gazebo::common::SphericalCoordinates::GLOBAL));
 
   /* atmosphere */
 #if GAZEBO_MAJOR_VERSION >= 8 && 0 // TODO implement
@@ -535,13 +636,31 @@ static void gazebo_read(void)
  */
 static void gazebo_write(double act_commands[], int commands_nb)
 {
-  // TODO simulte actuator dynamics so indi can work
   for (int i = 0; i < commands_nb; ++i) {
-    double thrust = autopilot.motors_on ? gazebo_actuators.thrusts[i] * act_commands[i] : 0.0;
-    double torque = autopilot.motors_on ? gazebo_actuators.torques[i] * act_commands[i] : 0.0;
+    // Thrust setpoint
+    double sp = autopilot.motors_on ? act_commands[i] : 0.0;  // Normalized thrust setpoint
+
+    // Actuator dynamics, forces and torques
+#ifdef NPS_ACTUATOR_TIME_CONSTANTS
+    // Delayed response from actuator
+    double u = update_first_order_low_pass(&gazebo_actuators.lowpass[i], sp);// Normalized actual thrust
+#else
+    double u = sp;
+#endif
+    double thrust = gazebo_actuators.thrusts[i] * u;
+    double torque = gazebo_actuators.torques[i] * u;
+
+#ifdef NPS_ACTUATOR_MAX_ANGULAR_MOMENTUM
+    // Spinup torque
+    double udot = update_first_order_high_pass(&gazebo_actuators.highpass[i], sp);
+    double spinup_torque = gazebo_actuators.max_ang_momentum[i] / (2.0 * sqrt(u > 0.05 ? u : 0.05)) * udot;
+    torque += spinup_torque;
+#endif
+
+    // Apply force and torque to gazebo model
     gazebo::physics::LinkPtr link = model->GetLink(gazebo_actuators.names[i]);
-    link->AddRelativeForce(gazebo::math::Vector3(0, 0, thrust));
-    link->AddRelativeTorque(gazebo::math::Vector3(0, 0, torque));
+    link->AddRelativeForce(ignition::math::Vector3d(0, 0, thrust));
+    link->AddRelativeTorque(ignition::math::Vector3d(0, 0, torque));
   }
 }
 
@@ -562,8 +681,7 @@ static void gazebo_write(double act_commands[], int commands_nb)
  */
 static void init_gazebo_video(void)
 {
-  gazebo::sensors::SensorManager *mgr =
-    gazebo::sensors::SensorManager::Instance();
+  gazebo::sensors::SensorManager *mgr = gazebo::sensors::SensorManager::Instance();
 
   cout << "Initializing cameras..." << endl;
   // Loop over cameras registered in video_thread_nps
@@ -592,9 +710,12 @@ static void init_gazebo_video(void)
     }
     // Activate sensor
     cam->SetActive(true);
+
     // Add to list of cameras
     gazebo_cams[i].cam = cam;
     gazebo_cams[i].last_measurement_time = cam->LastMeasurementTime();
+
+    // set default camera settings
     // Copy video_config settings from Gazebo's camera
     cameras[i]->output_size.w = cam->ImageWidth();
     cameras[i]->output_size.h = cam->ImageHeight();
@@ -602,7 +723,39 @@ static void init_gazebo_video(void)
     cameras[i]->sensor_size.h = cam->ImageHeight();
     cameras[i]->crop.w = cam->ImageWidth();
     cameras[i]->crop.h = cam->ImageHeight();
-    cameras[i]->fps = cam->UpdateRate();
+    cameras[i]->fps = 0;
+    cameras[i]->camera_intrinsics.focal_x = cameras[i]->output_size.w / 2.0f;
+    cameras[i]->camera_intrinsics.center_x = cameras[i]->output_size.w / 2.0f;
+    cameras[i]->camera_intrinsics.focal_y = cameras[i]->output_size.h / 2.0f;
+    cameras[i]->camera_intrinsics.center_y = cameras[i]->output_size.h / 2.0f;
+
+    if (cam->Name() == "mt9f002") {
+      // See boards/bebop/mt9f002.c
+      cameras[i]->output_size.w = MT9F002_OUTPUT_WIDTH;
+      cameras[i]->output_size.h = MT9F002_OUTPUT_HEIGHT;
+      cameras[i]->sensor_size.w = MT9F002_OUTPUT_WIDTH;
+      cameras[i]->sensor_size.h = MT9F002_OUTPUT_HEIGHT;
+      cameras[i]->crop.w = MT9F002_OUTPUT_WIDTH;
+      cameras[i]->crop.h = MT9F002_OUTPUT_HEIGHT;
+      cameras[i]->fps = MT9F002_TARGET_FPS;
+      cameras[i]->camera_intrinsics = {
+        .focal_x = MT9F002_FOCAL_X,
+        .focal_y = MT9F002_FOCAL_Y,
+        .center_x = MT9F002_CENTER_X,
+        .center_y = MT9F002_CENTER_Y,
+        .Dhane_k = MT9F002_DHANE_K
+      };
+    } else if (cam->Name() == "mt9v117") {
+      // See boards/bebop/mt9v117.h
+      cameras[i]->fps = MT9V117_TARGET_FPS;
+      cameras[i]->camera_intrinsics = {
+        .focal_x = MT9V117_FOCAL_X,
+        .focal_y = MT9V117_FOCAL_Y,
+        .center_x = MT9V117_CENTER_X,
+        .center_y = MT9V117_CENTER_Y,
+        .Dhane_k = MT9V117_DHANE_K
+      };
+    }
     cout << "ok" << endl;
   }
 }
@@ -655,31 +808,46 @@ static void gazebo_read_video(void)
  * @param img
  * @param cam
  */
-static void read_image(
-  struct image_t *img,
-  gazebo::sensors::CameraSensorPtr cam)
+static void read_image(struct image_t *img, gazebo::sensors::CameraSensorPtr cam)
 {
-  image_create(img, cam->ImageWidth(), cam->ImageHeight(), IMAGE_YUV422);
+  bool is_mt9f002 = false;
+  if (cam->Name() == "mt9f002") {
+    image_create(img, MT9F002_OUTPUT_WIDTH, MT9F002_OUTPUT_HEIGHT, IMAGE_YUV422);
+    is_mt9f002 = true;
+  } else {
+    image_create(img, cam->ImageWidth(), cam->ImageHeight(), IMAGE_YUV422);
+  }
+
   // Convert Gazebo's *RGB888* image to Paparazzi's YUV422
   const uint8_t *data_rgb = cam->ImageData();
   uint8_t *data_yuv = (uint8_t *)(img->buf);
-  for (int x = 0; x < img->w; ++x) {
-    for (int y = 0; y < img->h; ++y) {
-      int idx_rgb = 3 * (img->w * y + x);
-      int idx_yuv = 2 * (img->w * y + x);
-      int idx_px = img->w * y + x;
+  for (int x_yuv = 0; x_yuv < img->w; ++x_yuv) {
+    for (int y_yuv = 0; y_yuv < img->h; ++y_yuv) {
+      int x_rgb = x_yuv;
+      int y_rgb = y_yuv;
+      if (is_mt9f002) {
+        // Change sampling points for zoomed and/or cropped image.
+        // Use nearest-neighbour sampling for now.
+        x_rgb = (mt9f002.offset_x + ((float)x_yuv / img->w) * mt9f002.sensor_width)
+            / CFG_MT9F002_PIXEL_ARRAY_WIDTH * cam->ImageWidth();
+        y_rgb = (mt9f002.offset_y + ((float)y_yuv / img->h) * mt9f002.sensor_height)
+            / CFG_MT9F002_PIXEL_ARRAY_HEIGHT * cam->ImageHeight();
+      }
+      int idx_rgb = 3 * (cam->ImageWidth() * y_rgb + x_rgb);
+      int idx_yuv = 2 * (img->w * y_yuv + x_yuv);
+      int idx_px = img->w * y_yuv + x_yuv;
       if (idx_px % 2 == 0) { // Pick U or V
-        data_yuv[idx_yuv] = -0.148 * data_rgb[idx_rgb]
+        data_yuv[idx_yuv] = - 0.148 * data_rgb[idx_rgb]
                             - 0.291 * data_rgb[idx_rgb + 1]
                             + 0.439 * data_rgb[idx_rgb + 2] + 128; // U
       } else {
-        data_yuv[idx_yuv] = 0.439 * data_rgb[idx_rgb]
-                            - 0.368 * data_rgb[idx_rgb + 1]
-                            - 0.071 * data_rgb[idx_rgb + 2] + 128; // V
+        data_yuv[idx_yuv] =   0.439 * data_rgb[idx_rgb]
+                              - 0.368 * data_rgb[idx_rgb + 1]
+                              - 0.071 * data_rgb[idx_rgb + 2] + 128; // V
       }
-      data_yuv[idx_yuv + 1] = 0.257 * data_rgb[idx_rgb]
-                              + 0.504 * data_rgb[idx_rgb + 1]
-                              + 0.098 * data_rgb[idx_rgb + 2] + 16; // Y
+      data_yuv[idx_yuv + 1] =   0.257 * data_rgb[idx_rgb]
+                                + 0.504 * data_rgb[idx_rgb + 1]
+                                + 0.098 * data_rgb[idx_rgb + 2] + 16; // Y
     }
   }
   // Fill miscellaneous fields
@@ -689,7 +857,7 @@ static void read_image(
   img->pprz_ts = ts.Double() * 1e6;
   img->buf_idx = 0; // unused
 }
-#endif  // NPS_SIMULATE_VIDEO
+#endif
 
 #if NPS_SIMULATE_LASER_RANGE_ARRAY
 /*
@@ -759,7 +927,7 @@ static void gazebo_init_range_sensors(void)
        * given in the airframe file in LASER_RANGE_ARRAY_RANGE_ORIENTATION
        */
       for (int j = 0; j < LASER_RANGE_ARRAY_NUM_SENSORS; j++) {
-        struct DoubleEulers def = {0, range_orientation[j*2], range_orientation[j*2 + 1]};
+        struct DoubleEulers def = {0, range_orientation[j * 2], range_orientation[j * 2 + 1]};
         double_quat_of_eulers(&q_def, &def);
         // get angle between required angle and ray angle
         double angle = acos(QUAT_DOT_PRODUCT(q_ray, q_def));
@@ -771,7 +939,7 @@ static void gazebo_init_range_sensors(void)
 
 #if LASER_RANGE_ARRAY_SEND_AGL
           // find the sensor pointing down
-          if (fabs(range_orientation[j*2] + M_PI_2) < RadOfDeg(5)) {
+          if (fabs(range_orientation[j * 2] + M_PI_2) < RadOfDeg(5)) {
             ray_sensor_agl_index = j;
           }
 #endif
@@ -804,13 +972,15 @@ static void gazebo_read_range_sensors(void)
     } else {
       range = rays[i].sensor->Range(0);
     }
-    AbiSendMsgOBSTACLE_DETECTION(OBS_DETECTION_RANGE_ARRAY_NPS_ID, range, range_orientation[i*2], range_orientation[i*2 + 1]);
+    AbiSendMsgOBSTACLE_DETECTION(OBS_DETECTION_RANGE_ARRAY_NPS_ID, range, range_orientation[i * 2],
+                                 range_orientation[i * 2 + 1]);
 
     if (i == ray_sensor_agl_index) {
+      uint32_t now_ts = get_sys_time_usec();
       float agl = rays[i].sensor->Range(0);
       // Down range sensor as agl
       if (agl > 1e-5 && !isinf(agl)) {
-        AbiSendMsgAGL(AGL_RAY_SENSOR_GAZEBO_ID, agl);
+        AbiSendMsgAGL(AGL_RAY_SENSOR_GAZEBO_ID, now_ts, agl);
       }
     }
     rays[i].last_measurement_time = rays[i].sensor->LastMeasurementTime();

@@ -43,6 +43,8 @@ import shutil
 ###############################################################################
 # [Constants]
 
+DEFAULT_TOOL_ICON = "default_tool_icon.svg"
+
 LOGGER = logging.getLogger("[HMI]")
 
 CONF_PATH = env.PAPARAZZI_CONF
@@ -54,6 +56,7 @@ ERROR_QPIXMAP = "icons/dialog-error.svg"
 START_ICON = "icons/media-playback-start.svg"
 STOP_ICON = "icons/process-stop.svg"
 CHANGED_ICON = "icons/dialog-warning-symbolic.svg"
+ICONS_TOOLS_PATH = "data/pictures/tools_icons/"
 
 UNKNOWN_VALUE = "---"
 
@@ -268,58 +271,16 @@ class Hmi(Widgets.QMainWindow):
 # [Hmi methods] Init HMI methods
 
     def init_hmi_data(self):
-        """
-        -> Initialization of a 'Data' object with all necessary data from XML
-        files found in the 'CONF_PATH' Paparazzi UAV directory.
-        -> Loading of cache data (last settings used) to restore them.
-        -> Initialization of main HMI widgets with necessary data found.
-        """
-        init_conf_xml_path()
-
-        # Data object creation implies XML parsing in the parser module :
         try:
-            self.data = parser.Data(CONF_PATH)
-
-            # Cache parameters extracted from the cache dictionary :
-            last_geometry = self.data.cache[parser.LAST_GEOMETRY].split(" ")
-            last_x, last_y, last_width, last_height = map(int, last_geometry)
-            self.setGeometry(last_x, last_y, last_width, last_height)
-
-            last_set_name = self.data.cache[parser.LAST_SET]
-            self.current_set = self.data.sets[last_set_name]
-
-            point_symbol_link_to(self.current_set.name)
-
-            last_config_name = self.data.cache[parser.LAST_CONFIG]
-            self.current_config = self.data.configurations[last_config_name]
-
-            last_target_name = self.data.cache[parser.LAST_TARGET]
-            self.current_target = self.current_config.targets[last_target_name]
-
-            self.ui.upload.setEnabled(self.current_target.name
-                                      not in self.simulation_targets_names)
-
-            last_device_name = self.data.cache[parser.LAST_DEVICE]
-            self.current_device = self.data.devices[last_device_name]
-
-            last_session_name = self.data.cache[parser.LAST_SESSION]
-            self.current_session = self.data.sessions[last_session_name]
-
-            last_log_filters = self.data.cache[parser.LAST_LOG_FILTERS].split(" ")
-            last_level = last_log_filters[0]
-            last_default, last_info, last_warning, last_error =\
-                map(int, last_log_filters[1:])
-            self.current_log_filter = cs.LogFilter(last_level,
-                                                   last_default, last_info,
-                                                   last_warning, last_error)
+            self.init_hmi_data_core()
         except:
             " if something goes wrong, delete cache and load again (to be improved)"
             LOGGER.error("ERROR while load HMI cache"
                          "Original message : '%s'.", sys.exc_info()[0])
             print("HMI error in cache, load default instead")
             parser.delete_cache()
-            self.init_hmi_data()
-
+            self.init_hmi_data_core()
+            
         # Run and build Paparazzi versions found by existing program
         # './paparazzi_version' and file './var/build_version.txt' :
         run_version_cmd = env.RUN_VERSION_EXE
@@ -327,6 +288,50 @@ class Hmi(Widgets.QMainWindow):
         build_version_cmd = " ".join(["cat", env.BUILD_VERSION_FILE])
         self.build_version = os.popen(build_version_cmd).readline().strip()
 
+    def init_hmi_data_core(self):
+        """
+        -> Initialization of a 'Data' object with all necessary data from XML
+        files found in the 'CONF_PATH' Paparazzi UAV directory.
+        -> Loading of cache data (last settings used) to restore them.
+        -> Initialization of main HMI widgets with necessary data found.
+        """
+        init_conf_xml_path()
+        self.data = parser.Data(CONF_PATH)
+
+        # Cache parameters extracted from the cache dictionary :
+        last_geometry = self.data.cache[parser.LAST_GEOMETRY].split(" ")
+        last_x, last_y, last_width, last_height = map(int, last_geometry)
+        self.setGeometry(last_x, last_y, last_width, last_height)
+
+        last_set_name = self.data.cache[parser.LAST_SET]
+        self.current_set = self.data.sets[last_set_name]
+
+        point_symbol_link_to(self.current_set.name)
+
+        last_config_name = self.data.cache[parser.LAST_CONFIG]
+        self.current_config = self.data.configurations[last_config_name]
+
+        last_target_name = self.data.cache[parser.LAST_TARGET]
+        self.current_target = self.current_config.targets[last_target_name]
+
+        self.ui.upload.setEnabled(self.current_target.name
+                                  not in self.simulation_targets_names)
+
+        last_device_name = self.data.cache[parser.LAST_DEVICE]
+        self.current_device = self.data.devices[last_device_name]
+
+        last_session_name = self.data.cache[parser.LAST_SESSION]
+        self.current_session = self.data.sessions[last_session_name]
+
+        last_log_filters = self.data.cache[parser.LAST_LOG_FILTERS].split(" ")
+        last_level = last_log_filters[0]
+        last_default, last_info, last_warning, last_error =\
+            map(int, last_log_filters[1:])
+        self.current_log_filter = cs.LogFilter(last_level,
+                                               last_default, last_info,
+                                               last_warning, last_error)
+
+        
     def init_hmi_widgets(self):
         """
         -> Initialization of all the HMI widgets content.
@@ -387,6 +392,7 @@ class Hmi(Widgets.QMainWindow):
         self.ui.actionSave_3.triggered.connect(self.save_current_session)
 
         self.ui.actionFull_screen.triggered.connect(self.fullscreen_view)
+        self.ui.actionHide_overviews.triggered.connect(self.toggle_overview)
 
         self.ui.actionAbout_Paparazzi_UAV.triggered.connect(
             self.credits_popup.show)
@@ -542,20 +548,27 @@ class Hmi(Widgets.QMainWindow):
         -> Fill the 'Tools' menu with the names found in 'control_panel.xml'
         -> Connect each action to the corresponding tool process.
         """
-        self.ui.menuTools.clear()
-        sorted_names = parser.sorted_tools_names(self.data.tools)
-        for name in sorted_names:
-            action = Widgets.QAction(name, self)
-            self.ui.menuTools.addAction(action)
-        for action in self.ui.menuTools.actions():
-            action.triggered.connect(functools.partial(
-                self.add_program_to_session, self.data.tools[action.text()]))
+        # The tools are sorted first by whether they are favorite or not, then by their names
+        for tool in sorted(self.data.tools.values(), key=lambda tool: (not tool.favorite, tool.name)):
+            if not tool.blacklisted:
+                command = functools.partial(self.add_program_to_session, tool)
+                icon_name = tool.icon if tool.icon is not None else DEFAULT_TOOL_ICON
+                icon_path = "/".join([env.PAPARAZZI_HOME, ICONS_TOOLS_PATH, icon_name])
+                self.ui.tools_menu.add_item(tool.name, icon_path, command)
 
     def fullscreen_view(self):
         if self.isMaximized():
             self.resize(800, 600)
         else:
             self.showMaximized()
+
+    def toggle_overview(self):
+        if self.ui.dockWidget.isVisible():
+            self.ui.dockWidget.hide()
+            self.ui.actionHide_overviews.setText("Show overviews")
+        else:
+            self.ui.dockWidget.show()
+            self.ui.actionHide_overviews.setText("Hide overviews")
 
     def update_set_combo(self):
         """

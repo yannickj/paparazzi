@@ -31,12 +31,13 @@ SRC_MODULES=modules
 
 SRC_ARCH=arch/$(ARCH)
 
-ROTORCRAFT_INC = -I$(SRC_FIRMWARE) -I$(SRC_BOARD)
+ROTORCRAFT_INC = -DROTORCRAFT_FIRMWARE -I$(SRC_FIRMWARE) -I$(SRC_BOARD)
 
 ap.ARCHDIR = $(ARCH)
 
 
 VPATH += $(PAPARAZZI_HOME)/var/share
+VPATH += $(PAPARAZZI_HOME)/sw/ext
 
 ######################################################################
 ##

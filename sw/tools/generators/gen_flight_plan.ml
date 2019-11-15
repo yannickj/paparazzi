@@ -82,7 +82,7 @@ let float_attrib = fun xml a ->
   try
     float_of_string (Xml.attrib xml a)
   with
-      Failure "float_of_string" ->
+      Failure _ ->
         failwith (sprintf "Float expected in attribute '%s' from %s" a (Xml.to_string_fmt xml))
 let name_of = fun wp -> ExtXml.attrib wp "name"
 
@@ -103,7 +103,7 @@ let check_altitude_srtm = fun a x wgs84 ->
 
 let check_altitude = fun a x ->
   if a < !ground_alt +. !security_height then begin
-    fprintf stderr "\nNOTICE: low altitude (%.0f<%.0f+%.0f) in %s\n\n" a !ground_alt !security_height (Xml.to_string x)
+    fprintf stderr "NOTICE: low altitude (%.0f<%.0f+%.0f) in %s\n" a !ground_alt !security_height (Xml.to_string x)
   end
 
 
@@ -205,7 +205,7 @@ let pprz_throttle = fun s ->
       if g < 0. || g > 1. then
         failwith "throttle must be > 0 and < 1"
     with
-        Failure "float_of_string" -> () (* No possible check on expression *)
+        Failure _ -> () (* No possible check on expression *)
   end;
   sprintf "9600*(%s)" s
 
@@ -213,7 +213,7 @@ let pprz_throttle = fun s ->
 (********************* Vertical control ********************************************)
 let output_vmode = fun out stage_xml wp last_wp ->
   let pitch = try Xml.attrib stage_xml "pitch" with _ -> "0.0" in
-  if String.lowercase (Xml.tag stage_xml) <> "manual"
+  if Compat.lowercase_ascii (Xml.tag stage_xml) <> "manual"
   then begin
     if pitch = "auto"
     then begin
@@ -237,7 +237,7 @@ let output_vmode = fun out stage_xml wp last_wp ->
                 check_altitude (float_of_string a) stage_xml
               with
         (* Impossible to check the altitude on an expression: *)
-                  Failure "float_of_string" -> ()
+                  Failure _ -> ()
             end;
             a
           with _ ->
@@ -248,7 +248,7 @@ let output_vmode = fun out stage_xml wp last_wp ->
                   check_altitude ((float_of_string h) +. !ground_alt) stage_xml
                 with
           (* Impossible to check the altitude on an expression: *)
-                    Failure "float_of_string" -> ()
+                    Failure _ -> ()
               end;
               sprintf "Height(%s)" h
             with _ ->
@@ -275,7 +275,7 @@ let output_hmode out x wp last_wp =
       match hmode with
           "route" ->
             if last_wp = "last_wp" then
-              fprintf stderr "Warning: Deprecated use of 'route' using last waypoint in %s\n"(Xml.to_string x);
+              fprintf stderr "NOTICE: Deprecated use of 'route' using last waypoint in %s\n"(Xml.to_string x);
             lprintf out "NavSegment(%s, %s);\n" last_wp wp
         | "direct" -> lprintf out "NavGotoWaypoint(%s);\n" wp
         | x -> failwith (sprintf "Unknown hmode '%s'" x)
@@ -316,7 +316,7 @@ let rec index_stage = fun x ->
   end
 
 
-let inside_function = fun name -> "Inside" ^ String.capitalize name
+let inside_function = fun name -> "Inside" ^ Compat.capitalize_ascii name
 
 (* pre call utility function *)
 let fp_pre_call = fun out x ->
@@ -342,7 +342,7 @@ let stage_until = fun out x ->
 let rec print_stage = fun out index_of_waypoints x ->
   let stage out = incr stage; lprintf out "Stage(%d)\n" !stage; right () in
   begin
-    match String.lowercase (Xml.tag x) with
+    match Compat.lowercase_ascii (Xml.tag x) with
       | "return" ->
         stage out;
         lprintf out "Return(%s);\n" (ExtXml.attrib_or_default x "reset_stage" "0");
@@ -355,6 +355,7 @@ let rec print_stage = fun out index_of_waypoints x ->
         lprintf out "GotoBlock(%d);\n" (get_index_block (ExtXml.attrib x "block"));
         lprintf out "break;\n"
       | "exit_block" ->
+        lprintf "/* Falls through. */\n";
         lprintf out "default:\n";
         stage out;
         lprintf out "NextBlock();\n";
@@ -383,6 +384,7 @@ let rec print_stage = fun out index_of_waypoints x ->
         stage out;
         lprintf out "%s = %s - 1;\n" v from_;
         lprintf out "%s = %s;\n" to_var to_expr;
+        lprintf "INTENTIONAL_FALLTHRU\n";
         left ();
 
         output_label out f;
@@ -546,9 +548,9 @@ let rec print_stage = fun out index_of_waypoints x ->
         let statement = ExtXml.attrib  x "fun" in
         (* by default, function is called while returning TRUE *)
         (* otherwise, function is called once and returned value is ignored *)
-        let loop = String.uppercase (ExtXml.attrib_or_default x "loop" "TRUE") in
+        let loop = Compat.uppercase_ascii (ExtXml.attrib_or_default x "loop" "TRUE") in
         (* be default, go to next stage immediately *)
-        let break = String.uppercase (ExtXml.attrib_or_default x "break" "FALSE") in
+        let break = Compat.uppercase_ascii (ExtXml.attrib_or_default x "break" "FALSE") in
         begin match loop with
         | "TRUE" ->
             lprintf out "if (! (%s)) {\n" statement;
@@ -581,7 +583,7 @@ let rec print_stage = fun out index_of_waypoints x ->
         stage out;
         let statement = ExtXml.attrib  x "fun" in
         (* by default, go to next stage immediately *)
-        let break = String.uppercase (ExtXml.attrib_or_default x "break" "FALSE") in
+        let break = Compat.uppercase_ascii (ExtXml.attrib_or_default x "break" "FALSE") in
         lprintf out "%s;\n" statement;
         begin match break with
         | "TRUE" -> lprintf out "NextStageAndBreak();\n";
@@ -957,6 +959,12 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   fprintf out "#include \"generated/modules.h\"\n";
   fprintf out "#include \"subsystems/abi.h\"\n";
   fprintf out "#include \"autopilot.h\"\n\n";
+  (* print variables and ABI bindings declaration *)
+
+  let variables = parse_variables variables in
+  let abi_msgs = extract_abi_msg (Env.paparazzi_home ^ "/conf/abi.xml") "airborne" in
+  List.iter (fun v -> print_var_decl out abi_msgs v) variables;
+  fprintf out "\n";
 
   (* add custum header part *)
   begin
@@ -1086,12 +1094,6 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
     with
       _ -> ()
   end;
-
-  (* print variables and ABI bindings declaration *)
-  lprintf out "\n";
-  let variables = parse_variables variables in
-  let abi_msgs = extract_abi_msg (Env.paparazzi_home ^ "/conf/abi.xml") "airborne" in
-  List.iter (fun v -> print_var_decl out abi_msgs v) variables;
 
   (* start "C" part *)
   lprintf out "\n#ifdef NAV_C\n\n";

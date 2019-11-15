@@ -81,6 +81,7 @@ void baro_init(void)
   if (pthread_create(&baro_thread, NULL, baro_read, NULL) != 0) {
     printf("[swing_board] Could not create baro reading thread!\n");
   }
+  pthread_setname_np(baro_thread, "pprz_baro_thread");
 
 }
 
@@ -93,8 +94,9 @@ void baro_event(void)
   if (baro_swing_available) {
     // From datasheet: raw_pressure / 4096 -> pressure in hPa
     // send data in Pa
+    uint32_t now_ts = get_sys_time_usec();
     float pressure = 100.f * ((float)baro_swing_raw) / 4096.f;
-    AbiSendMsgBARO_ABS(BARO_BOARD_SENDER_ID, pressure);
+    AbiSendMsgBARO_ABS(BARO_BOARD_SENDER_ID, now_ts, pressure);
     baro_swing_available = false;
   }
   pthread_mutex_unlock(&baro_swing_mutex);

@@ -79,6 +79,7 @@ type nav_ref =
 type vehicle_type =
     FixedWing
   | Rotorcraft
+  | Rover
   | UnknownVehicleType
 
 val add_pos_to_nav_ref : nav_ref -> ?z:float -> (float * float) -> Latlong.geographic
@@ -119,7 +120,9 @@ type aircraft = {
     mutable temp : float;
     mutable bat : float;
     mutable amp : float;
-    mutable energy : int;
+    mutable power  : float;
+    mutable charge : float;
+    mutable energy : float;
     mutable ap_mode : int;
     mutable gaz_mode : int;
     mutable lateral_mode : int;

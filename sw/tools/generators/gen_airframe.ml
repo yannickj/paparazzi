@@ -146,7 +146,7 @@ let parse_element = fun out prefix s ->
 
 
 let print_reverse_servo_table = fun out driver servos ->
-  let d = match driver with "Default" -> "" | _ -> "_"^(String.uppercase driver) in
+  let d = match driver with "Default" -> "" | _ -> "_"^(Compat.uppercase_ascii driver) in
   fprintf out "static inline int get_servo_min%s(int _idx) {\n" d;
   fprintf out "  switch (_idx) {\n";
   List.iter (fun c ->
@@ -210,7 +210,7 @@ let print_actuators_idx = fun out ->
     fprintf out "#define SERVO_%s_IDX %d\n" s i;
     (* Set servo macro *)
     fprintf out "#define Set_%s_Servo(_v) { \\\n" s;
-    fprintf out "  actuators[SERVO_%s_IDX] = Chop(_v, SERVO_%s_MIN, SERVO_%s_MAX); \\\n" s s s;
+    fprintf out "  actuators[SERVO_%s_IDX] = Clip(_v, SERVO_%s_MIN, SERVO_%s_MAX); \\\n" s s s;
     fprintf out "  Actuator%sSet(SERVO_%s, actuators[SERVO_%s_IDX]); \\\n" d s s;
     fprintf out "}\n\n"
   ) servos_drivers;
@@ -243,7 +243,7 @@ let parse_command_laws = fun out command ->
       and rate_min = a "rate_min"
       and rate_max = a "rate_max" in
       let v = preprocess_value value "values" "COMMAND" in
-      fprintf out "  static int32_t _var_%s = 0; _var_%s += Chop((%s) - (_var_%s), (%s), (%s)); \\\n" var var v var rate_min rate_max
+      fprintf out "  static int32_t _var_%s = 0; _var_%s += Clip((%s) - (_var_%s), (%s), (%s)); \\\n" var var v var rate_min rate_max
     | "define" ->
       parse_element out "" command
     | _ -> xml_error "set|let"
@@ -279,14 +279,28 @@ let parse_command = fun out command no ->
   let failsafe_value = int_of_string (ExtXml.attrib command "failsafe_value") in
   { failsafe_value = failsafe_value; foo = 0}
 
-let parse_heli_curves = fun out heli_surves ->
-  let a = fun s -> ExtXml.attrib heli_surves s in
-  match Xml.tag heli_surves with
+let parse_heli_curves = fun out heli_curves ->
+  let a = fun s -> ExtXml.attrib heli_curves s in
+  match Xml.tag heli_curves with
       "curve" ->
         let throttle = a "throttle" in
+        let rpm = ExtXml.attrib_or_default heli_curves "rpm" "" in
         let collective = a "collective" in
-        fprintf out "  {.nb_points = %i, \\\n" (List.length (Str.split (Str.regexp ",") throttle));
+        let nb_throttle = List.length (Str.split (Str.regexp ",") throttle) in
+        let nb_rpm = List.length (Str.split (Str.regexp ",") rpm) in
+        let nb_collective = List.length (Str.split (Str.regexp ",") collective) in
+        if nb_throttle < 1 then
+          failwith (Printf.sprintf "Need at least one value in throttle curve for a throttle ('%s', '%s')" throttle collective);
+        if nb_throttle <> nb_collective then
+          failwith (Printf.sprintf "Amount of throttle points not the same as collective in throttle curve ('%s', '%s')" throttle collective);
+        if nb_throttle <> nb_rpm && nb_rpm <> 0 then
+          failwith (Printf.sprintf "Amount of throttle points not the same as rpm in throttle curve ('%s', '%s', '%s')" throttle collective rpm);
+        fprintf out "  {.nb_points = %i, \\\n" nb_throttle;
         fprintf out "   .throttle = {%s}, \\\n" throttle;
+        if nb_rpm <> 0 then
+          fprintf out "   .rpm = {%s}, \\\n" rpm
+        else
+          fprintf out "   .rpm = {0xFFFF}, \\\n";
         fprintf out "   .collective = {%s}}, \\\n" collective
     | _ -> xml_error "mixer"
 
@@ -302,8 +316,8 @@ let rec parse_section = fun out ac_id s ->
       let servos = Xml.children s in
       let nb_servos = List.fold_right (fun s m -> Pervasives.max (int_of_string (ExtXml.attrib s "no")) m) servos min_int + 1 in
 
-      define_out out (sprintf "SERVOS_%s_NB" (Compat.bytes_uppercase driver)) (string_of_int nb_servos);
-      fprintf out "#include \"subsystems/actuators/actuators_%s.h\"\n" (Compat.bytes_lowercase driver);
+      define_out out (sprintf "SERVOS_%s_NB" (Compat.uppercase_ascii driver)) (string_of_int nb_servos);
+      fprintf out "#include \"subsystems/actuators/actuators_%s.h\"\n" (Compat.lowercase_ascii driver);
       fprintf out "\n";
       List.iter (parse_servo out driver) servos;
       print_reverse_servo_table out driver servos;

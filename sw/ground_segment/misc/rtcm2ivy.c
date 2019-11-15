@@ -39,6 +39,7 @@
 #include <Ivy/ivyglibloop.h>
 #include <rtcm3.h>              // Used to decode RTCM3 messages
 #include <CRC24Q.h>             // Used to verify CRC checks
+#include <time.h>
 #include <math/pprz_geodetic_float.h>
 
 #include "std.h"
@@ -95,6 +96,8 @@ static uint32_t uart_read(unsigned char(*buff)[], uint32_t n)  //, void *context
   }
 }
 
+static struct timespec wait = { .tv_sec = 0, .tv_nsec = 50000000 }; // 0.05 seconds wait between messages to awoid saturation
+
 static void ivy_send_message(uint8_t packet_id, uint8_t len, uint8_t msg[])
 {
   char number[5];
@@ -107,15 +110,18 @@ static void ivy_send_message(uint8_t packet_id, uint8_t len, uint8_t msg[])
     snprintf(gps_packet, ivy_size, IVY_MSG_HEAD" %d %d", packet_id, msg[offset]);
 
     cpt = 1;
-    while ((cpt < (packet_size - 5)) && (cpt < (len-offset))) {
+    // max cpt = packet_size - array size (1 byte) - rtcm type (1 byte) - pprzlink header (4 bytes in v2)
+    //         = packet_size - 6
+    while ((cpt < (packet_size - 6)) && (cpt < (len-offset))) {
       snprintf(number, 5, ",%d", msg[cpt+offset]); // coma + (000..255) + '\0' = 5 chars
       strcat(gps_packet, number);
       cpt++;
     }
 
+    nanosleep(&wait, NULL);
     printf_debug("%s\n\n", gps_packet);
     IvySendMsg("%s", gps_packet);
-    offset += (packet_size-5);
+    offset += (packet_size-6);
 
     if (logger == TRUE) {
       pFile = fopen("./RTCM3_log.txt", "a");

@@ -10,17 +10,6 @@
       <module name="udp"/>
     </target>
 
-    <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
-    <define name="MT9F002_OUTPUT_WIDTH" value="640" />
-    <define name="MT9F002_TARGET_EXPOSURE" value="30" />
-    <define name="MT9F002_GAIN_GREEN1" value="4"/>
-    <define name="MT9F002_GAIN_GREEN2" value="4"/>
-    <define name="MT9F002_GAIN_RED" value="5"/>
-    <define name="MT9F002_GAIN_BLUE" value="5"/>
-    <define name="MT9F002_OUTPUT_SCALER" value="0.25"/>
-    <define name="MT9F002_X_ODD_INC_VAL" value="1"/>
-    <define name="MT9F002_Y_ODD_INC_VAL" value="1"/>
-
     <define name="USE_SONAR" value="true"/>
 
 	<!-- Subsystem section -->
@@ -33,9 +22,7 @@
     <module name="stabilization" type="int_quat"/>
     <module name="ahrs"          type="float_mlkf"/>
     <module name="ins" type="extended"/>
-  </firmware>
-
-  <modules main_freq="512">
+    
     <module name="geo_mag"/>
     <module name="air_data"/>
     <module name="send_imu_mag_current"/>
@@ -43,7 +30,7 @@
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module-->
 
-    <module name="video_thread"/>
+    <module name="bebop_cam"/>
 
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="bottom_camera"/>
@@ -53,8 +40,7 @@
     </module>
 
     <module name="bebop_ae_awb"/>
-
-  </modules>
+  </firmware>
 
   <commands>
     <axis name="PITCH" failsafe_value="0"/>
@@ -82,6 +68,14 @@
     <set servo="BOTTOM_RIGHT" value="motor_mixing.commands[MOTOR_BACK_RIGHT]"/>
     <set servo="BOTTOM_LEFT" value="motor_mixing.commands[MOTOR_BACK_LEFT]"/>
   </command_laws>
+
+  <section name="BEBOP_FRONT_CAMERA" prefix="MT9F002_">
+    <define name="OUTPUT_HEIGHT" value="640" />
+    <define name="OUTPUT_WIDTH" value="640" />
+    <define name="OFFSET_X" value="0.15" />
+    <define name="TARGET_EXPOSURE" value="30" />
+    <define name="ZOOM" value="1.25"/>
+  </section>
 
   <section name="AIR_DATA" prefix="AIR_DATA_">
     <define name="CALC_AIRSPEED" value="FALSE"/>
@@ -196,6 +190,7 @@
     <define name="JSBSIM_MODEL" value="simple_x_quad_ccw" type="string"/>
     <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
   </section>
+  <include href="conf/simulator/gazebo/airframes/bebop.xml"/>
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
