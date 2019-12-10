@@ -171,6 +171,7 @@ static struct _mission_circle mission_wait_circle;
 static bool mission_wait_pattern(void) {
   if (!mission_wait_started) {
     mission_wait_circle.center.center_f = *stateGetPositionEnu_f();
+    mission_wait_circle.center.center_f.z += GetAltRef();
     mission_wait_circle.radius = DEFAULT_CIRCLE_RADIUS;
     mission_wait_time = 0.f;
     mission_wait_started = true;

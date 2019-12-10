@@ -82,7 +82,7 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 
   new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_lace.radius);
   new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_lace.radius);
-  new_point.z = position->z + ground_alt;
+  new_point.z = position->z;
 
   return new_point;
 }
@@ -186,7 +186,7 @@ bool nav_lace_run(void)
   switch (nav_lace.status) {
     case LACE_ENTER:
       nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.target.x, nav_lace.target.y);
-      NavVerticalAltitudeMode(nav_lace.target.z, pre_climb);
+      NavVerticalAltitudeMode(nav_lace.target.z + ground_alt, pre_climb);
 
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
@@ -199,7 +199,7 @@ bool nav_lace_run(void)
       // increment center position
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalAltitudeMode(nav_lace.circle.z, pre_climb);
+      NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
 
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE;
@@ -213,7 +213,7 @@ bool nav_lace_run(void)
     case LACE_OUTSIDE:
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalAltitudeMode(nav_lace.circle.z, pre_climb);
+      NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
 
       if(nav_lace.inside_cloud){
         nav_lace.status = LACE_INSIDE;

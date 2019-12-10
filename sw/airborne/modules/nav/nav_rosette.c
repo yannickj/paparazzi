@@ -81,20 +81,20 @@ static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bar
   if(nav_rosette.nb_border_point == 1){
     bary->x = new_coord->x;
     bary->y = new_coord->y;
-    bary->z = new_coord->z + ground_alt;
+    bary->z = new_coord->z;
 
-    printf("[1]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
-    printf("[1]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
+    //printf("[1]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
+    //printf("[1]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
 
   } else if(nav_rosette.nb_border_point >= 2){
     //new_point.x = ((nav_rosette.barycenter.x * (nav_rosette.nb_border_point - 1)) + new_coord->x ) / nav_rosette.nb_border_point;
     //new_point.y = ((nav_rosette.barycenter.y * (nav_rosette.nb_border_point - 1)) + new_coord->y ) / nav_rosette.nb_border_point;
     bary->x = ((bary->x * 0.5) + (new_coord->x * 0.5));
     bary->y = ((bary->y * 0.5) + (new_coord->y * 0.5));
-    bary->z = new_coord->z + ground_alt;
+    bary->z = new_coord->z;
 
-    printf("[2+]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
-    printf("[2+]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
+    //printf("[2+]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
+    //printf("[2+]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
 
   }
 }
@@ -138,7 +138,7 @@ static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, fl
   else if(nav_rosette.inside_cloud == false){
     new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_rosette.radius);
     new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_rosette.radius);
-    new_point.z = position->z + ground_alt;
+    new_point.z = position->z;
   }
 
   return new_point;
@@ -165,7 +165,7 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     // update barycenter 3D position (ENU frame, above ground alt)
     float bx = params[0];
     float by = params[1];
-    float bz = params[2] + ground_alt;
+    float bz = params[2];
     VECT3_ASSIGN(nav_rosette.barycenter, bx, by, bz);
     return true;
   }
@@ -253,7 +253,7 @@ bool nav_rosette_run(void)
   switch (nav_rosette.status) {
     case RSTT_ENTER:
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
-      NavVerticalAltitudeMode(nav_rosette.target.z, pre_climb);
+      NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
       if (nav_rosette.inside_cloud)
       {
@@ -264,7 +264,7 @@ bool nav_rosette_run(void)
       break;
     case RSTT_CROSSING:
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
-      NavVerticalAltitudeMode(nav_rosette.target.z, pre_climb);
+      NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
       if (!nav_rosette.inside_cloud)
       {
@@ -279,7 +279,7 @@ bool nav_rosette_run(void)
     case RSTT_TURNING:
       VECT3_ADD(nav_rosette.circle, nav_rosette.pos_incr);
       nav_circle_XY(nav_rosette.circle.x, nav_rosette.circle.y , nav_rosette.radius_sign * nav_rosette.radius);
-      NavVerticalAltitudeMode(nav_rosette.circle.z, pre_climb);
+      NavVerticalAltitudeMode(nav_rosette.circle.z + ground_alt, pre_climb);
 
       if (nav_rosette.inside_cloud)
       {
