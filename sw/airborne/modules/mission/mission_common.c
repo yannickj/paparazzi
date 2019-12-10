@@ -425,7 +425,10 @@ int mission_parse_UPDATE(void)
   }
 
   uint8_t nb = DL_MISSION_UPDATE_params_length(dl_buffer);
-  float *params = DL_MISSION_UPDATE_params(dl_buffer);
+  float params[MISSION_CUSTOM_MAX];
+  for (int i = 0; i < nb; i++) {
+    params[i] = DL_MISSION_CUSTOM_params(dl_buffer)[i];
+  }
   switch (me->type) {
     case MissionCustom:
       return me->element.mission_custom.reg->cb(nb, params, MissionUpdate);
