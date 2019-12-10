@@ -79,10 +79,18 @@ class Selector(Ui_RCSelector, QtCore.QObject):
     @staticmethod
     def get_color(color):
         if color[0] == "#":
-            r, g, b = int(color[1:5], 16)/0xffff, int(color[5:9], 16)/0xffff, int(color[9:13], 16)/0xffff
-            h, s, v = colorsys.rgb_to_hsv(r, g, b)
-            h, s, v = h*360, s*255, v*255
-            return h, s, v
+            if len(color) == 13:
+                r, g, b = int(color[1:5], 16)/0xffff, int(color[5:9], 16)/0xffff, int(color[9:13], 16)/0xffff
+                h, s, v = colorsys.rgb_to_hsv(r, g, b)
+                h, s, v = h*360, s*255, v*255
+                return h, s, v
+            elif len(color) == 7:
+                r, g, b = int(color[1:3], 16)/0xff, int(color[3:5], 16)/0xff, int(color[5:7], 16)/0xff
+                h, s, v = colorsys.rgb_to_hsv(r, g, b)
+                h, s, v = h*360, s*255, v*255
+                return h, s, v
+            else:
+                return HUES.get("white", 0), 255, 255
         else:
             return HUES.get(color, 0), 255, 255
 
