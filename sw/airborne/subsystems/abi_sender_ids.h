@@ -462,4 +462,8 @@
 #define LWC_SIM_ID 1
 #endif
 
+#ifndef CLOUD_SENSOR_ID
+#define CLOUD_SENSOR_ID 1
+#endif
+
 #endif /* ABI_SENDER_IDS_H */

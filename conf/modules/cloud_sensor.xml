@@ -1,0 +1,30 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="cloud_sensor" dir="meteo">
+  <doc>
+    <description>
+      Get data from Cloud Sensor
+      - compute Liquid Water Content (LWC) value from PAYLOAD_FLOAT data
+      - get already computed LWC from PAYLOAD_COMMAND data
+    </description>
+  </doc>
+  <settings>
+    <dl_settings NAME="CloudSensor">
+      <dl_settings NAME="Cloud">
+        <dl_setting MAX="1" MIN="0" STEP="1" VAR="cloud_sensor_compute_lwc" module="meteo/cloud_sensor" values="OFF|ON"/>
+        <dl_setting max="1." min="0." step="0.01" var="cloud_sensor_threshold" module="meteo/cloud_sensor"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
+  <header>
+    <file name="cloud_sensor.h"/>
+  </header>
+  <init fun="cloud_sensor_init()"/>
+  <periodic fun="cloud_sensor_report()" freq="1." autorun="TRUE"/>
+  <datalink message="PAYLOAD_COMMAND" fun="LWC_callback(buf)"/>
+  <datalink message="PAYLOAD_FLOAT" fun="cloud_sensor_callback(buf)"/>
+  <makefile>
+    <file name="cloud_sensor.c"/>
+  </makefile>
+</module>
+
