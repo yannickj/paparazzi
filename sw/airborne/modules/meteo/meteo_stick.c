@@ -25,6 +25,8 @@
 #include "peripherals/ads1220.h"
 #include "mcu_periph/pwm_input.h"
 #include "generated/airframe.h"
+#include "pprzlink/messages.h"
+#include "subsystems/datalink/downlink.h"
 
 /** Default scale and offset
  *  Only used if calibration from EEPROM is not used/available
@@ -163,6 +165,28 @@ static inline float get_humidity(uint32_t raw)
 #endif
 }
 
+/* Includes and function to send over telemetry
+ *
+ * TRUE by default
+ */
+#ifndef SEND_MS
+#define SEND_MS TRUE
+#endif
+
+// send METEO_STICK message
+static void meteo_stick_send_data(struct transport_tx *trans, struct link_device *device)
+{
+  pprz_msg_send_METEO_STICK(trans, device, AC_ID,
+      &stateGetPositionLla_i()->lat,
+      &stateGetPositionLla_i()->lon,
+      &gps.hmsl,
+      &gps.tow,
+      &meteo_stick.current_pressure,
+      &meteo_stick.current_temperature,
+      &meteo_stick.current_humidity,
+      &meteo_stick.current_airspeed);
+}
+
 
 /** Includes to log on SD card as ASCII csv
  *
@@ -187,7 +211,7 @@ static inline void meteo_stick_log_data_ascii(void)
         sdLogWriteLog(pprzLogFile, "# Calibration data (UUID: %s)\n#\n", meteo_stick.calib.uuid);
         int i, j, k;
         for (i = 0; i < MTOSTK_NUM_SENSORS; i++) {
-          sdLogWriteLog(pprzLogFile, "# Sensor: %d, time: %d, num_temp: %d, num_coeff: %d\n", i,
+          sdLogWriteLog(pprzLogFile, "# Sensor: %d, time: %ld, num_temp: %d, num_coeff: %d\n", i,
                         meteo_stick.calib.params[i].timestamp,
                         meteo_stick.calib.params[i].num_temp,
                         meteo_stick.calib.params[i].num_coeff);
@@ -205,7 +229,7 @@ static inline void meteo_stick_log_data_ascii(void)
         }
         sdLogWriteLog(pprzLogFile, "#\n");
         sdLogWriteLog(pprzLogFile,
-                      "P(adc) T(adc) H(ticks) P_diff(adc) P(hPa) T(C) H(\%) CAS(m/s) FIX TOW(ms) WEEK Lat(1e7rad) Lon(1e7rad) HMSL(mm) GS(cm/s) course(1e7rad) VZ(cm/s)\n");
+                      "P(adc) T(adc) H(ticks) P_diff(adc) P(hPa) T(C) H(%%) CAS(m/s) FIX TOW(ms) WEEK Lat(1e7rad) Lon(1e7rad) HMSL(mm) GS(cm/s) course(1e7rad) VZ(cm/s)\n");
         log_ptu_started = true;
       }
 #else
@@ -228,30 +252,6 @@ static inline void meteo_stick_log_data_ascii(void)
 
 #endif
 
-/* Includes and function to send over telemetry
- *
- * TRUE by default
- */
-#ifndef SEND_MS
-#define SEND_MS TRUE
-#endif
-
-#if SEND_MS
-#include "mcu_periph/uart.h"
-#include "pprzlink/messages.h"
-#include "subsystems/datalink/downlink.h"
-
-static inline void meteo_stick_send_data(void)
-{
-  DOWNLINK_SEND_METEO_STICK(DefaultChannel, DefaultDevice,
-      &meteo_stick.current_pressure,
-      &meteo_stick.current_temperature,
-      &meteo_stick.current_humidity,
-      &meteo_stick.current_airspeed);
-}
-
-#endif
-
 /** Includes and function to log to flight recorder
  *
  * FALSE by default
@@ -260,19 +260,19 @@ static inline void meteo_stick_send_data(void)
 #define LOG_MS_FLIGHTRECORDER FALSE
 #endif
 
+// log to flight recorder by default
+#ifndef METEO_STICK_LOG_FILE
+#define METEO_STICK_LOG_FILE flightrecorder_sdlog
+#endif
+
 #if LOG_MS_FLIGHTRECORDER
-#include "subsystems/datalink/downlink.h"
 #include "modules/loggers/sdlog_chibios.h"
 #include "modules/loggers/pprzlog_tp.h"
 
 static inline void meteo_stick_log_data_fr(void)
 {
-  if (flightRecorderLogFile != -1) {
-    DOWNLINK_SEND_METEO_STICK(pprzlog_tp, flightrecorder_sdlog,
-        &meteo_stick.current_pressure,
-        &meteo_stick.current_temperature,
-        &meteo_stick.current_humidity,
-        &meteo_stick.current_airspeed);
+  if (*(METEO_STICK_LOG_FILE.file) != -1) {
+    meteo_stick_send_data(&pprzlog_tp.trans_tx, &(METEO_STICK_LOG_FILE).device);
   }
 }
 #endif
@@ -398,7 +398,7 @@ void meteo_stick_periodic(void)
 
   // Send data
 #if SEND_MS
-  meteo_stick_send_data();
+  meteo_stick_send_data(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
 #endif
 
   // Check if DP offset reset is required

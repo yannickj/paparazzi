@@ -451,6 +451,10 @@
       <description>
         Data from the MeteoSitck sensor board
       </description>
+      <field name="lat"   type="int32"  unit="1e7deg" alt_unit="deg" alt_unit_coef="0.0000001"/>
+      <field name="lon"   type="int32"  unit="1e7deg" alt_unit="deg" alt_unit_coef="0.0000001"/>
+      <field name="hmsl"  type="int32"  unit="mm" alt_unit="m">Height above Mean Sea Level (geoid)</field>
+      <field name="itow"  type="uint32" unit="ms">GPS time of week</field>
       <field name="pressure" type="float" unit="Pa">absolute static pressure</field>
       <field name="temperature" type="float" unit="deg C">temperature</field>
       <field name="humidity" type="float" unit="%">relative humidity</field>
