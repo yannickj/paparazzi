@@ -165,15 +165,8 @@ static inline float get_humidity(uint32_t raw)
 #endif
 }
 
-/* Includes and function to send over telemetry
- *
- * TRUE by default
+/** Funnction to send over different transport and device
  */
-#ifndef SEND_MS
-#define SEND_MS TRUE
-#endif
-
-// send METEO_STICK message
 static void meteo_stick_send_data(struct transport_tx *trans, struct link_device *device)
 {
   pprz_msg_send_METEO_STICK(trans, device, AC_ID,
@@ -186,6 +179,14 @@ static void meteo_stick_send_data(struct transport_tx *trans, struct link_device
       &meteo_stick.current_humidity,
       &meteo_stick.current_airspeed);
 }
+
+/** Send over telemetry synchrone to reading
+ *
+ * FALSE by default (the asynchronous report function is used by default)
+ */
+#ifndef SEND_MS_SYNC
+#define SEND_MS_SYNC FALSE
+#endif
 
 
 /** Includes to log on SD card as ASCII csv
@@ -261,8 +262,8 @@ static inline void meteo_stick_log_data_ascii(void)
 #endif
 
 // log to flight recorder by default
-#ifndef METEO_STICK_LOG_FILE
-#define METEO_STICK_LOG_FILE flightrecorder_sdlog
+#ifndef MS_LOG_FILE
+#define MS_LOG_FILE flightrecorder_sdlog
 #endif
 
 #if LOG_MS_FLIGHTRECORDER
@@ -271,8 +272,8 @@ static inline void meteo_stick_log_data_ascii(void)
 
 static inline void meteo_stick_log_data_fr(void)
 {
-  if (*(METEO_STICK_LOG_FILE.file) != -1) {
-    meteo_stick_send_data(&pprzlog_tp.trans_tx, &(METEO_STICK_LOG_FILE).device);
+  if (*(MS_LOG_FILE.file) != -1) {
+    meteo_stick_send_data(&pprzlog_tp.trans_tx, &(MS_LOG_FILE).device);
   }
 }
 #endif
@@ -396,8 +397,8 @@ void meteo_stick_periodic(void)
   meteo_stick_log_data_fr();
 #endif
 
-  // Send data
-#if SEND_MS
+  // Send data synch to reading
+#if SEND_MS_SYNC
   meteo_stick_send_data(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
 #endif
 
@@ -471,5 +472,11 @@ void meteo_stick_event(void)
 #if USE_MS_EEPROM
   eeprom25AA256_event(&meteo_stick.eeprom);
 #endif
+}
+
+void meteo_stick_report(void)
+{
+  // send meteo_stick data at a different frequency
+  meteo_stick_send_data(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
 }
 
