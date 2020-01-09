@@ -23,7 +23,10 @@
  * @file "modules/meteo/cloud_sensor.h"
  *
  * Get data from Cloud Sensor
- * - compute Liquid Water Content (LWC) value from PAYLOAD_FLOAT data
+ * - compute coef value from PAYLOAD_FLOAT data
+ *   - Liquid Water Content (LWC)
+ *   - Angstrom coef
+ *   - single sensor
  * - get already computed LWC from PAYLOAD_COMMAND data
  */
 
@@ -32,11 +35,17 @@
 
 #include "std.h"
 
+#define CLOUD_SENSOR_COEF_NONE      0
+#define CLOUD_SENSOR_COEF_SINGLE    1
+#define CLOUD_SENSOR_COEF_ANGSTROM  2
+
 /**
  * variables for settings
  */
-extern bool cloud_sensor_compute_lwc;
+extern uint8_t cloud_sensor_compute_coef;
 extern float cloud_sensor_threshold;
+extern float cloud_sensor_background;
+extern bool cloud_sensor_compute_background;
 
 /** Init function
  */

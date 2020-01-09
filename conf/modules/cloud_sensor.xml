@@ -11,8 +11,10 @@
   <settings>
     <dl_settings NAME="CloudSensor">
       <dl_settings NAME="Cloud">
-        <dl_setting MAX="1" MIN="0" STEP="1" VAR="cloud_sensor_compute_lwc" module="meteo/cloud_sensor" values="OFF|ON"/>
+        <dl_setting MAX="2" MIN="0" STEP="1" VAR="cloud_sensor_compute_coef" module="meteo/cloud_sensor" values="NONE|SINGLE|ANGSTROM"/>
         <dl_setting max="1." min="0." step="0.01" var="cloud_sensor_threshold" module="meteo/cloud_sensor"/>
+        <dl_setting max="1." min="0." step="0.01" var="cloud_sensor_background" module="meteo/cloud_sensor"/>
+        <dl_setting MAX="1" MIN="1" STEP="1" VAR="cloud_sensor_compute_background" module="meteo/cloud_sensor"/>
       </dl_settings>
     </dl_settings>
   </settings>

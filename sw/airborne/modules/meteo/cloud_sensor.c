@@ -60,14 +60,14 @@
 #define CLOUD_SENSOR_OFFSET 4
 #endif
 
-// LWC threshold for cloud border
-#ifndef LWC_BORDER_THRESHOLD
-#define LWC_BORDER_THRESHOLD 0.05
+// threshold for cloud border
+#ifndef CLOUD_SENSOR_BORDER_THRESHOLD
+#define CLOUD_SENSOR_BORDER_THRESHOLD 0.05
 #endif
 
 // Type of data
-#define LWC_RAW 0 // LWC value
-#define LWC_BORDER 1 // crossing border
+#define CLOUD_RAW 0 // LWC value
+#define CLOUD_BORDER 1 // crossing border
 
 // Default frequencies of cloud sensor leds
 // blue, orange, iri1, iri2
@@ -78,11 +78,11 @@ static float lambdas[] = CLOUD_SENSOR_LAMBDA;
 
 /**
  * Structure used to compute the linear regression that provides the
- * angstrom coefficient related to LWC.
+ * angstrom coefficient.
  * The slope of the linear regression is computed as cov(X,Y)/var(X).
  * var(X) can be precomputed as LED frequencies are not changing.
  */
-struct LWCLinReg {
+struct LinReg {
   float lambda[CLOUD_SENSOR_NB];  ///< list of sensor LED frequencies
   float var_lambda;               ///< variance of lambda
 };
@@ -92,9 +92,9 @@ struct LWCLinReg {
 struct CloudSensor {
   float raw[CLOUD_SENSOR_RAW_MAX];  ///< raw cloud sensor values
   float values[CLOUD_SENSOR_NB];    ///< preprocessed cloud sensor values
-  float lwc;                        ///< computed LWC value
+  float coef;                       ///< scalar coeff related to cloud parameter (LWC, angstrom, extinction,...)
   bool inside_cloud;                ///< in/out status flag
-  struct LWCLinReg reg;             ///< linear regression parameters
+  struct LinReg reg;                ///< linear regression parameters
   uint8_t nb_raw;                   ///< number of raw data in array
 };
 
@@ -102,8 +102,9 @@ static struct CloudSensor cloud_sensor;
 
 /** Extern variables
  */
-bool cloud_sensor_compute_lwc;
+bool cloud_sensor_compute_coef;
 float cloud_sensor_threshold;
+float cloud_sensor_background;
 
 // handle precomputed LWC
 static float lwc_from_buffer(uint8_t *buf)
@@ -124,7 +125,7 @@ static void send_cloud_sensor_data(struct transport_tx *trans, struct link_devic
       &stateGetPositionLla_i()->lon,
       &gps.hmsl,
       &gps.tow,
-      &cloud_sensor.lwc,
+      &cloud_sensor.coef,
       CLOUD_SENSOR_NB,
       cloud_sensor.raw);
 }
@@ -161,10 +162,10 @@ static void border_send_shot_position(void)
 // test border crossing
 static void check_border(void)
 {
-  if (cloud_sensor.lwc > cloud_sensor_threshold && cloud_sensor.inside_cloud == false) {
+  if (cloud_sensor.coef > cloud_sensor_threshold && cloud_sensor.inside_cloud == false) {
     border_send_shot_position();
     cloud_sensor.inside_cloud = true;
-  } else if (cloud_sensor.lwc <= cloud_sensor_threshold && cloud_sensor.inside_cloud == true) {
+  } else if (cloud_sensor.coef <= cloud_sensor_threshold && cloud_sensor.inside_cloud == true) {
     border_send_shot_position();
     cloud_sensor.inside_cloud = false;
   }
@@ -173,9 +174,9 @@ static void check_border(void)
 // send ABI message
 static void send_data(uint32_t stamp)
 {
-  AbiSendMsgPAYLOAD_DATA(CLOUD_SENSOR_ID, stamp, LWC_RAW, sizeof(float), (uint8_t *)(&cloud_sensor.lwc));
+  AbiSendMsgPAYLOAD_DATA(CLOUD_SENSOR_ID, stamp, CLOUD_RAW, sizeof(float), (uint8_t *)(&cloud_sensor.coef));
   uint8_t inside = (uint8_t) cloud_sensor.inside_cloud;
-  AbiSendMsgPAYLOAD_DATA(CLOUD_SENSOR_ID, stamp, LWC_BORDER, 1, &inside);
+  AbiSendMsgPAYLOAD_DATA(CLOUD_SENSOR_ID, stamp, CLOUD_BORDER, 1, &inside);
 }
 
 // init
@@ -185,14 +186,15 @@ void cloud_sensor_init(void)
     cloud_sensor.values[i] = 0.f;
     cloud_sensor.reg.lambda[i] = logf(lambdas[i]);
   }
-  cloud_sensor.lwc = 0.f;
+  cloud_sensor.coef = 0.f;
   cloud_sensor.inside_cloud = false;
   cloud_sensor.reg.var_lambda = variance_f(cloud_sensor.reg.lambda, CLOUD_SENSOR_NB);
 
   cloud_sensor.nb_raw = 0;
 
-  cloud_sensor_compute_lwc = false;
+  cloud_sensor_compute_coef = CLOUD_SENSOR_COEF_SINGLE; // coef from single channel by default
   cloud_sensor_threshold = LWC_BORDER_THRESHOLD;
+  cloud_sensor_background = 0.f; // this should be found during the flight
 }
 
 void cloud_sensor_callback(uint8_t *buf)
@@ -203,24 +205,30 @@ void cloud_sensor_callback(uint8_t *buf)
   if (nb > 0) {
     // new data
     float *b = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
+    uint32_t stamp = get_sys_time_usec();
 
-    // check that frame is long enough
-    if ((nb >= CLOUD_SENSOR_OFFSET + CLOUD_SENSOR_NB) && cloud_sensor_compute_lwc) {
-      uint32_t stamp = get_sys_time_usec();
-
-      for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
-        cloud_sensor.values[i] = logf(b[i + CLOUD_SENSOR_OFFSET]);
-      }
-
-      // compute LWC with a linear regression from cloud sensor raw data
-      float cov = covariance_f(cloud_sensor.reg.lambda, cloud_sensor.values, CLOUD_SENSOR_NB);
-      float angstrom = cov / cloud_sensor.reg.var_lambda;
-      cloud_sensor.lwc = angstrom; // That's it ????
-
-      // test border crossing and send data over ABI
-      check_border();
-      send_data(stamp);
+    if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
+      // compute coef from a single channel
     }
+    else if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_ANGSTROM) {
+      // compute angstrom coef from available channels
+      // first check that frame is long enough
+      if ((nb >= CLOUD_SENSOR_OFFSET + CLOUD_SENSOR_NB)) {
+        for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
+          cloud_sensor.values[i] = logf(b[i + CLOUD_SENSOR_OFFSET]);
+        }
+
+        // compute coef with a linear regression from cloud sensor raw data
+        float cov = covariance_f(cloud_sensor.reg.lambda, cloud_sensor.values, CLOUD_SENSOR_NB);
+        float angstrom = cov / cloud_sensor.reg.var_lambda;
+        cloud_sensor.coef = angstrom; // That's it ????
+      }
+    }
+    // else the coef is computed elsewhere and is assumed available
+
+    // test border crossing and send data over ABI
+    check_border();
+    send_data(stamp);
 
     // store raw values
     memcpy(cloud_sensor.raw, b, cloud_sensor.nb_raw * sizeof(float));
@@ -229,10 +237,6 @@ void cloud_sensor_callback(uint8_t *buf)
     // Log on SD card in flight recorder
     if (*(CLOUD_SENSOR_LOG_FILE.file) != -1) {
       send_cloud_sensor_data(&pprzlog_tp.trans_tx, &(CLOUD_SENSOR_LOG_FILE).device);
-      //// store all buff to SD card
-      //float raw[nb];
-      //memcpy(raw, b, nb * sizeof(float));
-      //DOWNLINK_SEND_PAYLOAD_FLOAT(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, nb, raw);
     }
 #endif
 
@@ -245,7 +249,7 @@ void LWC_callback(uint8_t *buf)
     uint32_t stamp = get_sys_time_usec();
 
     // get LWC from ground or external computer
-    cloud_sensor.lwc = lwc_from_buffer(buf);
+    cloud_sensor.coef = lwc_from_buffer(buf);
 
     // test border crossing and send data over ABI
     check_border();
