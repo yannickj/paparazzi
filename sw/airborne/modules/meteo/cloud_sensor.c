@@ -23,7 +23,10 @@
  * @file "modules/meteo/cloud_sensor.c"
  *
  * Get data from Cloud Sensor
- * - compute Liquid Water Content (LWC) value from PAYLOAD_FLOAT data
+ * - compute coef value from PAYLOAD_FLOAT data
+ *   - Liquid Water Content (LWC)
+ *   - Angstrom coef
+ *   - single sensor
  * - get already computed LWC from PAYLOAD_COMMAND data
  */
 
@@ -65,16 +68,38 @@
 #define CLOUD_SENSOR_BORDER_THRESHOLD 0.05
 #endif
 
+// default cloud sensor channel for single detection
+#ifndef CLOUD_SENSOR_SINGLE_CHANNEL
+#define CLOUD_SENSOR_SINGLE_CHANNEL 1
+#endif
+
+// default coef for auto-threshold from background data
+#ifndef CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF
+#define CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF 2.f
+#endif
+
 // Type of data
 #define CLOUD_RAW 0 // LWC value
 #define CLOUD_BORDER 1 // crossing border
 
-// Default frequencies of cloud sensor leds
+// default frequencies of cloud sensor leds
 // blue, orange, iri1, iri2
 #ifndef CLOUD_SENSOR_LAMBDA
 #define CLOUD_SENSOR_LAMBDA { 505.f, 590.f, 840.f, 840.f }
 #endif
 static float lambdas[] = CLOUD_SENSOR_LAMBDA;
+
+// default calibration coefficient for Angstrom coef
+#ifndef CLOUD_SENSOR_ANGSTROM_COEF
+#define CLOUD_SENSOR_ANGSTROM_COEF { 1.f, 1.f, 1.f, 1.f }
+#endif
+static float angstrom_coef[] = CLOUD_SENSOR_ANGSTROM_COEF;
+
+// default calibration offset for Angstrom coef
+#ifndef CLOUD_SENSOR_ANGSTROM_OFFSET
+#define CLOUD_SENSOR_ANGSTROM_OFFSET { 1.f, 1.f, 1.f, 1.f }
+#endif
+static float angstrom_offset[] = CLOUD_SENSOR_ANGSTROM_OFFSET;
 
 /**
  * Structure used to compute the linear regression that provides the
@@ -87,6 +112,22 @@ struct LinReg {
   float var_lambda;               ///< variance of lambda
 };
 
+// number of samples to compute the background caracteristics
+#ifndef CLOUD_SENSOR_BACKGROUND_NB
+#define CLOUD_SENSOR_BACKGROUND_NB 30
+#endif
+
+/**
+ * Structure used to compute the background and the threshold
+ * which is a list of raw data, the mean and the standard deviation
+ */
+struct Background {
+  float raw[CLOUD_SENSOR_NB][CLOUD_SENSOR_BACKGROUND_NB]; ///< lists of raw values
+  float mean[CLOUD_SENSOR_NB];                            ///< mean of the lists
+  float std[CLOUD_SENSOR_NB];                             ///< std of the lists
+  uint8_t idx;                                            ///< current index
+};
+
 /** Cloud sensor structure
  */
 struct CloudSensor {
@@ -95,6 +136,7 @@ struct CloudSensor {
   float coef;                       ///< scalar coeff related to cloud parameter (LWC, angstrom, extinction,...)
   bool inside_cloud;                ///< in/out status flag
   struct LinReg reg;                ///< linear regression parameters
+  struct Background background;     ///< structure for background parameters
   uint8_t nb_raw;                   ///< number of raw data in array
 };
 
@@ -102,7 +144,8 @@ static struct CloudSensor cloud_sensor;
 
 /** Extern variables
  */
-bool cloud_sensor_compute_coef;
+uint8_t cloud_sensor_compute_coef;
+uint8_t cloud_sensor_compute_background;
 float cloud_sensor_threshold;
 float cloud_sensor_background;
 
@@ -185,6 +228,9 @@ void cloud_sensor_init(void)
   for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
     cloud_sensor.values[i] = 0.f;
     cloud_sensor.reg.lambda[i] = logf(lambdas[i]);
+    cloud_sensor.background.mean[i] = 0.f;
+    cloud_sensor.background.std[i] = -1.f; // means invalid data or not ready
+    cloud_sensor.background.idx = 0;
   }
   cloud_sensor.coef = 0.f;
   cloud_sensor.inside_cloud = false;
@@ -193,7 +239,7 @@ void cloud_sensor_init(void)
   cloud_sensor.nb_raw = 0;
 
   cloud_sensor_compute_coef = CLOUD_SENSOR_COEF_SINGLE; // coef from single channel by default
-  cloud_sensor_threshold = LWC_BORDER_THRESHOLD;
+  cloud_sensor_threshold = CLOUD_SENSOR_BORDER_THRESHOLD;
   cloud_sensor_background = 0.f; // this should be found during the flight
 }
 
@@ -204,34 +250,95 @@ void cloud_sensor_callback(uint8_t *buf)
 
   if (nb > 0) {
     // new data
-    float *b = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
+    float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
     uint32_t stamp = get_sys_time_usec();
 
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
-      // compute coef from a single channel
+      const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
+      // first check that frame is long enough
+      if (nb > CLOUD_SENSOR_OFFSET + channel) {
+        if (cloud_sensor_compute_background) {
+          // store a list of raw values
+          uint8_t idx = cloud_sensor.background.idx;
+          cloud_sensor.background.raw[channel][idx++] = values[CLOUD_SENSOR_OFFSET + channel];
+          if (idx == CLOUD_SENSOR_BACKGROUND_NB) {
+            // raw value buffer is full
+            // compute the background as the mean of the list
+            // compute threshold as n-times the std of the list
+            cloud_sensor.background.mean[channel] = mean_f(cloud_sensor.background.raw[channel], idx);
+            cloud_sensor.background.std[channel] = sqrtf(variance_f(cloud_sensor.background.raw[channel], idx));
+            // use the copy to be able to change the value by hand from settings
+            cloud_sensor_background = cloud_sensor.background.mean[channel];
+            // set the threshold
+            cloud_sensor_threshold = CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF * cloud_sensor.background.std[channel];
+            // reset index
+            cloud_sensor.background.idx = 0;
+            // end procedure
+            cloud_sensor_compute_background = 0;
+          }
+          else {
+            cloud_sensor.background.idx = idx; // increment index
+          }
+        }
+        else {
+          // normal run
+          // compute coef from a single channel
+          cloud_sensor.coef = values[CLOUD_SENSOR_OFFSET + channel] - cloud_sensor_background;
+          // test border crossing and send data over ABI
+          check_border();
+          send_data(stamp);
+        }
+      }
     }
     else if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_ANGSTROM) {
       // compute angstrom coef from available channels
       // first check that frame is long enough
       if ((nb >= CLOUD_SENSOR_OFFSET + CLOUD_SENSOR_NB)) {
-        for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
-          cloud_sensor.values[i] = logf(b[i + CLOUD_SENSOR_OFFSET]);
+        if (cloud_sensor_compute_background) {
+          uint8_t idx = cloud_sensor.background.idx;
+          // store a list of raw values for all channels
+          for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
+            cloud_sensor.background.raw[idx][i] = values[CLOUD_SENSOR_OFFSET + i];
+          }
+          idx++;
+          if (idx == CLOUD_SENSOR_BACKGROUND_NB) {
+            // raw value buffer is full
+            // compute the background as the mean of the list
+            for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
+              cloud_sensor.background.mean[i] = mean_f(cloud_sensor.background.raw[i], idx);
+              cloud_sensor.background.std[i] = sqrtf(variance_f(cloud_sensor.background.raw[i], idx));
+            }
+            // reset index
+            cloud_sensor.background.idx = 0;
+            // end procedure
+            cloud_sensor_compute_background = 0;
+          }
+          else {
+            cloud_sensor.background.idx = idx; // increment index
+          }
         }
+        else {
+          // normal run
+          for (int i = 0; i < CLOUD_SENSOR_NB; i++) {
+            float scaled = (values[CLOUD_SENSOR_OFFSET + i] - cloud_sensor.background.mean[i]) * angstrom_coef[i] + angstrom_offset[i];
+            cloud_sensor.values[i] = logf(scaled);
+          }
 
-        // compute coef with a linear regression from cloud sensor raw data
-        float cov = covariance_f(cloud_sensor.reg.lambda, cloud_sensor.values, CLOUD_SENSOR_NB);
-        float angstrom = cov / cloud_sensor.reg.var_lambda;
-        cloud_sensor.coef = angstrom; // That's it ????
+          // compute coef with a linear regression from cloud sensor raw data
+          float cov = covariance_f(cloud_sensor.reg.lambda, cloud_sensor.values, CLOUD_SENSOR_NB);
+          float angstrom = cov / cloud_sensor.reg.var_lambda;
+          cloud_sensor.coef = angstrom; // That's it ????
+
+          // test border crossing and send data over ABI
+          check_border();
+          send_data(stamp);
+        }
       }
     }
-    // else the coef is computed elsewhere and is assumed available
-
-    // test border crossing and send data over ABI
-    check_border();
-    send_data(stamp);
+    // else don't check border from sensor
 
     // store raw values
-    memcpy(cloud_sensor.raw, b, cloud_sensor.nb_raw * sizeof(float));
+    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
 
 #if CLOUD_SENSOR_LOG_FILE
     // Log on SD card in flight recorder
