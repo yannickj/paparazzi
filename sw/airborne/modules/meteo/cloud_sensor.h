@@ -45,6 +45,7 @@
 extern uint8_t cloud_sensor_compute_coef;
 extern uint8_t cloud_sensor_compute_background;
 extern float cloud_sensor_threshold;
+extern float cloud_sensor_hysteresis;
 extern float cloud_sensor_background;
 
 /** Init function

@@ -68,6 +68,11 @@
 #define CLOUD_SENSOR_BORDER_THRESHOLD 0.05
 #endif
 
+// histeresis for cloud border
+#ifndef CLOUD_SENSOR_BORDER_HYSTERESIS
+#define CLOUD_SENSOR_BORDER_HYSTERESIS 0.01
+#endif
+
 // default cloud sensor channel for single detection
 #ifndef CLOUD_SENSOR_SINGLE_CHANNEL
 #define CLOUD_SENSOR_SINGLE_CHANNEL 1
@@ -76,6 +81,11 @@
 // default coef for auto-threshold from background data
 #ifndef CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF
 #define CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF 2.f
+#endif
+
+// default coef for auto-hysteresis from background data
+#ifndef CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF
+#define CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF 0.5f
 #endif
 
 // Type of data
@@ -147,6 +157,7 @@ static struct CloudSensor cloud_sensor;
 uint8_t cloud_sensor_compute_coef;
 uint8_t cloud_sensor_compute_background;
 float cloud_sensor_threshold;
+float cloud_sensor_hysteresis;
 float cloud_sensor_background;
 
 // handle precomputed LWC
@@ -205,10 +216,10 @@ static void border_send_shot_position(void)
 // test border crossing
 static void check_border(void)
 {
-  if (cloud_sensor.coef > cloud_sensor_threshold && cloud_sensor.inside_cloud == false) {
+  if (cloud_sensor.coef > (cloud_sensor_threshold + cloud_sensor_hysteresis) && cloud_sensor.inside_cloud == false) {
     border_send_shot_position();
     cloud_sensor.inside_cloud = true;
-  } else if (cloud_sensor.coef <= cloud_sensor_threshold && cloud_sensor.inside_cloud == true) {
+  } else if (cloud_sensor.coef <= (cloud_sensor_threshold - cloud_sensor_hysteresis) && cloud_sensor.inside_cloud == true) {
     border_send_shot_position();
     cloud_sensor.inside_cloud = false;
   }
@@ -240,6 +251,7 @@ void cloud_sensor_init(void)
 
   cloud_sensor_compute_coef = CLOUD_SENSOR_COEF_SINGLE; // coef from single channel by default
   cloud_sensor_threshold = CLOUD_SENSOR_BORDER_THRESHOLD;
+  cloud_sensor_hysteresis = CLOUD_SENSOR_BORDER_HYSTERESIS;
   cloud_sensor_background = 0.f; // this should be found during the flight
 }
 
@@ -271,6 +283,7 @@ void cloud_sensor_callback(uint8_t *buf)
             cloud_sensor_background = cloud_sensor.background.mean[channel];
             // set the threshold
             cloud_sensor_threshold = CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF * cloud_sensor.background.std[channel];
+            cloud_sensor_hysteresis = CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF * cloud_sensor.background.std[channel];
             // reset index
             cloud_sensor.background.idx = 0;
             // end procedure
@@ -308,6 +321,7 @@ void cloud_sensor_callback(uint8_t *buf)
               cloud_sensor.background.mean[i] = mean_f(cloud_sensor.background.raw[i], idx);
               cloud_sensor.background.std[i] = sqrtf(variance_f(cloud_sensor.background.raw[i], idx));
             }
+            // TODO compute some threshold and hysteresis
             // reset index
             cloud_sensor.background.idx = 0;
             // end procedure
