@@ -37,11 +37,14 @@
 #include "subsystems/abi.h"
 #include "pprzlink/messages.h"
 #include "subsystems/datalink/downlink.h"
-#include "modules/loggers/sdlog_chibios.h"
-#include "modules/loggers/pprzlog_tp.h"
 #include "math/pprz_geodetic_float.h"
 #include "math/pprz_stat.h"
 #include "subsystems/gps.h"
+
+#ifndef SITL
+#include "modules/loggers/sdlog_chibios.h"
+#include "modules/loggers/pprzlog_tp.h"
+#endif
 
 // log to flight recorder by default
 #ifndef CLOUD_SENSOR_LOG_FILE
