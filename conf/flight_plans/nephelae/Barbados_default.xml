@@ -2,42 +2,41 @@
 
 <flight_plan alt="100.0" ground_alt="20.0" lat0="13.300651" lon0="-59.578546" max_dist_from_home="9800" name="cove_bay" security_height="50">
   <header>
-#include "subsystems/datalink/datalink.h"
+
 </header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="180.0" y="180.0"/>
-    <waypoint name="CLIMB" x="2000.0" y="0.0"/>
+    <waypoint name="CLIMB" x="385.3" y="482.9"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
-    <waypoint alt="50.0" name="AF" x="-70.0" y="70.0"/>
-    <waypoint alt="20.0" name="TD" x="100.0" y="-90.0"/>
-
-    <waypoint alt="150.0" name="W1" x="800.0" y="0.0"/>
-    <waypoint alt="1500.0" name="CLOUDBASE" x="3000.0" y="0.0"/>
-    <waypoint alt="1500.0" name="H1_1" x="8000.0" y="2000.0"/>
-    <waypoint alt="1500.0" name="H1_2" x="8000.0" y="-2000.0"/>
-    
-    <waypoint lat="13.298385" lon="-59.578523" name="_01"/>
-    <waypoint lat="13.291041" lon="-59.565363" name="_02"/>
-    <waypoint lat="13.276780" lon="-59.565541" name="_03"/>
-    <waypoint lat="13.278572" lon="-59.492050" name="_04"/>
-    <waypoint lat="13.299630" lon="-59.489585" name="_05"/>  
-    <waypoint lat="13.323965" lon="-59.492169" name="_06"/>
-    <waypoint lat="13.321936" lon="-59.565756" name="_07"/>  
-    <waypoint lat="13.306452" lon="-59.575972" name="_08"/> 
-    <waypoint lat="13.303382" lon="-59.582268" name="_09"/>  
-    <waypoint lat="13.300384" lon="-59.581200" name="_10"/>
-
-    <waypoint lat="13.294343" lon="-59.572796" name="_11"/>
-    <waypoint lat="13.307826" lon="-59.572670" name="_12"/>
-    <waypoint lat="13.307805" lon="-59.568028" name="_13"/>
-    <waypoint lat="13.294313" lon="-59.568131" name="_14"/>
-
-    <waypoint lat="13.278611" lon="-59.541914" name="_21"/>
-    <waypoint lat="13.2806707" lon="-59.4943187" name="_22"/>
-    <waypoint lat="13.3214882" lon="-59.4934485" name="_23"/>
-    <waypoint lat="13.320675" lon="-59.540772" name="_24"/>
-
+    <waypoint alt="50.0" name="AF" x="-30.7" y="28.9"/>
+    <waypoint alt="20.0" name="TD" x="150.9" y="30.3"/>
+    <waypoint alt="150.0" name="W1" x="378.5" y="-75.2"/>
+    <waypoint alt="150.0" name="W2" x="350.0" y="20.7"/>
+    <waypoint alt="150.0" name="W3" x="261.6" y="110.4"/>
+    <waypoint alt="150.0" name="W4" x="230.0" y="297.6"/>
+    <waypoint alt="1500.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
+    <waypoint alt="1500.0" name="H1_1" x="7639.4" y="2214.9"/>
+    <waypoint alt="1500.0" name="H1_2" x="7947.4" y="1203.4"/>
+    <waypoint alt="1500.0" name="H2_1" x="7394.6" y="3380.4"/>
+    <waypoint alt="1500.0" name="H2_2" x="7761.9" y="2421.5"/>
+    <waypoint alt="1500.0" name="H3_1" x="8238.3" y="1068.2"/>
+    <waypoint alt="1500.0" name="H3_2" x="8321.5" y="-28.3"/>
+    <waypoint lat="13.296663" lon="-59.576528" name="_01"/>
+    <waypoint lat="13.293042" lon="-59.488854" name="_02"/>
+    <waypoint lat="13.320501" lon="-59.491219" name="_03"/>
+    <waypoint lat="13.347209" lon="-59.502527" name="_04"/>
+    <waypoint lat="13.308691" lon="-59.576429" name="_05"/>
+    <waypoint lat="13.303382" lon="-59.582268" name="_06"/>
+    <waypoint lat="13.300384" lon="-59.581200" name="_07"/>
+    <waypoint lat="13.299076" lon="-59.576226" name="_11"/>
+    <waypoint lat="13.305641" lon="-59.577908" name="_12"/>
+    <waypoint lat="13.307933" lon="-59.573073" name="_13"/>
+    <waypoint lat="13.298902" lon="-59.571370" name="_14"/>
+    <waypoint lat="13.299032" lon="-59.570138" name="_21"/>
+    <waypoint lat="13.297603" lon="-59.492261" name="_22"/>
+    <waypoint lat="13.341396" lon="-59.503517" name="_23"/>
+    <waypoint lat="13.308544" lon="-59.571768" name="_24"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlightZone">
@@ -48,9 +47,6 @@
       <corner name="_05"/>
       <corner name="_06"/>
       <corner name="_07"/>
-      <corner name="_08"/>
-      <corner name="_09"/>
-      <corner name="_10"/>
     </sector>
     <sector color="yellow" name="WaitingZone">
       <corner name="_11"/>
@@ -65,7 +61,6 @@
       <corner name="_24"/>
     </sector>
   </sectors>
-
   <variables>
     <variable init="800.f" max="2500." min="100.0" step="1." type="float" var="cloud_alt"/>
     <variable init="100." max="200." min="80." step="1." type="float" var="secure_alt"/>
@@ -73,19 +68,16 @@
     <variable init="1.0" max="4.0" min="1.0" step="0.5" type="float" var="v_climb"/>
     <variable init="-1.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
   </variables>
-
   <modules>
     <module name="mission" type="fw"/>
     <module name="nav" type="flower"/>
     <module name="nav" type="lace"/>
     <module name="nav" type="rosette"/>
-    <module name="lwc_sim"/>
+    <module name="cloud_sensor"/>
   </modules>
-
   <exceptions>
     <exception cond="datalink_time > 20" deroute="Standby"/>
   </exceptions>
-
   <blocks>
     <block name="Wait GPS">
       <set value="1" var="autopilot.kill_throttle"/>
@@ -93,7 +85,6 @@
     </block>
     <block name="Geo init">
       <while cond="LessThan(NavBlockTime(), 10)"/>
-      <!--call_once fun="NavSetGroundReferenceHere()"/-->
     </block>
     <block name="Holding point">
       <set value="1" var="autopilot.kill_throttle"/>
@@ -108,40 +99,32 @@
     <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
-
     <block name="Waiting state">
       <circle radius="nav_radius" wp="W1"/>
     </block>
-
     <block name="Linear climb cloud base level">
       <go from="W1" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle climb cloud base level"/>
     </block>
-
     <block name="Circle climb cloud base level">
-      <circle radius="nav_radius" wp="CLOUDBASE" vmode="climb" climb="v_climb" until="GetPosAlt() > GetAltRef() + cloud_alt "/>
+      <circle climb="v_climb" radius="nav_radius" until="GetPosAlt() > GetAltRef() + cloud_alt " vmode="climb" wp="CLOUDBASE"/>
       <deroute block="Searching cloud"/>
     </block>
-
     <block name="Searching cloud">
       <oval p1="H1_1" p2="H1_2" radius="500.0"/>
     </block>
-
-    <block name="Mission" strip_button="Mission" group="mission">
+    <block group="mission" name="Mission" strip_button="Mission">
       <call fun="mission_run()"/>
       <deroute block="Standby"/>
     </block>
-
     <block name="Linear descent">
       <go from="H1_1" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle descent"/>
     </block>
-
     <block name="Circle descent">
-      <circle radius="nav_radius" wp="CLOUDBASE" vmode="climb" climb="v_descent" until="GetAltRef() + secure_alt > GetPosAlt()"/>
+      <circle climb="v_descent" radius="nav_radius" until="GetAltRef() + secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
       <deroute block="Waiting state"/>
     </block>
-
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
       <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
       <deroute block="land"/>
