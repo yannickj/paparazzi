@@ -495,6 +495,7 @@ let log_and_parse = fun ac_name (a:Aircraft.aircraft) msg values ->
       a.course  <- norm_course (fvalue "course");
       if !heading_from_course || a.vehicle_type == FixedWing then
         a.heading <- a.course;
+      a.climb   <- fvalue "climb";
       a.agl <- a.alt -. (try float (Srtm.of_wgs84 a.pos) with _ -> a.ground_alt);
       a.bat <- fvalue "vsupply";
       a.throttle <- fvalue "throttle";
