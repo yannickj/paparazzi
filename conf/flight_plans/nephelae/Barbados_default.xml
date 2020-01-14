@@ -1,9 +1,14 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="100.0" ground_alt="20.0" lat0="13.300651" lon0="-59.578546" max_dist_from_home="9800" name="cove_bay" security_height="50">
+<flight_plan alt="100.0" ground_alt="20.0" lat0="13.300651" lon0="-59.578546" max_dist_from_home="9800" name="cove_bay" security_height="70.">
   <header>
-    #include "subsystems/datalink/datalink.h"
-</header>
+#include "subsystems/datalink/datalink.h"
+
+#define WaitPointFromID() { \
+fp_wait_wp = WP_W1 + (AC_ID % 4); \
+fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
+}
+  </header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="180.0" y="180.0"/>
@@ -68,6 +73,8 @@
     <variable init="100." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
     <variable init="2.0" max="4.0" min="1.0" step="0.5" type="float" var="v_climb"/>
     <variable init="-2.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
+    <variable init="1" max="20" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
+    <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
   </variables>
   <modules>
     <module name="mission" type="fw"/>
@@ -88,6 +95,7 @@
       <while cond="LessThan(NavBlockTime(), 10)"/>
     </block>
     <block name="Holding point">
+      <call_once fun="WaitPointFromID()"/>
       <set value="1" var="autopilot.kill_throttle"/>
       <attitude roll="0" throttle="0" vmode="throttle"/>
     </block>
