@@ -200,7 +200,7 @@ static void meteo_stick_send_data(struct transport_tx *trans, struct link_device
 #if LOG_MS
 #include "modules/loggers/sdlog_chibios.h"
 #include "subsystems/gps.h"
-bool log_ptu_started;
+static bool log_ptu_started;
 
 static inline void meteo_stick_log_data_ascii(void)
 {
@@ -269,10 +269,27 @@ static inline void meteo_stick_log_data_ascii(void)
 #if LOG_MS_FLIGHTRECORDER
 #include "modules/loggers/sdlog_chibios.h"
 #include "modules/loggers/pprzlog_tp.h"
+static bool log_tagged;
 
 static inline void meteo_stick_log_data_fr(void)
 {
   if (*(MS_LOG_FILE.file) != -1) {
+    if (log_tagged == false && GpsFixValid()) {
+      // write at least once ALIVE and GPS messages
+      // to log for correct extraction of binary data
+      DOWNLINK_SEND_ALIVE(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, 16, MD5SUM);
+      // Log GPS for time reference
+      uint8_t foo_u8 = 0;
+      int16_t foo_16 = 0;
+      uint16_t foo_u16 = 0;
+      struct UtmCoor_f utm = *stateGetPositionUtm_f();
+      int32_t east = utm.east * 100;
+      int32_t north = utm.north * 100;
+      DOWNLINK_SEND_GPS(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, &gps.fix,
+          &east, &north, &foo_16, &gps.hmsl, &foo_u16, &foo_16,
+          &gps.week, &gps.tow, &utm.zone, &foo_u8);
+      log_tagged = true;
+    }
     meteo_stick_send_data(&pprzlog_tp.trans_tx, &(MS_LOG_FILE).device);
   }
 }
@@ -349,6 +366,9 @@ void meteo_stick_init(void)
 
 #if LOG_MS
   log_ptu_started = false;
+#endif
+#if LOG_MS_FLIGHTRECORDER
+  log_tagged = false;
 #endif
 }
 

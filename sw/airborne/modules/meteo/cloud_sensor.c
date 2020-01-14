@@ -153,7 +153,10 @@ struct CloudSensor {
   uint8_t nb_raw;                   ///< number of raw data in array
 };
 
+/** Local variables
+ */
 static struct CloudSensor cloud_sensor;
+static bool log_tagged;
 
 /** Extern variables
  */
@@ -256,6 +259,8 @@ void cloud_sensor_init(void)
   cloud_sensor_threshold = CLOUD_SENSOR_BORDER_THRESHOLD;
   cloud_sensor_hysteresis = CLOUD_SENSOR_BORDER_HYSTERESIS;
   cloud_sensor_background = 0.f; // this should be found during the flight
+
+  log_tagged = false;
 }
 
 void cloud_sensor_callback(uint8_t *buf)
@@ -360,6 +365,22 @@ void cloud_sensor_callback(uint8_t *buf)
 #if CLOUD_SENSOR_LOG_FILE
     // Log on SD card in flight recorder
     if (*(CLOUD_SENSOR_LOG_FILE.file) != -1) {
+      if (log_tagged == false && GpsFixValid()) {
+        // write at least once ALIVE and GPS messages
+        // to log for correct extraction of binary data
+        DOWNLINK_SEND_ALIVE(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, 16, MD5SUM);
+        // Log GPS for time reference
+        uint8_t foo_u8 = 0;
+        int16_t foo_16 = 0;
+        uint16_t foo_u16 = 0;
+        struct UtmCoor_f utm = *stateGetPositionUtm_f();
+        int32_t east = utm.east * 100;
+        int32_t north = utm.north * 100;
+        DOWNLINK_SEND_GPS(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, &gps.fix,
+                          &east, &north, &foo_16, &gps.hmsl, &foo_u16, &foo_16,
+                          &gps.week, &gps.tow, &utm.zone, &foo_u8);
+        log_tagged = true;
+      }
       send_cloud_sensor_data(&pprzlog_tp.trans_tx, &(CLOUD_SENSOR_LOG_FILE).device);
     }
 #endif
