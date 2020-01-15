@@ -5,8 +5,8 @@
 #include "subsystems/datalink/datalink.h"
 
 #define WaitPointFromID() { \
-fp_wait_wp = WP_W1 + (AC_ID % 4); \
-fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
+fp_wait_wp = 1 + (AC_ID % 3); \
+fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
 }
   </header>
   <waypoints>
@@ -17,32 +17,31 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
     <waypoint name="_HERE" x="100." y="-100."/>
     <waypoint alt="50.0" name="AF" x="-30.7" y="28.9"/>
     <waypoint alt="20.0" name="TD" x="150.9" y="30.3"/>
-    <waypoint alt="150.0" name="W1" x="378.5" y="-75.2"/>
-    <waypoint alt="150.0" name="W2" x="350.0" y="20.7"/>
-    <waypoint alt="150.0" name="W3" x="261.6" y="110.4"/>
-    <waypoint alt="150.0" name="W4" x="230.0" y="297.6"/>
-    <waypoint alt="1500.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
-    <waypoint alt="1500.0" name="H1_1" x="7639.4" y="2214.9"/>
-    <waypoint alt="1500.0" name="H1_2" x="7947.4" y="1203.4"/>
-    <waypoint alt="1500.0" name="H2_1" x="7394.6" y="3380.4"/>
-    <waypoint alt="1500.0" name="H2_2" x="7761.9" y="2421.5"/>
-    <waypoint alt="1500.0" name="H3_1" x="8238.3" y="1068.2"/>
-    <waypoint alt="1500.0" name="H3_2" x="8321.5" y="-28.3"/>
-    <waypoint lat="13.296663" lon="-59.576528" name="_01"/>
-    <waypoint lat="13.293042" lon="-59.488854" name="_02"/>
-    <waypoint lat="13.320501" lon="-59.491219" name="_03"/>
+    <waypoint alt="150.0" name="W1" x="255.3" y="-115.0"/>
+    <waypoint alt="150.0" name="W2" x="240.7" y="31.8"/>
+    <waypoint alt="150.0" name="W3" x="208.4" y="255.7"/>
+    <waypoint alt="800.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
+    <waypoint alt="800.0" name="H1_1" x="7639.4" y="2214.9"/>
+    <waypoint alt="800.0" name="H1_2" x="7947.4" y="1203.4"/>
+    <waypoint alt="800.0" name="H2_1" x="7394.6" y="3380.4"/>
+    <waypoint alt="800.0" name="H2_2" x="7761.9" y="2421.5"/>
+    <waypoint alt="800.0" name="H3_1" x="8238.3" y="1068.2"/>
+    <waypoint alt="800.0" name="H3_2" x="8321.5" y="-28.3"/>
+    <waypoint lat="13.300384" lon="-59.581200" name="_01"/>
+    <waypoint lat="13.303382" lon="-59.582268" name="_02"/>
+    <waypoint lat="13.308691" lon="-59.576429" name="_03"/>
     <waypoint lat="13.347209" lon="-59.502527" name="_04"/>
-    <waypoint lat="13.308691" lon="-59.576429" name="_05"/>
-    <waypoint lat="13.303382" lon="-59.582268" name="_06"/>
-    <waypoint lat="13.300384" lon="-59.581200" name="_07"/>
-    <waypoint lat="13.299076" lon="-59.576226" name="_11"/>
-    <waypoint lat="13.305641" lon="-59.577908" name="_12"/>
+    <waypoint lat="13.320501" lon="-59.491219" name="_05"/>
+    <waypoint lat="13.293042" lon="-59.488854" name="_06"/>
+    <waypoint lat="13.296663" lon="-59.576528" name="_07"/>
+    <waypoint lat="13.299036" lon="-59.577235" name="_11"/>
+    <waypoint lat="13.305050" lon="-59.578690" name="_12"/>
     <waypoint lat="13.307933" lon="-59.573073" name="_13"/>
     <waypoint lat="13.298902" lon="-59.571370" name="_14"/>
-    <waypoint lat="13.299032" lon="-59.570138" name="_21"/>
-    <waypoint lat="13.297603" lon="-59.492261" name="_22"/>
-    <waypoint lat="13.341396" lon="-59.503517" name="_23"/>
-    <waypoint lat="13.308544" lon="-59.571768" name="_24"/>
+    <waypoint lat="13.308544" lon="-59.571768" name="_21"/>
+    <waypoint lat="13.341396" lon="-59.503517" name="_22"/>
+    <waypoint lat="13.297603" lon="-59.492261" name="_23"/>
+    <waypoint lat="13.299032" lon="-59.570138" name="_24"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlightZone">
@@ -73,7 +72,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
     <variable init="100." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
     <variable init="2.0" max="4.0" min="1.0" step="0.5" type="float" var="v_climb"/>
     <variable init="-2.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
-    <variable init="1" max="20" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
+    <variable init="1" max="3" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
     <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
   </variables>
   <modules>
@@ -108,17 +107,20 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
     <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
+    <block name="Auto wait" strip_button="Wait (Auto)" group="wait">
+      <exception cond="fp_wait_wp == 1" deroute="Wait 1"/>
+      <exception cond="fp_wait_wp == 2" deroute="Wait 2"/>
+      <exception cond="fp_wait_wp == 3" deroute="Wait 3"/>
+      <deroute block="Standby"/>
+    </block>
     <block name="Wait 1" strip_button="Wait 1" group="wait">
-      <circle radius="nav_radius" wp="W1"/>
+      <circle radius="nav_radius" wp="W1" alt="fp_wait_alt"/>
     </block>
     <block name="Wait 2" strip_button="Wait 2" group="wait">
-      <circle radius="nav_radius" wp="W2"/>
+      <circle radius="nav_radius" wp="W2" alt="fp_wait_alt"/>
     </block>
     <block name="Wait 3" strip_button="Wait 3" group="wait">
-      <circle radius="nav_radius" wp="W3"/>
-    </block>
-    <block name="Wait 4" strip_button="Wait 4" group="wait">
-      <circle radius="nav_radius" wp="W4"/>
+      <circle radius="nav_radius" wp="W3" alt="fp_wait_alt"/>
     </block>
     <block name="Linear climb 1" strip_button="Climb 1" group="search 1">
       <call_once fun="NavSetWaypointHere(WP__HERE)"/>
@@ -174,7 +176,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/4)) * 20.f; \
     </block>
     <block name="Circle descent">
       <circle climb="v_descent" radius="nav_radius" until="GetAltRef() + secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
-      <deroute block="Standby"/>
+      <deroute block="Auto wait"/>
     </block>
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
       <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
