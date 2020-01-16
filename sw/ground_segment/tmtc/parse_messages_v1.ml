@@ -503,6 +503,8 @@ let log_and_parse = fun ac_name (a:Aircraft.aircraft) msg values ->
       a.cur_block <- ivalue "nav_block";
       a.gps_mode <- check_index (ivalue "gps_mode") gps_modes "GPS_MODE";
       a.flight_time <- ivalue "flight_time";
+      if a.gspeed > 3. && a.ap_mode = _AUTO2 then
+        Wind.update ac_name a.gspeed a.course
     | "FORMATION_SLOT_TM" ->
       Dl_Pprz.message_send "ground_dl" "FORMATION_SLOT" values
     | "FORMATION_STATUS_TM" ->
