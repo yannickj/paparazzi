@@ -56,6 +56,7 @@ struct NavRosette {
   float direction;
   float radius;
   float radius_sign;
+  float last_border_time;
   int nb_border_point;
 };
 
@@ -68,15 +69,16 @@ static float change_rep(float dir)
   return M_PI_2 - dir;
 }
 
-static float calc_dist(struct EnuCoor_f *pos_actual, struct EnuCoor_f *pos_wanted){
-  float res = sqrtf(powf((pos_wanted->x - pos_actual->x),2) + powf((pos_wanted->y - pos_actual->y),2));
+//static float calc_dist(struct EnuCoor_f *pos_actual, struct EnuCoor_f *pos_wanted){
+//  float res = sqrtf(powf((pos_wanted->x - pos_actual->x),2) + powf((pos_wanted->y - pos_actual->y),2));
+//
+//  return res;
+//}
 
-  return res;
-}
-
-static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bary){
-  struct EnuCoor_f new_point;
-    nav_rosette.nb_border_point += 1;
+static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bary, float dt)
+{
+  //struct EnuCoor_f new_point;
+  nav_rosette.nb_border_point += 1;
 
   if(nav_rosette.nb_border_point == 1){
     bary->x = new_coord->x;
@@ -89,8 +91,9 @@ static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bar
   } else if(nav_rosette.nb_border_point >= 2){
     //new_point.x = ((nav_rosette.barycenter.x * (nav_rosette.nb_border_point - 1)) + new_coord->x ) / nav_rosette.nb_border_point;
     //new_point.y = ((nav_rosette.barycenter.y * (nav_rosette.nb_border_point - 1)) + new_coord->y ) / nav_rosette.nb_border_point;
-    bary->x = ((bary->x * 0.5) + (new_coord->x * 0.5));
-    bary->y = ((bary->y * 0.5) + (new_coord->y * 0.5));
+    float alpha = dt / (dt + 5.f);
+    bary->x = (bary->x * (1.f - alpha)) + (new_coord->x * alpha);
+    bary->y = (bary->y * (1.f - alpha)) + (new_coord->y * alpha);
     bary->z = new_coord->z;
 
     //printf("[2+]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
@@ -210,6 +213,7 @@ void nav_rosette_init(void)
   nav_rosette.status = RSTT_ENTER;
   nav_rosette.radius = DEFAULT_CIRCLE_RADIUS;
   nav_rosette.inside_cloud = false;
+  nav_rosette.last_border_time = 0.f;
 
   AbiBindMsgPAYLOAD_DATA(NAV_ROSETTE_LWC_ID, &lwc_ev, lwc_cb);
 
@@ -242,11 +246,13 @@ void nav_rosette_setup(float init_x, float init_y, float init_z,
   }
 
   nav_rosette.actual = *stateGetPositionEnu_f();
+  nav_rosette.last_border_time = get_sys_time_float();
 }
 
 bool nav_rosette_run(void)
 {
   float pre_climb = 0.f;
+  float t = get_sys_time_float();
 
   NavVerticalAutoThrottleMode(0.f); /* No Pitch */
 
@@ -259,7 +265,8 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_CROSSING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
+        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        nav_rosette.last_border_time = t;
       }
       break;
     case RSTT_CROSSING:
@@ -270,7 +277,8 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_TURNING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
+        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
       }
@@ -285,7 +293,8 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_CROSSING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter);
+        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.target = nav_rosette.barycenter;
       }
