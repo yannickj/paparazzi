@@ -95,6 +95,11 @@
 #define CLOUD_RAW 0 // LWC value
 #define CLOUD_BORDER 1 // crossing border
 
+// don't report border detection by default
+#ifndef CLOUD_SENSOR_REPORT_BORDER_CROSSING
+#define CLOUD_SENSOR_REPORT_BORDER_CROSSING FALSE
+#endif
+
 // default frequencies of cloud sensor leds
 // blue, orange, iri1, iri2
 #ifndef CLOUD_SENSOR_LAMBDA
@@ -190,6 +195,7 @@ static void send_cloud_sensor_data(struct transport_tx *trans, struct link_devic
       cloud_sensor.raw);
 }
 
+#if CLOUD_SENSOR_REPORT_BORDER_CROSSING
 // send DC_SHOT message when crossing border
 static void border_send_shot_position(void)
 {
@@ -218,15 +224,20 @@ static void border_send_shot_position(void)
 
   border_point_nr++;
 }
+#endif
 
 // test border crossing
 static void check_border(void)
 {
   if (cloud_sensor.coef > (cloud_sensor_threshold + cloud_sensor_hysteresis) && cloud_sensor.inside_cloud == false) {
+#if CLOUD_SENSOR_REPORT_BORDER_CROSSING
     border_send_shot_position();
+#endif
     cloud_sensor.inside_cloud = true;
   } else if (cloud_sensor.coef <= (cloud_sensor_threshold - cloud_sensor_hysteresis) && cloud_sensor.inside_cloud == true) {
+#if CLOUD_SENSOR_REPORT_BORDER_CROSSING
     border_send_shot_position();
+#endif
     cloud_sensor.inside_cloud = false;
   }
 }
