@@ -1,0 +1,45 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<procedure>
+  <waypoints>
+    <waypoint lat="13.300384" lon="-59.581200" name="_01"/>
+    <waypoint lat="13.303382" lon="-59.582268" name="_02"/>
+    <waypoint lat="13.308691" lon="-59.576429" name="_03"/>
+    <waypoint lat="13.347209" lon="-59.502527" name="_04"/>
+    <waypoint lat="13.320501" lon="-59.491219" name="_05"/>
+    <waypoint lat="13.293042" lon="-59.488854" name="_06"/>
+    <waypoint lat="13.296663" lon="-59.576528" name="_07"/>
+    <waypoint lat="13.299036" lon="-59.577235" name="_11"/>
+    <waypoint lat="13.305050" lon="-59.578690" name="_12"/>
+    <waypoint lat="13.307933" lon="-59.573073" name="_13"/>
+    <waypoint lat="13.298902" lon="-59.571370" name="_14"/>
+    <waypoint lat="13.308544" lon="-59.571768" name="_21"/>
+    <waypoint lat="13.341396" lon="-59.503517" name="_22"/>
+    <waypoint lat="13.297603" lon="-59.492261" name="_23"/>
+    <waypoint lat="13.299032" lon="-59.570138" name="_24"/>
+  </waypoints>
+  <sectors>
+    <sector color="red" name="FlightZone">
+      <corner name="_01"/>
+      <corner name="_02"/>
+      <corner name="_03"/>
+      <corner name="_04"/>
+      <corner name="_05"/>
+      <corner name="_06"/>
+      <corner name="_07"/>
+    </sector>
+    <sector color="yellow" name="WaitingZone">
+      <corner name="_11"/>
+      <corner name="_12"/>
+      <corner name="_13"/>
+      <corner name="_14"/>
+    </sector>
+    <sector color="green" name="MissionZone">
+      <corner name="_21"/>
+      <corner name="_22"/>
+      <corner name="_23"/>
+      <corner name="_24"/>
+    </sector>
+  </sectors>
+</procedure>
+
