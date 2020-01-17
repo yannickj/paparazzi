@@ -1,0 +1,205 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="100.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="9800" name="Morgan Lewis" security_height="70.">
+  <header>
+#include "subsystems/datalink/datalink.h"
+
+#define WaitPointFromID() { \
+fp_wait_wp = 1 + (AC_ID % 3); \
+fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
+}
+  </header>
+  <waypoints>
+    <waypoint name="HOME" x="0" y="0"/>
+    <waypoint name="STDBY" x="-269.6" y="44.4"/>
+    <waypoint name="CLIMB" x="495.4" y="47.9"/>
+    <waypoint name="_BASELEG" x="100.0" y="100.0"/>
+    <waypoint name="_HERE" x="100." y="-100."/>
+    <waypoint alt="60.0" name="AF" x="-250.3" y="-16.1"/>
+    <waypoint alt="30.0" name="TD" x="-85.7" y="-14.2"/>
+    <waypoint alt="150.0" name="W1" x="353.3" y="-108.9"/>
+    <waypoint alt="150.0" name="W2" x="262.0" y="77.8"/>
+    <waypoint alt="150.0" name="W3" x="186.2" y="232.5"/>
+    <waypoint alt="800.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
+    <waypoint alt="150.0" name="RETURN" x="647.6" y="371.9"/>
+    <waypoint alt="800.0" name="H1_1" x="7639.4" y="2214.9"/>
+    <waypoint alt="800.0" name="H1_2" x="7947.4" y="1203.4"/>
+    <waypoint alt="800.0" name="H2_1" x="7394.6" y="3380.4"/>
+    <waypoint alt="800.0" name="H2_2" x="7761.9" y="2421.5"/>
+    <waypoint alt="800.0" name="H3_1" x="8238.3" y="1068.2"/>
+    <waypoint alt="800.0" name="H3_2" x="8321.5" y="-28.3"/>
+    <waypoint lat="13.266123" lon="-59.572239" name="_01"/>
+    <waypoint lat="13.270846" lon="-59.572880" name="_02"/>
+    <waypoint lat="13.277237" lon="-59.568174" name="_03"/>
+    <waypoint lat="13.317570" lon="-59.494273" name="_04"/>
+    <waypoint lat="13.287803" lon="-59.480407" name="_05"/>
+    <waypoint lat="13.259435" lon="-59.478158" name="_06"/>
+    <waypoint lat="13.263675" lon="-59.564523" name="_07"/>
+    <waypoint lat="13.265777" lon="-59.566294" name="_11"/>
+    <waypoint lat="13.272670" lon="-59.569267" name="_12"/>
+    <waypoint lat="13.274668" lon="-59.566582" name="_13"/>
+    <waypoint lat="13.265523" lon="-59.561911" name="_14"/>
+    <waypoint lat="13.275392" lon="-59.565490" name="_21"/>
+    <waypoint lat="13.311019" lon="-59.495669" name="_22"/>
+    <waypoint lat="13.264337" lon="-59.483541" name="_23"/>
+    <waypoint lat="13.265584" lon="-59.560408" name="_24"/>
+  </waypoints>
+  <sectors>
+    <sector color="red" name="FlightZone">
+      <corner name="_01"/>
+      <corner name="_02"/>
+      <corner name="_03"/>
+      <corner name="_04"/>
+      <corner name="_05"/>
+      <corner name="_06"/>
+      <corner name="_07"/>
+    </sector>
+    <sector color="yellow" name="WaitingZone">
+      <corner name="_11"/>
+      <corner name="_12"/>
+      <corner name="_13"/>
+      <corner name="_14"/>
+    </sector>
+    <sector color="green" name="MissionZone">
+      <corner name="_21"/>
+      <corner name="_22"/>
+      <corner name="_23"/>
+      <corner name="_24"/>
+    </sector>
+  </sectors>
+  <variables>
+    <variable init="800.f" max="2500." min="100.0" step="1." type="float" var="cloud_alt"/>
+    <variable init="150." max="250." min="80." step="1." type="float" var="secure_alt"/>
+    <variable init="100." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
+    <variable init="2.0" max="4.0" min="1.0" step="0.5" type="float" var="v_climb"/>
+    <variable init="-2.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
+    <variable init="1" max="3" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
+    <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
+  </variables>
+  <modules>
+    <module name="mission" type="fw"/>
+    <module name="nav" type="flower"/>
+    <module name="nav" type="lace"/>
+    <module name="nav" type="rosette"/>
+    <module name="cloud_sensor"/>
+  </modules>
+  <exceptions>
+    <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Standby"/>
+    <!--exception cond="datalink_time > 20" deroute="Standby"/-->
+  </exceptions>
+  <blocks>
+    <block name="Wait GPS">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+    </block>
+    <block name="Holding point">
+      <call_once fun="WaitPointFromID()"/>
+      <set value="1" var="autopilot.kill_throttle"/>
+      <attitude roll="0" throttle="0" vmode="throttle"/>
+    </block>
+    <block group="home" key="t" name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
+      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="Standby"/>
+      <set value="0" var="autopilot.kill_throttle"/>
+      <set value="0" var="autopilot.flight_time"/>
+      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>
+    </block>
+    <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
+      <circle radius="nav_radius" wp="STDBY"/>
+    </block>
+    <block group="wait" name="Auto wait" strip_button="Wait (Auto)">
+      <exception cond="fp_wait_wp == 1" deroute="Wait 1"/>
+      <exception cond="fp_wait_wp == 2" deroute="Wait 2"/>
+      <exception cond="fp_wait_wp == 3" deroute="Wait 3"/>
+      <deroute block="Standby"/>
+    </block>
+    <block group="wait" name="Wait 1" strip_button="Wait 1">
+      <circle alt="fp_wait_alt" radius="nav_radius" wp="W1"/>
+    </block>
+    <block group="wait" name="Wait 2" strip_button="Wait 2">
+      <circle alt="fp_wait_alt" radius="nav_radius" wp="W2"/>
+    </block>
+    <block group="wait" name="Wait 3" strip_button="Wait 3">
+      <circle alt="fp_wait_alt" radius="nav_radius" wp="W3"/>
+    </block>
+    <block group="climb" name="Linear climb 1" strip_button="Climb 1">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <deroute block="Circle climb 1"/>
+    </block>
+    <block name="Circle climb 1">
+      <circle climb="v_climb" radius="nav_radius" until="GetPosAlt() > cloud_alt-20 " vmode="climb" wp="CLOUDBASE"/>
+      <deroute block="Searching cloud 1"/>
+    </block>
+    <block group="search" name="Searching cloud 1" strip_button="Search 1">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" wp="H1_1" hmode="route" approaching_time="15"/>
+      <oval p1="H1_1" p2="H1_2" radius="nav_radius"/>
+    </block>
+    <block group="climb" name="Linear climb 2" strip_button="Climb 2">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <deroute block="Circle climb 2"/>
+    </block>
+    <block name="Circle climb 2">
+      <circle climb="v_climb" radius="nav_radius" until="GetPosAlt() > cloud_alt-20 " vmode="climb" wp="CLOUDBASE"/>
+      <deroute block="Searching cloud 2"/>
+    </block>
+    <block group="search" name="Searching cloud 2" strip_button="Search 2">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" wp="H2_1" hmode="route" approaching_time="15"/>
+      <oval p1="H2_1" p2="H2_2" radius="nav_radius"/>
+    </block>
+    <block group="climb" name="Linear climb 3" strip_button="Climb 3">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <deroute block="Circle climb 3"/>
+    </block>
+    <block name="Circle climb 3">
+      <circle climb="v_climb" radius="nav_radius" until="GetPosAlt() > cloud_alt-20 " vmode="climb" wp="CLOUDBASE"/>
+      <deroute block="Searching cloud 3"/>
+    </block>
+    <block group="search" name="Searching cloud 3" strip_button="Search 3">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" wp="H3_1" hmode="route" approaching_time="15"/>
+      <oval p1="H3_1" p2="H3_2" radius="nav_radius"/>
+    </block>
+    <block group="mission" name="Mission" strip_button="Mission">
+      <exception cond="!InsideMissionZone(GetPosX(), GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 70)" deroute="Auto wait"/>
+      <call fun="mission_run()"/>
+      <deroute block="Auto wait"/>
+    </block>
+    <block group="mission" name="Linear descent" strip_button="Descent">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="15"/>
+      <deroute block="Circle descent"/>
+    </block>
+    <block name="Circle descent">
+      <circle climb="v_descent" radius="nav_radius" until="secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
+      <deroute block="Auto wait"/>
+    </block>
+    <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
+      <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block group="land" name="Land Left AF-TD" strip_button="Land left (wp AF-TD)" strip_icon="land-left.png">
+      <set value="-DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block name="land">
+      <call_once fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, nav_radius)"/>
+      <circle radius="nav_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
+      <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
+    </block>
+    <block name="final">
+      <exception cond="GetAltRef() + 10 > GetPosAlt()" deroute="flare"/>
+      <go from="AF" hmode="route" vmode="glide" wp="TD"/>
+    </block>
+    <block name="flare">
+      <go approaching_time="0" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
+      <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
