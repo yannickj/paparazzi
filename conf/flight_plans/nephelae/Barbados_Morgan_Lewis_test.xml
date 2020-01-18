@@ -37,6 +37,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <variable init="-2.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
     <variable init="1" max="3" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
     <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
+    <variable init="4200" max="4500." min="50." step="10." type="float" var="fp_max_flight_time"/>
   </variables>
   <modules>
     <module name="mission" type="fw"/>
@@ -50,6 +51,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
   </includes>
   <exceptions>
     <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Standby"/>
+    <exception cond="(nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land')) @AND (autopilot.flight_time + get_time_to_home()) > fp_max_flight_time" deroute="Standby"/>
     <!--exception cond="datalink_time > 20" deroute="Standby"/-->
   </exceptions>
   <blocks>
