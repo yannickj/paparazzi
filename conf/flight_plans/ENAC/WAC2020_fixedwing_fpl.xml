@@ -106,8 +106,8 @@
       <deroute block="Standby"/>
     </block>
     <block group="extra_pattern" name="Survey" strip_button="Survey (wp S1-S4)" strip_icon="survey.png">
-      <call_once fun="nav_survey_poly_osam_setup(WP_S1, 4, 100, 0)"/>
-      <exception cond="PolySurveySweepBackNum >=1" deroute="Path_From_survey"/>
+      <call_once fun="nav_survey_poly_osam_setup(WP_S1, 4, 150, 0)"/>
+      <exception cond="PolySurveySweepBackNum >=1" deroute="Standby"/>
       <call fun="nav_survey_poly_osam_run()"/>
     </block>
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
