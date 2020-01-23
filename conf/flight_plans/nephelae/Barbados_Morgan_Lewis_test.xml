@@ -11,23 +11,23 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
   </header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
-    <waypoint name="STDBY" x="-269.6" y="44.4"/>
-    <waypoint name="CLIMB" x="495.4" y="47.9"/>
+    <waypoint name="STDBY" x="-55.7" y="69.5"/>
+    <waypoint name="CLIMB" x="351.4" y="67.6"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
     <waypoint name="_HERE" x="100." y="-100."/>
-    <waypoint alt="60.0" name="AF" x="-250.3" y="-16.1"/>
-    <waypoint alt="30.0" name="TD" x="-85.7" y="-14.2"/>
-    <waypoint alt="150.0" name="W1" x="353.3" y="-108.9"/>
-    <waypoint alt="150.0" name="W2" x="262.0" y="77.8"/>
-    <waypoint alt="150.0" name="W3" x="186.2" y="232.5"/>
+    <waypoint alt="80.0" name="AF" x="-340.7" y="34.0"/>
+    <waypoint alt="30.0" name="TD" x="-163.2" y="34.4"/>
+    <waypoint alt="150.0" name="W1" x="383.4" y="-301.1"/>
+    <waypoint alt="150.0" name="W2" x="406.7" y="-100.4"/>
+    <waypoint alt="150.0" name="W3" x="199.8" y="-4.2"/>
     <waypoint alt="800.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
     <waypoint alt="150.0" name="RETURN" x="647.6" y="371.9"/>
-    <waypoint alt="800.0" name="H1_1" x="7639.4" y="2214.9"/>
-    <waypoint alt="800.0" name="H1_2" x="7947.4" y="1203.4"/>
+    <waypoint alt="800.0" name="H1_1" x="7814.3" y="1969.2"/>
+    <waypoint alt="800.0" name="H1_2" x="7985.7" y="945.5"/>
     <waypoint alt="800.0" name="H2_1" x="7394.6" y="3380.4"/>
     <waypoint alt="800.0" name="H2_2" x="7761.9" y="2421.5"/>
-    <waypoint alt="800.0" name="H3_1" x="8238.3" y="1068.2"/>
-    <waypoint alt="800.0" name="H3_2" x="8321.5" y="-28.3"/>
+    <waypoint alt="800.0" name="H3_1" x="8251.7" y="540.3"/>
+    <waypoint alt="800.0" name="H3_2" x="8398.5" y="-517.1"/>
   </waypoints>
   <variables>
     <variable init="800.f" max="2500." min="100.0" step="1." type="float" var="cloud_alt"/>
