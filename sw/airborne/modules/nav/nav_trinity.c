@@ -163,7 +163,7 @@ void nav_trinity_init(void)
   AbiBindMsgPAYLOAD_DATA(NAV_TRINITY_LWC_ID, &lwc_ev, lwc_cb);
 
 #if USE_MISSION
-  mission_register(nav_trinity_mission, "TRINITY");
+  mission_register(nav_trinity_mission, "TRNTY");
 #endif
 }
 
