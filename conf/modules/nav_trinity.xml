@@ -1,0 +1,16 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="nav_trinity" dir="nav">
+  <doc>
+    <description>Adaptative trinity pattern for cloud exploration.
+    </description>
+  </doc>
+  <header>
+    <file name="nav_trinity.h"/>
+  </header>
+  <init fun="nav_trinity_init()"/>
+  <makefile>
+    <file name="nav_trinity.c"/>
+  </makefile>
+</module>
+
