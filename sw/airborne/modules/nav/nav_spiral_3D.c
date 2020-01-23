@@ -134,8 +134,11 @@ void nav_spiral_3D_setup(float center_x, float center_y,
   nav_spiral_3D.alt_start = alt_start;
   nav_spiral_3D.alt_stop = alt_stop;
   float deltaZ = alt_stop - alt_start;
-  if (deltaZ * vz < 0.f) {
+  if (deltaZ * vz < 0.f &&
+      fabsf(deltaZ) > 1.f &&
+      fabsf(radius_start - radius_stop) > 0.1f) {
     // error vz and delta Z don't have the same sign
+    // and we are not doing a circle at constant alt
     nav_spiral_3D.status = Spiral3DFail;
     return;
   }
@@ -154,12 +157,15 @@ void nav_spiral_3D_setup(float center_x, float center_y,
   }
   // Compute radius increment
   float deltaR = radius_stop - radius_start;
-  float sign = deltaR < 0.f ? -1.f : 1.0;
-  if (fabsf(deltaZ) < 1.f && fabsf(vz) > 0.1f) {
+  if (fabsf(deltaR) < 1.f) {
+    // radius diff is too small we are doing a circle of constant radius
+    nav_spiral_3D.radius_increment = 0.f;
+  } else if (fabsf(deltaZ) < 1.f && fabsf(vz) > 0.1f) {
     // alt diff is too small, use Vz as increment rate at fix altitude
     // Rinc = deltaR / deltaT
     // deltaT = deltaR / Vz
     // Rinc = Vz
+    float sign = deltaR < 0.f ? -1.f : 1.0;
     nav_spiral_3D.pos_incr.z = 0.f;
     nav_spiral_3D.radius_increment = sign * fabsf(vz) * nav_dt;
   } else if (fabsf(vz) < 0.1f) {
@@ -205,14 +211,26 @@ bool nav_spiral_3D_run(void)
     case Spiral3DCircle:
       // increment center position
       VECT3_ADD(nav_spiral_3D.center, nav_spiral_3D.pos_incr);
-      // increment radius
-      nav_spiral_3D.radius += nav_spiral_3D.radius_increment;
-      // test end condition
-      dist_diff = fabs(dist_to_center - nav_spiral_3D.radius_stop);
-      alt_diff = fabs(stateGetPositionUtm_f()->alt - nav_spiral_3D.alt_stop);
-      if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_diff < NAV_SPIRAL_3D_ALT_DIFF) {
-        // reaching desired altitude and radius
-        return false; // spiral is finished
+      if (fabsf(nav_spiral_3D.radius_increment) > 0.001f) {
+        // increment radius
+        nav_spiral_3D.radius += nav_spiral_3D.radius_increment;
+        // test end condition
+        dist_diff = fabs(dist_to_center - nav_spiral_3D.radius_stop);
+        alt_diff = fabs(stateGetPositionUtm_f()->alt - nav_spiral_3D.alt_stop);
+        if (dist_diff < NAV_SPIRAL_3D_DIST_DIFF && alt_diff < NAV_SPIRAL_3D_ALT_DIFF) {
+          // reaching desired altitude and radius
+          return false; // spiral is finished
+        }
+      } else {
+        // we are doing a circle of constant radius
+        if (fabsf(nav_spiral_3D.pos_incr.z) > 0.1f) {
+          // alt should change, check for arrival
+          alt_diff = fabs(stateGetPositionUtm_f()->alt - nav_spiral_3D.alt_stop);
+          if (alt_diff < NAV_SPIRAL_3D_ALT_DIFF) {
+            // reaching desired altitude
+            return false; // spiral is finished
+          }
+        }
       }
       pre_climb = nav_spiral_3D.pos_incr.z / nav_dt;
       break;

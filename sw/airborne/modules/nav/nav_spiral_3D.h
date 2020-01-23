@@ -41,7 +41,7 @@ extern bool nav_spiral_3D_run(void);
  *    - position X, Y
  *    - start and stop altitude
  *    - start and stop radius
- *    - speeds (horizontal and vertical
+ *    - speeds (horizontal and vertical)
  */
 extern void nav_spiral_3D_setup(float center_x, float center_y,
                                 float alt_start, float alt_stop,

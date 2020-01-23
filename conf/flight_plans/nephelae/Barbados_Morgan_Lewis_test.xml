@@ -44,6 +44,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <module name="nav" type="flower"/>
     <module name="nav" type="lace"/>
     <module name="nav" type="rosette"/>
+    <module name="nav" type="spiral_3D"/>
     <module name="cloud_sensor"/>
   </modules>
   <includes>
