@@ -64,7 +64,7 @@ static float change_rep(float dir)
   return M_PI_2 - dir;
 }
 
-static struct EnuCoor_f process_new_point_trinity(struct EnuCoor_f *position, float uav_direction)
+static struct EnuCoor_f process_new_point_trinity(struct EnuCoor_f *position, float alt_sp, float uav_direction)
 {
   struct EnuCoor_f new_point;
   float rot_angle;
@@ -77,12 +77,12 @@ static struct EnuCoor_f process_new_point_trinity(struct EnuCoor_f *position, fl
 
   new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_trinity.radius);
   new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_trinity.radius);
-  new_point.z = position->z;
+  new_point.z = alt_sp;
 
   return new_point;
 }
 
-static struct EnuCoor_f process_first_point_trinity(struct EnuCoor_f *position, float uav_direction)
+static struct EnuCoor_f process_first_point_trinity(struct EnuCoor_f *position, float alt_sp, float uav_direction)
 {
   struct EnuCoor_f new_point;
   float rot_angle;
@@ -97,7 +97,7 @@ static struct EnuCoor_f process_first_point_trinity(struct EnuCoor_f *position, 
 
   new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_trinity.radius);
   new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_trinity.radius);
-  new_point.z = position->z;
+  new_point.z = alt_sp;
 
   return new_point;
 }
@@ -207,7 +207,7 @@ bool nav_trinity_run(void)
         nav_trinity.status = TRINITY_INSIDE;
         nav_trinity.actual = *stateGetPositionEnu_f();
         nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_trinity.circle = process_first_point_trinity(&nav_trinity.actual, nav_trinity.direction);
+        nav_trinity.circle = process_first_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
       }
       break;
     case TRINITY_INSIDE:
@@ -220,7 +220,7 @@ bool nav_trinity_run(void)
         nav_trinity.status = TRINITY_OUTSIDE;
         nav_trinity.actual = *stateGetPositionEnu_f();
         nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_trinity.circle = process_new_point_trinity(&nav_trinity.actual, nav_trinity.direction);
+        nav_trinity.circle = process_new_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
       }
       pre_climb = nav_trinity.pos_incr.z / nav_dt;
       break;

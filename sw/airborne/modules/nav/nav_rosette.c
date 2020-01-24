@@ -75,7 +75,7 @@ static float change_rep(float dir)
 //  return res;
 //}
 
-static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bary, float dt)
+static void update_barycenter(struct EnuCoor_f *new_coord, float alt_sp, struct EnuCoor_f *bary, float dt)
 {
   //struct EnuCoor_f new_point;
   nav_rosette.nb_border_point += 1;
@@ -83,7 +83,7 @@ static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bar
   if(nav_rosette.nb_border_point == 1){
     bary->x = new_coord->x;
     bary->y = new_coord->y;
-    bary->z = new_coord->z;
+    bary->z = alt_sp;
 
     //printf("[1]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
     //printf("[1]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
@@ -94,7 +94,7 @@ static void update_barycenter(struct EnuCoor_f *new_coord, struct EnuCoor_f *bar
     float alpha = dt / (dt + 5.f);
     bary->x = (bary->x * (1.f - alpha)) + (new_coord->x * alpha);
     bary->y = (bary->y * (1.f - alpha)) + (new_coord->y * alpha);
-    bary->z = new_coord->z;
+    bary->z = alt_sp;
 
     //printf("[2+]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
     //printf("[2+]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
@@ -141,7 +141,7 @@ static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, fl
   else if(nav_rosette.inside_cloud == false){
     new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_rosette.radius);
     new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_rosette.radius);
-    new_point.z = position->z;
+    new_point.z = nav_rosette.barycenter.z;
   }
 
   return new_point;
@@ -265,11 +265,13 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_CROSSING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        update_barycenter(&nav_rosette.actual, nav_rosette.target.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
         nav_rosette.last_border_time = t;
       }
       break;
     case RSTT_CROSSING:
+      VECT3_ADD(nav_rosette.barycenter, nav_rosette.pos_incr);
+      VECT3_ADD(nav_rosette.target, nav_rosette.pos_incr);
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
       NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
@@ -277,7 +279,7 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_TURNING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        update_barycenter(&nav_rosette.actual, nav_rosette.target.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
         nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
@@ -285,6 +287,7 @@ bool nav_rosette_run(void)
       pre_climb = nav_rosette.pos_incr.z / nav_dt;
       break;
     case RSTT_TURNING:
+      VECT3_ADD(nav_rosette.barycenter, nav_rosette.pos_incr);
       VECT3_ADD(nav_rosette.circle, nav_rosette.pos_incr);
       nav_circle_XY(nav_rosette.circle.x, nav_rosette.circle.y , nav_rosette.radius_sign * nav_rosette.radius);
       NavVerticalAltitudeMode(nav_rosette.circle.z + ground_alt, pre_climb);
@@ -293,7 +296,7 @@ bool nav_rosette_run(void)
       {
         nav_rosette.status = RSTT_CROSSING;
         nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
+        update_barycenter(&nav_rosette.actual, nav_rosette.circle.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
         nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.target = nav_rosette.barycenter;

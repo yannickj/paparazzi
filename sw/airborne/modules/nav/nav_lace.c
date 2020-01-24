@@ -67,7 +67,7 @@ static float change_rep(float dir)
   return M_PI_2 - dir;
 }
 
-static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float uav_direction)
+static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float alt_sp, float uav_direction)
 {
   struct EnuCoor_f new_point;
   float rot_angle;
@@ -82,7 +82,7 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 
   new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_lace.radius);
   new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_lace.radius);
-  new_point.z = position->z;
+  new_point.z = alt_sp;
 
   return new_point;
 }
@@ -192,7 +192,7 @@ bool nav_lace_run(void)
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
       }
       break;
     case LACE_INSIDE:
@@ -205,7 +205,7 @@ bool nav_lace_run(void)
         nav_lace.status = LACE_OUTSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
       pre_climb = nav_lace.pos_incr.z / nav_dt;
@@ -219,7 +219,7 @@ bool nav_lace_run(void)
         nav_lace.status = LACE_INSIDE;
         nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.direction);
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
       pre_climb = nav_lace.pos_incr.z / nav_dt;
