@@ -2,18 +2,18 @@
   <aircraft
    name="X6_10"
    ac_id="10"
-   airframe="airframes/MTO/x6-10_10.xml"
+   airframe="airframes/MTO/x6_cloud_sensor-10.xml"
    radio="radios/T10CG_SBUS.xml"
    telemetry="telemetry/nephelae.xml"
-   flight_plan="flight_plans/nephelae/lannemezan_nephelae.xml"
+   flight_plan="flight_plans/nephelae/Barbados_Morgan_Lewis_test.xml"
    settings="settings/fixedwing_basic.xml settings/power_switch.xml"
-   settings_modules="modules/gps.xml modules/guidance_full_pid_fw.xml modules/stabilization_adaptive_fw.xml modules/ahrs_float_dcm.xml modules/nav_basic_fw.xml modules/imu_common.xml modules/meteo_stick.xml modules/meteo_france_DAQ.xml modules/gps_ubx_ucenter.xml"
+   settings_modules="modules/meteo_stick.xml modules/cloud_sensor.xml modules/gps_ubx_ucenter.xml modules/gps.xml modules/nav_basic_fw.xml modules/guidance_full_pid_fw.xml modules/stabilization_adaptive_fw.xml modules/ahrs_float_dcm.xml modules/imu_common.xml"
    gui_color="#fe8178e3fe7e"
   />
   <aircraft
    name="X6_12"
    ac_id="12"
-   airframe="airframes/MTO/x6_cloud_sensor.xml"
+   airframe="airframes/MTO/x6_cloud_sensor-12.xml"
    radio="radios/T10CG_SBUS.xml"
    telemetry="telemetry/nephelae.xml"
    flight_plan="flight_plans/nephelae/Barbados_Morgan_Lewis_test.xml"

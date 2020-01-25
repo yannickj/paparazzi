@@ -191,7 +191,7 @@ static void send_cloud_sensor_data(struct transport_tx *trans, struct link_devic
       &gps.hmsl,
       &gps.tow,
       &cloud_sensor.coef,
-      CLOUD_SENSOR_NB,
+      cloud_sensor.nb_raw,
       cloud_sensor.raw);
 }
 
