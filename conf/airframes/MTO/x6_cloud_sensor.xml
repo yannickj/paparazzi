@@ -1,6 +1,6 @@
 <!DOCTYPE airframe SYSTEM "../airframe.dtd">
 
-<airframe name="X6-9">
+<airframe name="X6-CLOUD">
 
   <description>
     X6 SkyWalker
@@ -27,8 +27,7 @@
     </target>
 
     <!-- Communication -->
-    <module name="telemetry" type="xbee_api"/>
-    <module name="spi_master"/>
+    <module name="telemetry" type="transparent"/>
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger" type="sd_chibios"/>
@@ -56,12 +55,13 @@
 
     <module name="nav" type="bungee_takeoff"/>
 
-    <module name="extra_dl">
+    <!--module name="extra_dl">
       <configure name="EXTRA_DL_PORT" value="UART6"/>
       <configure name="EXTRA_DL_BAUD" value="B115200"/>
     </module>
     <module name="cloud_sensor"/>
     <module name="pwm_meas"/>
+    <module name="spi_master"/>
     <module name="meteo_stick">
       <configure name="MS_SPI_DEV" value="SPI1"/>
       <configure name="MS_PRESSURE_SLAVE_IDX" value="0"/>
@@ -70,7 +70,7 @@
       <configure name="MS_HUMIDITY_PWM_INPUT" value="PWM_INPUT1"/>
       <configure name="MS_EEPROM_SLAVE_IDX" value="4"/>
     </module>
-    <define name="WIND_INFO_RET"/>
+    <define name="WIND_INFO_RET"/-->
     <!--module name="sys_mon.xml"/-->
   </firmware>
 
@@ -120,12 +120,19 @@
     <define name="ACCEL_X_SIGN" value="-1"/>
     <define name="ACCEL_Y_SIGN" value="1"/>
     <define name="ACCEL_Z_SIGN" value="-1"/>
-    <define name="ACCEL_X_NEUTRAL" value="-85"/>
+<define name="ACCEL_X_NEUTRAL" value="-85"/>
+<define name="ACCEL_Y_NEUTRAL" value="51"/>
+<define name="ACCEL_Z_NEUTRAL" value="-76"/>
+<define name="ACCEL_X_SENS" value="2.44493965424" integer="16"/>
+<define name="ACCEL_Y_SENS" value="2.43424121497" integer="16"/>
+<define name="ACCEL_Z_SENS" value="2.44715908645" integer="16"/>
+
+    <!--define name="ACCEL_X_NEUTRAL" value="-85"/>
     <define name="ACCEL_Y_NEUTRAL" value="51"/>
     <define name="ACCEL_Z_NEUTRAL" value="-76"/>
     <define name="ACCEL_X_SENS" value="2.44493965424" integer="16"/>
     <define name="ACCEL_Y_SENS" value="2.43424121497" integer="16"/>
-    <define name="ACCEL_Z_SENS" value="2.44715908645" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.44715908645" integer="16"/-->
 
     <define name="BODY_TO_IMU_PHI" value="0" unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0" unit="deg"/>
@@ -165,12 +172,14 @@
   </section>
 
   <section name="BAT">
-    <define name="LOW_BAT_LEVEL" value="9.0"/>
-    <define name="CRITIC_BAT_LEVEL" value="8.6"/>
-    <define name="CATASTROPHIC_BAT_LEVEL" value="8.3" unit="V"/>
+    <define name="LOW_BAT_LEVEL" value="9.2"/>
+    <define name="CRITIC_BAT_LEVEL" value="9.0"/>
+    <define name="CATASTROPHIC_BAT_LEVEL" value="8.7" unit="V"/>
 <!--   <define name="MilliAmpereOfAdc(_adc)" value="(_adc-49.4)*0.339"/> -->
 <!--   <define name="MilliAmpereOfAdc(_adc)" value="(_adc-502)*34.1"/> X6-9 avt oct19-->
-    <define name="MilliAmpereOfAdc(_adc)" value="(_adc-15.69)*31.39"/>
+    <!--define name="MilliAmpereOfAdc(_adc)" value="(_adc-15.69)*31.39"/-->
+    <define name="MilliAmpereOfAdc(_adc)" value="(_adc-473)*(32.36)"/> <!-- X6-12 -->
+
   </section>
 
 
@@ -183,7 +192,7 @@
   </section>
 
   <section name="BUNGEE" prefix="BUNGEE_TAKEOFF_">
-    <define name="HEIGHT" value="15."/>
+    <define name="HEIGHT" value="30."/>
     <define name="DISTANCE" value="0."/>
     <define name="MIN_SPEED" value="2"/>
     <define name="PITCH" value="13" unit="deg"/>
@@ -197,10 +206,10 @@
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="2.5"/>
 
-    <define name="PITCH_TRIM" value="4.5" unit="deg"/>
+    <define name="PITCH_TRIM" value="-0.300000701874" unit="deg"/>
 
     <!-- Cruise throttle + limits -->
-    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.45"/>
+    <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.55"/>
     <define name="AUTO_THROTTLE_MIN_CRUISE_THROTTLE" value="0.25"/>
     <define name="AUTO_THROTTLE_MAX_CRUISE_THROTTLE" value="0.85"/>
     <define name="AUTO_PITCH_MAX_PITCH" value="20." unit="deg"/>
