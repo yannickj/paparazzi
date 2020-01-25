@@ -273,7 +273,7 @@ static bool log_tagged;
 
 static inline void meteo_stick_log_data_fr(void)
 {
-  if (*(MS_LOG_FILE.file) != -1) {
+  if (MS_LOG_FILE.file != NULL && *(MS_LOG_FILE.file) != -1) {
     if (log_tagged == false && GpsFixValid()) {
       // write at least once ALIVE and GPS messages
       // to log for correct extraction of binary data

@@ -281,7 +281,9 @@ void cloud_sensor_callback(uint8_t *buf)
 
   if (nb > 0) {
     // new data
-    float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
+    //float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
+    float values[nb];
+    memcpy(values, pprzlink_get_DL_PAYLOAD_FLOAT_values(buf), nb*sizeof(float));
     uint32_t stamp = get_sys_time_usec();
 
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
@@ -375,7 +377,7 @@ void cloud_sensor_callback(uint8_t *buf)
 
 #if CLOUD_SENSOR_LOG_FILE
     // Log on SD card in flight recorder
-    if (*(CLOUD_SENSOR_LOG_FILE.file) != -1) {
+    if (CLOUD_SENSOR_LOG_FILE.file != NULL && *(CLOUD_SENSOR_LOG_FILE.file) != -1) {
       if (log_tagged == false && GpsFixValid()) {
         // write at least once ALIVE and GPS messages
         // to log for correct extraction of binary data
