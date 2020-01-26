@@ -39,6 +39,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <variable init="1" max="3" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
     <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
     <variable init="4200" max="4500." min="50." step="10." type="float" var="fp_max_flight_time"/>
+    <variable init="1000." max="3300." min="500." step="1." type="float" var="fp_max_alt"/>
   </variables>
   <modules>
     <module name="mission" type="fw"/>
@@ -53,7 +54,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <include name="Area" procedure="Morgan_Lewis_data.xml"/>
   </includes>
   <exceptions>
-    <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Standby"/>
+    <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT fp_max_alt) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Standby"/>
     <exception cond="(nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land')) @AND (autopilot.flight_time + get_time_to_home()) > fp_max_flight_time" deroute="Standby"/>
     <!--exception cond="datalink_time > 20" deroute="Standby"/-->
   </exceptions>
@@ -170,11 +171,12 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
       <circle radius="nav_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
     </block>
     <block name="final">
-      <exception cond="GetAltRef() + 10 > GetPosAlt()" deroute="flare"/>
-      <go from="AF" hmode="route" vmode="glide" wp="TD"/>
+      <exception cond="GetAltRef() + 6 > GetPosAlt()" deroute="flare"/>
+      <!--go from="AF" hmode="route" vmode="glide" wp="TD"/-->
+      <go from="AF" hmode="route" vmode="alt" wp="TD"/>
     </block>
     <block name="flare">
-      <go approaching_time="0" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
+      <go exceeding_time="30" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
       <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
     </block>
   </blocks>

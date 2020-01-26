@@ -185,14 +185,16 @@ static float lwc_from_buffer(uint8_t *buf)
 // send CLOUD_SENSOR message
 static void send_cloud_sensor_data(struct transport_tx *trans, struct link_device *dev)
 {
-  pprz_msg_send_CLOUD_SENSOR(trans, dev, AC_ID,
-      &stateGetPositionLla_i()->lat,
-      &stateGetPositionLla_i()->lon,
-      &gps.hmsl,
-      &gps.tow,
-      &cloud_sensor.coef,
-      cloud_sensor.nb_raw,
-      cloud_sensor.raw);
+  if (cloud_sensor.nb_raw > 0) {
+    pprz_msg_send_CLOUD_SENSOR(trans, dev, AC_ID,
+        &stateGetPositionLla_i()->lat,
+        &stateGetPositionLla_i()->lon,
+        &gps.hmsl,
+        &gps.tow,
+        &cloud_sensor.coef,
+        cloud_sensor.nb_raw,
+        cloud_sensor.raw);
+  }
 }
 
 #if CLOUD_SENSOR_REPORT_BORDER_CROSSING

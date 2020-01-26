@@ -164,7 +164,7 @@
   <section name="CLOUD_SENSOR" prefix="CLOUD_SENSOR_">
     <define name="LOG_FILE" value="chibios_sdlog"/>
     <define name="NB" value="2"/>
-    <define name="OFFSET" value="2"/>
+    <define name="OFFSET" value="1"/>
     <define name="SINGLE_CHANNEL" value="1"/>
     <define name="LAMBDA" value="840., 505." type="float[]"/>
     <define name="ANGSTROM_COEF" value="1., 1." type="float[]"/>
@@ -189,6 +189,7 @@
     <define name="KILL_MODE_DISTANCE" value="(MAX_DIST_FROM_HOME+200)"/>
     <define name="DEFAULT_CIRCLE_RADIUS" value="100."/>
     <define name="UNLOCKED_HOME_MODE" value="TRUE"/>
+    <define name="COMMAND_PITCH_TRIM" value="0"/>
   </section>
 
   <section name="BUNGEE" prefix="BUNGEE_TAKEOFF_">
@@ -206,7 +207,7 @@
     <!-- outer loop saturation -->
     <define name="ALTITUDE_MAX_CLIMB" value="2.5"/>
 
-    <define name="PITCH_TRIM" value="-0.300000701874" unit="deg"/>
+    <define name="PITCH_TRIM" value="4.9999735007" unit="deg"/>
 
     <!-- Cruise throttle + limits -->
     <define name="AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE" value="0.55"/>
@@ -222,7 +223,7 @@
     <define name="AUTO_THROTTLE_IGAIN" value="0.002"/> <!-- 0.005 -->
 
     <!-- Climb loop (pitch) -->
-    <define name="AUTO_THROTTLE_PITCH_OF_VZ_PGAIN" value="0.03"/>
+    <define name="AUTO_THROTTLE_PITCH_OF_VZ_PGAIN" value="0.05"/>
     <define name="AUTO_PITCH_PGAIN" value="0.04"/> <!-- 0.03 -->
     <define name="AUTO_PITCH_DGAIN" value="0.04"/> <!-- 0.03 -->
     <define name="AUTO_PITCH_IGAIN" value="0.0"/>
