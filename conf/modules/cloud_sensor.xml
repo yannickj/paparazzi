@@ -11,11 +11,11 @@
   <settings>
     <dl_settings NAME="CloudSensor">
       <dl_settings NAME="Cloud">
-        <dl_setting MAX="2" MIN="0" STEP="1" VAR="cloud_sensor_compute_coef" module="meteo/cloud_sensor" values="NONE|SINGLE|ANGSTROM"/>
-        <dl_setting max="1." min="0." step="0.01" var="cloud_sensor_threshold" module="meteo/cloud_sensor"/>
-        <dl_setting max="0.5" min="0." step="0.01" var="cloud_sensor_hysteresis" module="meteo/cloud_sensor"/>
-        <dl_setting max="1." min="0." step="0.01" var="cloud_sensor_background" module="meteo/cloud_sensor"/>
-        <dl_setting MAX="1" MIN="1" STEP="1" VAR="cloud_sensor_compute_background" module="meteo/cloud_sensor"/>
+        <dl_setting MAX="2" MIN="0" STEP="1" VAR="cloud_sensor_compute_coef" shortname="coef type" module="meteo/cloud_sensor" values="NONE|SINGLE|ANGSTROM"/>
+        <dl_setting max="100." min="0." step="0.01" var="cloud_sensor_threshold" shortname="threshold" module="meteo/cloud_sensor"/>
+        <dl_setting max="20." min="0." step="0.01" var="cloud_sensor_hysteresis" shortname="hysteresis" module="meteo/cloud_sensor"/>
+        <dl_setting max="20000." min="0." step="0.1" var="cloud_sensor_background" shortname="background" module="meteo/cloud_sensor"/>
+        <dl_setting MAX="1" MIN="1" STEP="1" VAR="cloud_sensor_compute_background" shortname="compute background" module="meteo/cloud_sensor"/>
       </dl_settings>
     </dl_settings>
   </settings>
@@ -23,7 +23,7 @@
     <file name="cloud_sensor.h"/>
   </header>
   <init fun="cloud_sensor_init()"/>
-  <periodic fun="cloud_sensor_report()" freq="1." autorun="TRUE"/>
+  <periodic fun="cloud_sensor_report()" freq="2." autorun="TRUE"/>
   <datalink message="PAYLOAD_COMMAND" fun="LWC_callback(buf)"/>
   <datalink message="PAYLOAD_FLOAT" fun="cloud_sensor_callback(buf)"/>
   <makefile>

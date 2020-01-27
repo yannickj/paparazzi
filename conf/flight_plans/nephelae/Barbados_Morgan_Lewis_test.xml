@@ -1,6 +1,6 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="100.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="9800" name="Morgan Lewis" security_height="70.">
+<flight_plan alt="100.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="15000" name="Morgan Lewis" security_height="70.">
   <header>
 #include "subsystems/datalink/datalink.h"
 
@@ -15,20 +15,20 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <waypoint name="CLIMB" x="351.4" y="67.6"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
     <waypoint name="_HERE" x="100." y="-100."/>
-    <waypoint alt="80.0" name="AF" x="-340.7" y="34.0"/>
+    <waypoint alt="70.0" name="AF" x="-422.3" y="32.8"/>
     <waypoint alt="30.0" name="TD" x="-163.2" y="34.4"/>
     <waypoint alt="30.0" name="BUNGEE" x="45.2" y="57.3"/>
     <waypoint alt="150.0" name="W1" x="383.4" y="-301.1"/>
     <waypoint alt="150.0" name="W2" x="406.7" y="-100.4"/>
     <waypoint alt="150.0" name="W3" x="199.8" y="-4.2"/>
-    <waypoint alt="800.0" name="CLOUDBASE" x="2370.3" y="579.8"/>
+    <waypoint alt="800.0" name="CLOUDBASE" x="2570.3" y="579.8"/>
     <waypoint alt="150.0" name="RETURN" x="647.6" y="371.9"/>
-    <waypoint alt="800.0" name="H1_1" x="7814.3" y="1969.2"/>
-    <waypoint alt="800.0" name="H1_2" x="7985.7" y="945.5"/>
-    <waypoint alt="800.0" name="H2_1" x="7394.6" y="3380.4"/>
-    <waypoint alt="800.0" name="H2_2" x="7761.9" y="2421.5"/>
-    <waypoint alt="800.0" name="H3_1" x="8251.7" y="540.3"/>
-    <waypoint alt="800.0" name="H3_2" x="8398.5" y="-517.1"/>
+    <waypoint alt="800.0" name="H1_1" x="12600.7" y="3212.4"/>
+    <waypoint alt="800.0" name="H1_2" x="12868.7" y="1695.5"/>
+    <waypoint alt="800.0" name="H2_1" x="11843.5" y="5848.2"/>
+    <waypoint alt="800.0" name="H2_2" x="12278.4" y="4609.7"/>
+    <waypoint alt="800.0" name="H3_1" x="12852.3" y="656.1"/>
+    <waypoint alt="800.0" name="H3_2" x="12862.7" y="-718.9"/>
   </waypoints>
   <variables>
     <variable init="800.f" max="2500." min="100.0" step="1." type="float" var="cloud_alt"/>
@@ -40,6 +40,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
     <variable init="4200" max="4500." min="50." step="10." type="float" var="fp_max_flight_time"/>
     <variable init="1000." max="3300." min="500." step="1." type="float" var="fp_max_alt"/>
+    <variable init="60." max="240." min="10." step="1." type="float" var="fp_max_lost_time"/>
   </variables>
   <modules>
     <module name="mission" type="fw"/>
@@ -56,7 +57,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
   <exceptions>
     <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT fp_max_alt) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Standby"/>
     <exception cond="(nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land')) @AND (autopilot.flight_time + get_time_to_home()) > fp_max_flight_time" deroute="Standby"/>
-    <!--exception cond="datalink_time > 20" deroute="Standby"/-->
+    <exception cond="datalink_time > fp_max_lost_time" deroute="Standby"/>
   </exceptions>
   <blocks>
     <block name="Wait GPS">
@@ -112,6 +113,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block group="search" name="Searching cloud 1" strip_button="Search 1">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <set value="cloud_alt" var="WaypointAlt(WP_H1_1)"/>
       <go from="_HERE" wp="H1_1" hmode="route" approaching_time="15"/>
       <oval p1="H1_1" p2="H1_2" radius="nav_radius"/>
     </block>
@@ -126,6 +128,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block group="search" name="Searching cloud 2" strip_button="Search 2">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <set value="cloud_alt" var="WaypointAlt(WP_H2_1)"/>
       <go from="_HERE" wp="H2_1" hmode="route" approaching_time="15"/>
       <oval p1="H2_1" p2="H2_2" radius="nav_radius"/>
     </block>
@@ -140,6 +143,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block group="search" name="Searching cloud 3" strip_button="Search 3">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <set value="cloud_alt" var="WaypointAlt(WP_H3_1)"/>
       <go from="_HERE" wp="H3_1" hmode="route" approaching_time="15"/>
       <oval p1="H3_1" p2="H3_2" radius="nav_radius"/>
     </block>
@@ -172,8 +176,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block name="final">
       <exception cond="GetAltRef() + 6 > GetPosAlt()" deroute="flare"/>
-      <!--go from="AF" hmode="route" vmode="glide" wp="TD"/-->
-      <go from="AF" hmode="route" vmode="alt" wp="TD"/>
+      <go from="AF" hmode="route" vmode="glide" wp="TD"/>
     </block>
     <block name="flare">
       <go exceeding_time="30" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>

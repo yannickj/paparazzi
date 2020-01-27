@@ -22,6 +22,17 @@
    gui_color="#43e7da68516f"
   />
   <aircraft
+   name="X6_3"
+   ac_id="3"
+   airframe="airframes/MTO/x6_cloud_sensor-3.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/nephelae.xml"
+   flight_plan="flight_plans/nephelae/Barbados_Morgan_Lewis_test.xml"
+   settings="settings/fixedwing_basic.xml settings/power_switch.xml"
+   settings_modules="modules/meteo_stick.xml modules/cloud_sensor.xml modules/gps_ubx_ucenter.xml modules/gps.xml modules/nav_basic_fw.xml modules/guidance_full_pid_fw.xml modules/stabilization_adaptive_fw.xml modules/ahrs_float_dcm.xml modules/imu_common.xml"
+   gui_color="#cad6d1e526c7"
+  />
+  <aircraft
    name="X6_5"
    ac_id="5"
    airframe="airframes/MTO/x6-5_70p_10.xml"

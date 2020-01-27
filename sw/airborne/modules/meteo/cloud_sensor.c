@@ -293,27 +293,29 @@ void cloud_sensor_callback(uint8_t *buf)
       // first check that frame is long enough
       if (nb > CLOUD_SENSOR_OFFSET + channel) {
         if (cloud_sensor_compute_background) {
-          // store a list of raw values
-          uint8_t idx = cloud_sensor.background.idx;
-          cloud_sensor.background.raw[channel][idx++] = values[CLOUD_SENSOR_OFFSET + channel];
-          if (idx == CLOUD_SENSOR_BACKGROUND_NB) {
-            // raw value buffer is full
-            // compute the background as the mean of the list
-            // compute threshold as n-times the std of the list
-            cloud_sensor.background.mean[channel] = mean_f(cloud_sensor.background.raw[channel], idx);
-            cloud_sensor.background.std[channel] = sqrtf(variance_f(cloud_sensor.background.raw[channel], idx));
-            // use the copy to be able to change the value by hand from settings
-            cloud_sensor_background = cloud_sensor.background.mean[channel];
-            // set the threshold
-            cloud_sensor_threshold = CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF * cloud_sensor.background.std[channel];
-            cloud_sensor_hysteresis = CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF * cloud_sensor.background.std[channel];
-            // reset index
-            cloud_sensor.background.idx = 0;
-            // end procedure
-            cloud_sensor_compute_background = 0;
-          }
-          else {
-            cloud_sensor.background.idx = idx; // increment index
+          if (values[CLOUD_SENSOR_OFFSET + channel] > 1.f) { // FIXME stupid ack to remove 0 values during calibration
+            // store a list of raw values
+            uint8_t idx = cloud_sensor.background.idx;
+            cloud_sensor.background.raw[channel][idx++] = values[CLOUD_SENSOR_OFFSET + channel];
+            if (idx == CLOUD_SENSOR_BACKGROUND_NB) {
+              // raw value buffer is full
+              // compute the background as the mean of the list
+              // compute threshold as n-times the std of the list
+              cloud_sensor.background.mean[channel] = mean_f(cloud_sensor.background.raw[channel], idx);
+              cloud_sensor.background.std[channel] = sqrtf(variance_f(cloud_sensor.background.raw[channel], idx));
+              // use the copy to be able to change the value by hand from settings
+              cloud_sensor_background = cloud_sensor.background.mean[channel];
+              // set the threshold
+              cloud_sensor_threshold = CLOUD_SENSOR_BACKGROUND_THRESHOLD_COEF * cloud_sensor.background.std[channel];
+              cloud_sensor_hysteresis = CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF * cloud_sensor.background.std[channel];
+              // reset index
+              cloud_sensor.background.idx = 0;
+              // end procedure
+              cloud_sensor_compute_background = 0;
+            }
+            else {
+              cloud_sensor.background.idx = idx; // increment index
+            }
           }
         }
         else {

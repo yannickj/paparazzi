@@ -52,7 +52,7 @@
   </header>
   <init fun="meteo_stick_init()"/>
   <periodic fun="meteo_stick_periodic()" freq="10" autorun="TRUE"/>
-  <periodic fun="meteo_stick_report()" freq="10" autorun="TRUE"/>
+  <periodic fun="meteo_stick_report()" freq="1" autorun="TRUE"/>
   <event fun="meteo_stick_event()"/>
   <makefile target="ap">
     <configure name="MS_SPI_DEV" case="upper|lower"/>
