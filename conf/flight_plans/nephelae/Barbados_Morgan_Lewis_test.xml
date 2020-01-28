@@ -1,6 +1,6 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="100.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="15000" name="Morgan Lewis" security_height="70.">
+<flight_plan alt="110.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="15000" name="Morgan Lewis" security_height="70.">
   <header>
 #include "subsystems/datalink/datalink.h"
 
@@ -11,18 +11,18 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
   </header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
-    <waypoint name="STDBY" x="-55.7" y="69.5"/>
-    <waypoint name="CLIMB" x="351.4" y="67.6"/>
+    <waypoint name="STDBY" x="-34.6" y="17.4"/>
+    <waypoint name="CLIMB" x="495.4" y="47.9"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
     <waypoint name="_HERE" x="100." y="-100."/>
     <waypoint alt="70.0" name="AF" x="-422.3" y="32.8"/>
-    <waypoint alt="30.0" name="TD" x="-163.2" y="34.4"/>
+    <waypoint alt="30.0" name="TD" x="-149.6" y="34.8"/>
+    <waypoint alt="150.0" name="W1" x="658.9" y="-505.9"/>
+    <waypoint alt="150.0" name="W2" x="329.4" y="-353.6"/>
+    <waypoint alt="150.0" name="W3" x="511.6" y="-164.7"/>
+    <waypoint alt="800.0" name="CLOUDBASE" x="2236.3" y="-415.7"/>
+    <waypoint alt="150.0" name="RETURN" x="2202.5" y="-183.1"/>
     <waypoint alt="30.0" name="BUNGEE" x="45.2" y="57.3"/>
-    <waypoint alt="150.0" name="W1" x="383.4" y="-301.1"/>
-    <waypoint alt="150.0" name="W2" x="406.7" y="-100.4"/>
-    <waypoint alt="150.0" name="W3" x="199.8" y="-4.2"/>
-    <waypoint alt="800.0" name="CLOUDBASE" x="2570.3" y="579.8"/>
-    <waypoint alt="150.0" name="RETURN" x="647.6" y="-50.9"/>
     <waypoint alt="800.0" name="H1_1" x="12600.7" y="3212.4"/>
     <waypoint alt="800.0" name="H1_2" x="12868.7" y="1695.5"/>
     <waypoint alt="800.0" name="H2_1" x="11843.5" y="5848.2"/>

@@ -8,15 +8,19 @@
     <waypoint lat="13.337766" lon="-59.449917" name="_04"/>
     <waypoint lat="13.293587" lon="-59.432465" name="_05"/>
     <waypoint lat="13.250764" lon="-59.430886" name="_06"/>
-    <waypoint lat="13.263038" lon="-59.564573" name="_07"/>
-    <waypoint lat="13.264430" lon="-59.565338" name="_11"/>
+    <waypoint lat="13.259280" lon="-59.558908" name="_07"/>
+    <waypoint lat="13.263029" lon="-59.564744" name="_11"/>
     <waypoint lat="13.273160" lon="-59.569368" name="_12"/>
     <waypoint lat="13.275745" lon="-59.567060" name="_13"/>
-    <waypoint lat="13.264127" lon="-59.561358" name="_14"/>
+    <waypoint lat="13.261036" lon="-59.560056" name="_14"/>
     <waypoint lat="13.276518" lon="-59.566069" name="_21"/>
     <waypoint lat="13.330876" lon="-59.452671" name="_22"/>
     <waypoint lat="13.256298" lon="-59.436413" name="_23"/>
-    <waypoint lat="13.264213" lon="-59.559855" name="_24"/>
+    <waypoint lat="13.260744" lon="-59.558370" name="_24"/>
+    <waypoint name="_34" x="2196.8" y="167.4"/>
+    <waypoint name="_31" x="-401.6" y="76.7"/>
+    <waypoint name="_32" x="-401.6" y="1928.7"/>
+    <waypoint name="_33" x="2196.8" y="2019.4"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlightZone">
@@ -39,6 +43,12 @@
       <corner name="_22"/>
       <corner name="_23"/>
       <corner name="_24"/>
+    </sector>
+    <sector color="orange" name="RAAVEN">
+      <corner name="_31"/>
+      <corner name="_32"/>
+      <corner name="_33"/>
+      <corner name="_34"/>
     </sector>
   </sectors>
 </procedure>
