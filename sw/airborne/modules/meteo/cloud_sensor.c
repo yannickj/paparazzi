@@ -379,7 +379,7 @@ void cloud_sensor_callback(uint8_t *buf)
     // store raw values
     memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
 
-#ifdef CLOUD_SENSOR_LOG_FILE
+#if (defined CLOUD_SENSOR_LOG_FILE) && !(defined SITL)
     // Log on SD card in flight recorder
     if (CLOUD_SENSOR_LOG_FILE.file != NULL && *(CLOUD_SENSOR_LOG_FILE.file) != -1) {
       if (log_tagged == false && GpsFixValid()) {
