@@ -277,7 +277,7 @@ static inline void meteo_stick_log_data_fr(void)
     if (log_tagged == false && GpsFixValid()) {
       // write at least once ALIVE and GPS messages
       // to log for correct extraction of binary data
-      DOWNLINK_SEND_ALIVE(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, 16, MD5SUM);
+      DOWNLINK_SEND_ALIVE(pprzlog_tp, MS_LOG_FILE, 16, MD5SUM);
       // Log GPS for time reference
       uint8_t foo_u8 = 0;
       int16_t foo_16 = 0;
@@ -285,7 +285,7 @@ static inline void meteo_stick_log_data_fr(void)
       struct UtmCoor_f utm = *stateGetPositionUtm_f();
       int32_t east = utm.east * 100;
       int32_t north = utm.north * 100;
-      DOWNLINK_SEND_GPS(pprzlog_tp, CLOUD_SENSOR_LOG_FILE, &gps.fix,
+      DOWNLINK_SEND_GPS(pprzlog_tp, MS_LOG_FILE, &gps.fix,
           &east, &north, &foo_16, &gps.hmsl, &foo_u16, &foo_16,
           &gps.week, &gps.tow, &utm.zone, &foo_u8);
       log_tagged = true;
