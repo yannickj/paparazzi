@@ -22,7 +22,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <waypoint alt="150.0" name="W2" x="406.7" y="-100.4"/>
     <waypoint alt="150.0" name="W3" x="199.8" y="-4.2"/>
     <waypoint alt="800.0" name="CLOUDBASE" x="2570.3" y="579.8"/>
-    <waypoint alt="150.0" name="RETURN" x="647.6" y="371.9"/>
+    <waypoint alt="150.0" name="RETURN" x="647.6" y="-50.9"/>
     <waypoint alt="800.0" name="H1_1" x="12600.7" y="3212.4"/>
     <waypoint alt="800.0" name="H1_2" x="12868.7" y="1695.5"/>
     <waypoint alt="800.0" name="H2_1" x="11843.5" y="5848.2"/>
@@ -38,6 +38,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <variable init="-2.0" max="-1.0" min="-4.0" step="-0.5" type="float" var="v_descent"/>
     <variable init="1" max="3" min="1" step="1" type="uint8_t" var="fp_wait_wp"/>
     <variable init="70." max="200." min="50." step="1." type="float" var="fp_wait_alt"/>
+    <variable init="800." max="3300." min="80." step="1." type="float" var="fp_return_alt"/>
     <variable init="4200" max="4500." min="50." step="10." type="float" var="fp_max_flight_time"/>
     <variable init="1000." max="3300." min="500." step="1." type="float" var="fp_max_alt"/>
     <variable init="60." max="240." min="10." step="1." type="float" var="fp_max_lost_time"/>
@@ -161,6 +162,12 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
       <circle climb="v_descent" radius="nav_radius" until="secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
       <deroute block="Auto wait"/>
     </block>
+    <block name="Return" group="mission" strip_button="Return">
+      <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
+      <go from="_HERE" wp="RETURN" hmode="route" alt="fp_return_alt" approaching_time="15"/>
+      <deroute block="Auto wait"/>
+    </block>
+
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
       <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
       <deroute block="land"/>
