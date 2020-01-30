@@ -465,31 +465,31 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     // Here we are in nominal processing. Finding the median value in
     // filter.values.
     
-    if (filter.values[0] >= filter.values[1]) {
-        if (filter.values[0] < filter.values[2]) {
-            return filter.values[0]
+    if (filter->values[0] >= filter->values[1]) {
+        if (filter->values[0] < filter->values[2]) {
+            return filter->values[0]
         }
         else {
-            // here values[0] is the greatest value.
-            if (filter.values[1] >= filter.values[2]) {
-                return filter.values[1];
+            // here values[0] is the greatest value->
+            if (filter->values[1] >= filter->values[2]) {
+                return filter->values[1];
             }
             else {
-                return filter.values[2];
+                return filter->values[2];
             }
         }
     }
     else {
-        if (filter.values[0] >= filter.values[2]) {
-            return filter.values[0]
+        if (filter->values[0] >= filter->values[2]) {
+            return filter->values[0]
         }
         else {
-            // here values[0] is the lowest value.
-            if (filter.values[1] <= filter.values[2]) {
-                return filter.values[1];
+            // here values[0] is the lowest value->
+            if (filter->values[1] <= filter->values[2]) {
+                return filter->values[1];
             }
             else {
-                return filter.values[2];
+                return filter->values[2];
             }
         }
     }
