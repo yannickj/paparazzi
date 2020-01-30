@@ -11,6 +11,8 @@
   <settings>
     <dl_settings NAME="CloudSensor">
       <dl_settings NAME="Cloud">
+        <dl_setting max="1000." min="0." step="0.1" var="cloud_sensor_calib_alpha" shortname="calib_alpha" module="meteo/cloud_sensor"/>
+        <dl_setting max="60000." min="0." step="0.1" var="cloud_sensor_calib_beta" shortname="calib_beta" module="meteo/cloud_sensor"/>
         <dl_setting MAX="2" MIN="0" STEP="1" VAR="cloud_sensor_compute_coef" shortname="coef type" module="meteo/cloud_sensor" values="NONE|SINGLE|ANGSTROM"/>
         <dl_setting max="100." min="0." step="0.01" var="cloud_sensor_threshold" shortname="threshold" module="meteo/cloud_sensor"/>
         <dl_setting max="20." min="0." step="0.01" var="cloud_sensor_hysteresis" shortname="hysteresis" module="meteo/cloud_sensor"/>

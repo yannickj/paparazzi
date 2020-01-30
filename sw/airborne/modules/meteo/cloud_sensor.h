@@ -47,6 +47,8 @@ extern uint8_t cloud_sensor_compute_background;
 extern float cloud_sensor_threshold;
 extern float cloud_sensor_hysteresis;
 extern float cloud_sensor_background;
+extern float cloud_sensor_calib_alpha;
+extern float cloud_sensor_calib_beta;
 
 /** Init function
  */

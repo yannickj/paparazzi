@@ -91,6 +91,14 @@
 #define CLOUD_SENSOR_BACKGROUND_HYSTERESIS_COEF 0.5f
 #endif
 
+#ifndef CLOUD_SENSOR_CALIB_ALPHA
+#define CLOUD_SENSOR_CALIB_ALPHA 1.f
+#endif
+
+#ifndef CLOUD_SENSOR_CALIB_BETA
+#define CLOUD_SENSOR_CALIB_BETA 0.f
+#endif
+
 // Type of data
 #define CLOUD_RAW 0 // LWC value
 #define CLOUD_BORDER 1 // crossing border
@@ -170,6 +178,8 @@ uint8_t cloud_sensor_compute_background;
 float cloud_sensor_threshold;
 float cloud_sensor_hysteresis;
 float cloud_sensor_background;
+float cloud_sensor_calib_alpha;
+float cloud_sensor_calib_beta;
 
 // handle precomputed LWC
 static float lwc_from_buffer(uint8_t *buf)
@@ -271,6 +281,8 @@ void cloud_sensor_init(void)
   cloud_sensor_compute_coef = CLOUD_SENSOR_COEF_SINGLE; // coef from single channel by default
   cloud_sensor_threshold = CLOUD_SENSOR_BORDER_THRESHOLD;
   cloud_sensor_hysteresis = CLOUD_SENSOR_BORDER_HYSTERESIS;
+  cloud_sensor_calib_alpha = CLOUD_SENSOR_CALIB_ALPHA;
+  cloud_sensor_calib_beta = CLOUD_SENSOR_CALIB_BETA;
   cloud_sensor_background = 0.f; // this should be found during the flight
 
   log_tagged = false;
