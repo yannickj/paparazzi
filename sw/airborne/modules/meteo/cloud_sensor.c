@@ -502,6 +502,8 @@ float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter
     // Applying median filter
     new_sample = median_filter_update(new_sample, medianFilter);
 
-    // Applying battery voltage correction
-    
+    // Applying battery voltage correction and scaling
+    new_sample = (new_sample - CLOUD_SENSOR_CALIB_ALPHA*battery_voltage + CLOUD_SENSOR_CALIB_BETA) / CLOUD_SENSOR_CALIB_SCALE;
+
+    return new_sample;
 }
