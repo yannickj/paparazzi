@@ -436,3 +436,68 @@ void cloud_sensor_report(void)
   send_cloud_sensor_data(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
 }
 
+
+///////////////////////////////////////////////////////////////////
+// ALL CLOUD_SENSOR FILTERING STARTS HERE
+///////////////////////////////////////////////////////////////////
+
+struct MedianFilter {
+    int length;  // init to 0
+    int current; // init to 0
+    float values[3]; // is a circular buffer size MUST be 3
+};
+static struct MedianFilter medianFilter0;
+
+
+float median_filter_update(float new_sample, struct MedianFilter* filter) {
+
+    // Updating filter state
+    filter->values[filter->current] = new_sample;
+    filter->current++; filter->current %= 3; // looping on 3 indexes
+
+    if (filter->length < 3) {
+        // Here we are still in an initialization step (we need at least 3
+        // sample to process a median value.
+        filter->length++;
+        return new_sample; // returning here bypassing the nominal process.
+    }
+
+    // Here we are in nominal processing. Finding the median value in
+    // filter.values.
+    
+    if (filter.values[0] >= filter.values[1]) {
+        if (filter.values[0] < filter.values[2]) {
+            return filter.values[0]
+        }
+        else {
+            // here values[0] is the greatest value.
+            if (filter.values[1] >= filter.values[2]) {
+                return filter.values[1];
+            }
+            else {
+                return filter.values[2];
+            }
+        }
+    }
+    else {
+        if (filter.values[0] >= filter.values[2]) {
+            return filter.values[0]
+        }
+        else {
+            // here values[0] is the lowest value.
+            if (filter.values[1] <= filter.values[2]) {
+                return filter.values[1];
+            }
+            else {
+                return filter.values[2];
+            }
+        }
+    }
+    
+    // we should never get here
+    return new_sample; // always return something just in case.
+}
+
+void cloud_sensor_calibration(float new_sample) {
+    
+}
