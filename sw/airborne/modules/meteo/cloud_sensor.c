@@ -498,6 +498,10 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     return new_sample; // always return something just in case.
 }
 
-void cloud_sensor_calibration(float new_sample) {
+float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter, float battery_voltage) {
+    // Applying median filter
+    new_sample = median_filter_update(new_sample, medianFilter);
+
+    // Applying battery voltage correction
     
 }
