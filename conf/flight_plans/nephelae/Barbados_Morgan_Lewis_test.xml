@@ -3,25 +3,24 @@
 <flight_plan alt="110.0" ground_alt="20.0" lat0="13.2676548" lon0="-59.5680089" max_dist_from_home="15000" name="Morgan Lewis" security_height="70.">
   <header>
 #include "subsystems/datalink/datalink.h"
-
 #define WaitPointFromID() { \
 fp_wait_wp = 1 + (AC_ID % 3); \
 fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
 }
-  </header>
+</header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="-34.6" y="17.4"/>
     <waypoint name="CLIMB" x="495.4" y="47.9"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
     <waypoint name="_HERE" x="100." y="-100."/>
-    <waypoint alt="70.0" name="AF" x="-422.3" y="32.8"/>
+    <waypoint alt="80.0" name="AF" x="-359.6" y="29.1"/>
     <waypoint alt="30.0" name="TD" x="-149.6" y="34.8"/>
-    <waypoint alt="150.0" name="W1" x="658.9" y="-505.9"/>
-    <waypoint alt="150.0" name="W2" x="329.4" y="-353.6"/>
-    <waypoint alt="150.0" name="W3" x="511.6" y="-164.7"/>
-    <waypoint alt="800.0" name="CLOUDBASE" x="2236.3" y="-415.7"/>
-    <waypoint alt="150.0" name="RETURN" x="2202.5" y="-183.1"/>
+    <waypoint alt="130.0" name="W1" x="2.7" y="14.7"/>
+    <waypoint alt="140.0" name="W2" x="147.5" y="14.9"/>
+    <waypoint alt="160.0" name="W3" x="301.7" y="8.5"/>
+    <waypoint alt="500.0" name="CLOUDBASE" x="1062.5" y="30.9"/>
+    <waypoint alt="150.0" name="RETURN" x="814.6" y="30.4"/>
     <waypoint alt="30.0" name="BUNGEE" x="45.2" y="57.3"/>
     <waypoint alt="800.0" name="H1_1" x="12600.7" y="3212.4"/>
     <waypoint alt="800.0" name="H1_2" x="12868.7" y="1695.5"/>
@@ -105,7 +104,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block group="climb" name="Linear climb 1" strip_button="Climb 1">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <go approaching_time="60" from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle climb 1"/>
     </block>
     <block name="Circle climb 1">
@@ -115,12 +114,12 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <block group="search" name="Searching cloud 1" strip_button="Search 1">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
       <set value="cloud_alt" var="WaypointAlt(WP_H1_1)"/>
-      <go from="_HERE" wp="H1_1" hmode="route" approaching_time="15"/>
+      <go approaching_time="15" from="_HERE" hmode="route" wp="H1_1"/>
       <oval p1="H1_1" p2="H1_2" radius="nav_radius"/>
     </block>
     <block group="climb" name="Linear climb 2" strip_button="Climb 2">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <go approaching_time="60" from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle climb 2"/>
     </block>
     <block name="Circle climb 2">
@@ -130,12 +129,12 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <block group="search" name="Searching cloud 2" strip_button="Search 2">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
       <set value="cloud_alt" var="WaypointAlt(WP_H2_1)"/>
-      <go from="_HERE" wp="H2_1" hmode="route" approaching_time="15"/>
+      <go approaching_time="15" from="_HERE" hmode="route" wp="H2_1"/>
       <oval p1="H2_1" p2="H2_2" radius="nav_radius"/>
     </block>
     <block group="climb" name="Linear climb 3" strip_button="Climb 3">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="60"/>
+      <go approaching_time="60" from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle climb 3"/>
     </block>
     <block name="Circle climb 3">
@@ -145,7 +144,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <block group="search" name="Searching cloud 3" strip_button="Search 3">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
       <set value="cloud_alt" var="WaypointAlt(WP_H3_1)"/>
-      <go from="_HERE" wp="H3_1" hmode="route" approaching_time="15"/>
+      <go approaching_time="15" from="_HERE" hmode="route" wp="H3_1"/>
       <oval p1="H3_1" p2="H3_2" radius="nav_radius"/>
     </block>
     <block group="mission" name="Mission" strip_button="Mission">
@@ -155,19 +154,18 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     </block>
     <block group="mission" name="Linear descent" strip_button="Descent">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-      <go from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE" approaching_time="15"/>
+      <go approaching_time="15" from="_HERE" hmode="route" vmode="glide" wp="CLOUDBASE"/>
       <deroute block="Circle descent"/>
     </block>
     <block name="Circle descent">
       <circle climb="v_descent" radius="nav_radius" until="secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
       <deroute block="Auto wait"/>
     </block>
-    <block name="Return" group="mission" strip_button="Return">
+    <block group="mission" name="Return" strip_button="Return">
       <call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-      <go from="_HERE" wp="RETURN" hmode="route" alt="fp_return_alt" approaching_time="15"/>
+      <go alt="fp_return_alt" approaching_time="15" from="_HERE" hmode="route" wp="RETURN"/>
       <deroute block="Auto wait"/>
     </block>
-
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
       <set value="DEFAULT_CIRCLE_RADIUS" var="nav_radius"/>
       <deroute block="land"/>
