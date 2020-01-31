@@ -99,6 +99,10 @@
 #define CLOUD_SENSOR_CALIB_BETA 0.f
 #endif
 
+#ifndef CLOUD_SENSOR_CHANNEL_SCALE
+#define CLOUD_SENSOR_CHANNEL_SCALE 0.f
+#endif
+
 // Type of data
 #define CLOUD_RAW 0 // LWC value
 #define CLOUD_BORDER 1 // crossing border
@@ -180,6 +184,7 @@ float cloud_sensor_hysteresis;
 float cloud_sensor_background;
 float cloud_sensor_calib_alpha;
 float cloud_sensor_calib_beta;
+float cloud_sensor_channel_scale;
 
 // handle precomputed LWC
 static float lwc_from_buffer(uint8_t *buf)
@@ -445,6 +450,7 @@ struct MedianFilter {
     int length;  // init to 0
     int current; // init to 0
     float values[3]; // is a circular buffer size MUST be 3
+    float voltage_value;				///< current voltage of the battery
 };
 static struct MedianFilter medianFilter0;
 
@@ -467,7 +473,7 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     
     if (filter->values[0] >= filter->values[1]) {
         if (filter->values[0] < filter->values[2]) {
-            return filter->values[0]
+            return filter->values[0];
         }
         else {
             // here values[0] is the greatest value->
@@ -481,7 +487,7 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     }
     else {
         if (filter->values[0] >= filter->values[2]) {
-            return filter->values[0]
+            return filter->values[0];
         }
         else {
             // here values[0] is the lowest value->
@@ -498,12 +504,13 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     return new_sample; // always return something just in case.
 }
 
-float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter, float battery_voltage) {
+float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter) {
     // Applying median filter
     new_sample = median_filter_update(new_sample, medianFilter);
 
     // Applying battery voltage correction and scaling
-    new_sample = (new_sample - CLOUD_SENSOR_CALIB_ALPHA*battery_voltage + CLOUD_SENSOR_CALIB_BETA) / CLOUD_SENSOR_CALIB_SCALE;
+    float battery_voltage = PowerVoltage();
+    new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage + cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
 
     return new_sample;
 }

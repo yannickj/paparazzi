@@ -49,6 +49,7 @@ extern float cloud_sensor_hysteresis;
 extern float cloud_sensor_background;
 extern float cloud_sensor_calib_alpha;
 extern float cloud_sensor_calib_beta;
+extern float cloud_sensor_channel_scale;
 
 /** Init function
  */
