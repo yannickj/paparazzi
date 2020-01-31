@@ -170,10 +170,20 @@ struct CloudSensor {
   uint8_t nb_raw;                   ///< number of raw data in array
 };
 
+/** Median Filter structure
+*/
+
+struct MedianFilter {
+    int length;  // init to 0
+    int current; // init to 0
+    float values[3]; // is a circular buffer size MUST be 3
+};
+
 /** Local variables
  */
 static struct CloudSensor cloud_sensor;
 static bool log_tagged;
+static struct MedianFilter medianFilter0;
 
 /** Extern variables
  */
@@ -290,8 +300,76 @@ void cloud_sensor_init(void)
   cloud_sensor_calib_beta = CLOUD_SENSOR_CALIB_BETA;
   cloud_sensor_background = 0.f; // this should be found during the flight
 
+  medianFilter0.length = 0;
+  medianFilter0.current = 0;
+
   log_tagged = false;
 }
+
+/** Median filter function
+*/
+float median_filter_update(float new_sample, struct MedianFilter* filter) {
+
+    // Updating filter state
+    filter->values[filter->current] = new_sample;
+    filter->current++; 
+    filter->current %= 3; // looping on 3 indexes
+
+    if (filter->length < 3) {
+        // Here we are still in an initialization step (we need at least 3
+        // sample to process a median value.
+        filter->length++;
+        return new_sample; // returning here bypassing the nominal process.
+    }
+
+    // Here we are in nominal processing. Finding the median value in
+    // filter.values.
+    
+    if (filter->values[0] >= filter->values[1]) {
+        if (filter->values[0] < filter->values[2]) {
+            return filter->values[0];
+        }
+        else {
+            // here values[0] is the greatest value->
+            if (filter->values[1] >= filter->values[2]) {
+                return filter->values[1];
+            }
+            else {
+                return filter->values[2];
+            }
+        }
+    }
+    else {
+        if (filter->values[0] >= filter->values[2]) {
+            return filter->values[0];
+        }
+        else {
+            // here values[0] is the lowest value->
+            if (filter->values[1] <= filter->values[2]) {
+                return filter->values[1];
+            }
+            else {
+                return filter->values[2];
+            }
+        }
+    }
+    
+    // we should never get here
+    return new_sample; // always return something just in case.
+}
+
+float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter) {
+    // Applying median filter
+    new_sample = median_filter_update(new_sample, medianFilter);
+
+    // Applying battery voltage correction and scaling
+    float battery_voltage = PowerVoltage();
+    new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage + cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
+
+    return new_sample;
+}
+/** End median filter function
+*/
 
 void cloud_sensor_callback(uint8_t *buf)
 {
@@ -303,12 +381,15 @@ void cloud_sensor_callback(uint8_t *buf)
     //float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
     float values[nb];
     memcpy(values, pprzlink_get_DL_PAYLOAD_FLOAT_values(buf), nb*sizeof(float));
+    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
     uint32_t stamp = get_sys_time_usec();
+    
 
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
       const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
       // first check that frame is long enough
       if (nb > CLOUD_SENSOR_OFFSET + channel) {
+      	values[cloud_sensor.nb_raw -1] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
         if (cloud_sensor_compute_background) {
           if (values[CLOUD_SENSOR_OFFSET + channel] > 1.f) { // FIXME stupid ack to remove 0 values during calibration
             // store a list of raw values
@@ -394,7 +475,7 @@ void cloud_sensor_callback(uint8_t *buf)
     // else don't check border from sensor
 
     // store raw values
-    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
+    //memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
 
 #if (defined CLOUD_SENSOR_LOG_FILE) && !(defined SITL)
     // Log on SD card in flight recorder
@@ -442,75 +523,3 @@ void cloud_sensor_report(void)
 }
 
 
-///////////////////////////////////////////////////////////////////
-// ALL CLOUD_SENSOR FILTERING STARTS HERE
-///////////////////////////////////////////////////////////////////
-
-struct MedianFilter {
-    int length;  // init to 0
-    int current; // init to 0
-    float values[3]; // is a circular buffer size MUST be 3
-    float voltage_value;				///< current voltage of the battery
-};
-static struct MedianFilter medianFilter0;
-
-
-float median_filter_update(float new_sample, struct MedianFilter* filter) {
-
-    // Updating filter state
-    filter->values[filter->current] = new_sample;
-    filter->current++; filter->current %= 3; // looping on 3 indexes
-
-    if (filter->length < 3) {
-        // Here we are still in an initialization step (we need at least 3
-        // sample to process a median value.
-        filter->length++;
-        return new_sample; // returning here bypassing the nominal process.
-    }
-
-    // Here we are in nominal processing. Finding the median value in
-    // filter.values.
-    
-    if (filter->values[0] >= filter->values[1]) {
-        if (filter->values[0] < filter->values[2]) {
-            return filter->values[0];
-        }
-        else {
-            // here values[0] is the greatest value->
-            if (filter->values[1] >= filter->values[2]) {
-                return filter->values[1];
-            }
-            else {
-                return filter->values[2];
-            }
-        }
-    }
-    else {
-        if (filter->values[0] >= filter->values[2]) {
-            return filter->values[0];
-        }
-        else {
-            // here values[0] is the lowest value->
-            if (filter->values[1] <= filter->values[2]) {
-                return filter->values[1];
-            }
-            else {
-                return filter->values[2];
-            }
-        }
-    }
-    
-    // we should never get here
-    return new_sample; // always return something just in case.
-}
-
-float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter) {
-    // Applying median filter
-    new_sample = median_filter_update(new_sample, medianFilter);
-
-    // Applying battery voltage correction and scaling
-    float battery_voltage = PowerVoltage();
-    new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage + cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
-
-    return new_sample;
-}

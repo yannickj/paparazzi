@@ -64,5 +64,6 @@ extern void LWC_callback(uint8_t *buf);
  */
 extern void cloud_sensor_report(void);
 
+
 #endif
 
