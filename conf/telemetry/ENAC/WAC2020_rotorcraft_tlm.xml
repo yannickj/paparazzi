@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!DOCTYPE telemetry SYSTEM "../telemetry.dtd">
+<telemetry>
+
+  <process name="Main">
+
+    <mode name="wac" >
+      <message name="ROTORCRAFT_STATUS"      period="1.2"/>
+      <message name="ROTORCRAFT_FP"          period="0.25"/>
+      <message name="ALIVE"                  period="2.1"/>
+      <message name="INS_REF"                period="5.1"/>
+      <message name="ROTORCRAFT_NAV_STATUS"  period="1.6"/>
+      <message name="TO_ATC"                 period="1.0"/>
+    </mode>
+    
+  </process>
+</telemetry>
+

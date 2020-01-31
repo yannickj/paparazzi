@@ -1,0 +1,73 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="182" ground_alt="150" lat0="43.541806" lon0="1.367025" max_dist_from_home="4000" name="WAC2020_vtol_fpl" security_height="25">
+  <header>
+#include "autopilot.h"
+</header>
+  <waypoints>
+    <waypoint name="HOME" x="38.1" y="-31.0"/>
+    <waypoint name="CLIMB" x="43.5" y="8.9"/>
+    <waypoint lat="43.542257" lon="1.367642" name="STDBY"/>
+    <waypoint alt="230.0" lat="43.544108" lon="1.373576" name="P1"/>
+    <waypoint alt="230.0" lat="43.547839" lon="1.379448" name="P2"/>
+    <waypoint alt="230.0" lat="43.549946" lon="1.381591" name="P3"/>
+    <waypoint alt="230.0" lat="43.551423" lon="1.383495" name="P4"/>
+    <waypoint alt="230.0" lat="43.552878" lon="1.385386" name="P5"/>
+    <waypoint alt="230.0" lat="43.553865" lon="1.386853" name="P6"/>
+    <waypoint alt="230.0" lat="43.556277" lon="1.388403" name="P7"/>
+    <waypoint alt="230.0" lat="43.557237" lon="1.389483" name="P8"/>
+    <waypoint alt="230.0" lat="43.558548" lon="1.391357" name="P9"/>
+    <waypoint alt="230.0" lat="43.560048" lon="1.393507" name="P10"/>
+    <waypoint alt="230.0" lat="43.561940" lon="1.395436" name="P11"/>
+    <waypoint alt="230.0" lat="43.563230" lon="1.397051" name="P12"/>
+    <waypoint alt="230.0" lat="43.565110" lon="1.399899" name="P13"/>
+    <waypoint alt="230.0" lat="43.567012" lon="1.401877" name="P14"/>
+    <waypoint alt="162.0" lat="43.541589" lon="1.366792" name="TD"/>
+  </waypoints>
+  <blocks>
+    <block name="Wait GPS">
+      <call_once fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 1)"/>
+      <call_once fun="NavSetGroundReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <call_once fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="takeoff" name="Start Engine" strip_button="Start Engine" strip_icon="on.png">
+      <call_once fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="takeoff" name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+      <exception cond="stateGetPositionEnu_f()->z > 5.0" deroute="Standby"/>
+      <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay climb="nav_climb_vspeed" vmode="climb" wp="CLIMB"/>
+    </block>
+    <block name="Standby" strip_button="Standby" strip_icon="home.png">
+      <set value="false" var="force_forward"/>
+      <stay wp="STDBY"/>
+    </block>
+    <block group="extra_patern" name="route" strip_button="P1..." strip_icon="path.png">
+      <set value="false" var="force_forward"/>
+      <path wpts="P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14"/>
+      <deroute block="land"/>
+    </block>
+    <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
+      <call_once fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land">
+      <set value="false" var="force_forward"/>
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+      <exception cond="2 > stateGetPositionEnu_f()->z" deroute="landed"/>
+    </block>
+    <block name="landed">
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
