@@ -96,11 +96,11 @@
 #endif
 
 #ifndef CLOUD_SENSOR_CALIB_BETA
-#define CLOUD_SENSOR_CALIB_BETA 0.f
+#define CLOUD_SENSOR_CALIB_BETA 1.f
 #endif
 
 #ifndef CLOUD_SENSOR_CHANNEL_SCALE
-#define CLOUD_SENSOR_CHANNEL_SCALE 0.f
+#define CLOUD_SENSOR_CHANNEL_SCALE 1.f
 #endif
 
 // Type of data
@@ -298,6 +298,7 @@ void cloud_sensor_init(void)
   cloud_sensor_hysteresis = CLOUD_SENSOR_BORDER_HYSTERESIS;
   cloud_sensor_calib_alpha = CLOUD_SENSOR_CALIB_ALPHA;
   cloud_sensor_calib_beta = CLOUD_SENSOR_CALIB_BETA;
+  cloud_sensor_channel_scale = CLOUD_SENSOR_CHANNEL_SCALE;
   cloud_sensor_background = 0.f; // this should be found during the flight
 
   medianFilter0.length = 0;
@@ -364,7 +365,7 @@ float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter
 
     // Applying battery voltage correction and scaling
     float battery_voltage = PowerVoltage();
-    new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage + cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
+    new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage - cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
 
     return new_sample;
 }
@@ -381,7 +382,6 @@ void cloud_sensor_callback(uint8_t *buf)
     //float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
     float values[nb];
     memcpy(values, pprzlink_get_DL_PAYLOAD_FLOAT_values(buf), nb*sizeof(float));
-    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
     uint32_t stamp = get_sys_time_usec();
     
 
@@ -389,7 +389,6 @@ void cloud_sensor_callback(uint8_t *buf)
       const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
       // first check that frame is long enough
       if (nb > CLOUD_SENSOR_OFFSET + channel) {
-      	values[cloud_sensor.nb_raw -1] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
         if (cloud_sensor_compute_background) {
           if (values[CLOUD_SENSOR_OFFSET + channel] > 1.f) { // FIXME stupid ack to remove 0 values during calibration
             // store a list of raw values
@@ -419,6 +418,7 @@ void cloud_sensor_callback(uint8_t *buf)
         else {
           // normal run
           // compute coef from a single channel
+          values[cloud_sensor.nb_raw -1] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
           cloud_sensor.coef = values[CLOUD_SENSOR_OFFSET + channel] - cloud_sensor_background;
           // test border crossing and send data over ABI
           check_border();
@@ -475,7 +475,7 @@ void cloud_sensor_callback(uint8_t *buf)
     // else don't check border from sensor
 
     // store raw values
-    //memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
+    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
 
 #if (defined CLOUD_SENSOR_LOG_FILE) && !(defined SITL)
     // Log on SD card in flight recorder
