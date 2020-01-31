@@ -19,6 +19,8 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <waypoint alt="130.0" name="W1" x="2.7" y="14.7"/>
     <waypoint alt="150.0" name="W2" x="147.5" y="14.9"/>
     <waypoint alt="170.0" name="W3" x="301.7" y="8.5"/>
+    <waypoint alt="800.0" name="SP_TOP" x="301.7" y="8.5"/>
+    <waypoint alt="200.0" name="SP_LOW" x="301.7" y="8.5"/>
     <waypoint alt="500.0" name="CLOUDBASE" x="1062.5" y="30.9"/>
     <waypoint alt="150.0" name="RETURN" x="814.6" y="30.4"/>
     <waypoint alt="30.0" name="BUNGEE" x="45.2" y="57.3"/>
@@ -42,7 +44,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <variable init="1000." max="3300." min="500." step="1." type="float" var="fp_max_alt"/>
     <variable init="60." max="240." min="10." step="1." type="float" var="fp_max_lost_time"/>
     <variable init="0.5" max="1.0" min="0." step="0.1" type="float" var="fp_throttle"/>
-    <variable init="0.0" max="1.0" min="-30.0" step="0.1" type="float" var="fp_pitch"/>
+    <variable init="0.0" max="20.0" min="-20.0" step="0.1" type="float" var="fp_pitch"/>
   </variables>
   <modules>
     <module name="mission" type="fw"/>
@@ -159,7 +161,7 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
       <oval p1="H3_1" p2="H3_2" radius="nav_radius"/>
     </block>
     <block group="mission" name="Mission" strip_button="Mission">
-      <!--exception cond="!InsideMissionZone(GetPosX(), GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 70)" deroute="Land wait"/-->
+      <exception cond="!InsideMissionZone(GetPosX(), GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 70)" deroute="Land wait"/>
       <call fun="mission_run()"/>
       <deroute block="Land wait"/>
     </block>
@@ -171,9 +173,22 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <block group="mission" name="Urgent descent" strip_button="P_Down">
       <set value="0." var="fp_throttle"/>
       <set value="-5." var="fp_pitch"/>
-      <set value="secure_alt" var="flight_altitude"/>
       <circle pitch="fp_pitch" radius="nav_radius" throttle="fp_throttle" until="secure_alt > GetPosAlt()" vmode="throttle" wp="RETURN"/>
     </block>
+    <!--CLIMB SPIRAL START-->
+    <block group="mission" name="SpiralTop" strip_button="SpiClimb">
+      <set value="0.85" var="fp_throttle"/>
+      <set value="5." var="fp_pitch"/>
+      <circle pitch="fp_pitch" radius="nav_radius" throttle="fp_throttle" until="GetPosAlt()> WaypointAlt(WP_SP_TOP)" vmode="throttle" wp="SP_TOP"/>
+      <deroute block="SpiralLow"/>
+    </block>
+    <block group="mission" name="SpiralLow" strip_button="SpiDescent">
+      <set value="0.10" var="fp_throttle"/>
+      <set value="-5." var="fp_pitch"/>
+      <circle pitch="fp_pitch" radius="nav_radius" throttle="fp_throttle" until="WaypointAlt(WP_SP_LOW) > GetPosAlt() " vmode="throttle" wp="SP_LOW"/>
+      <deroute block="SpiralTop"/>
+    </block>
+    <!--CLIMB SPIRAL END-->
     <block name="Circle descent">
       <circle climb="v_descent" radius="nav_radius" until="secure_alt > GetPosAlt()" vmode="climb" wp="CLOUDBASE"/>
       <deroute block="Land wait"/>

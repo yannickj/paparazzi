@@ -381,12 +381,20 @@ void cloud_sensor_callback(uint8_t *buf)
     // new data
     //float *values = pprzlink_get_DL_PAYLOAD_FLOAT_values(buf);
     float values[nb];
+    //store values from Cloud_sensor
     memcpy(values, pprzlink_get_DL_PAYLOAD_FLOAT_values(buf), nb*sizeof(float));
+    // copy raw values in cloud_sensor.raw
+    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
     uint32_t stamp = get_sys_time_usec();
     
 
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
       const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
+      //Use values to make the filter processing
+      values[CLOUD_SENSOR_OFFSET + channel] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
+      //copy filtered values in unused cloud_sensor.raw channel for feedback in GCS in rela time 
+      cloud_sensor.raw[cloud_sensor.nb_raw -1] = values[CLOUD_SENSOR_OFFSET + channel];
+
       // first check that frame is long enough
       if (nb > CLOUD_SENSOR_OFFSET + channel) {
         if (cloud_sensor_compute_background) {
@@ -418,7 +426,6 @@ void cloud_sensor_callback(uint8_t *buf)
         else {
           // normal run
           // compute coef from a single channel
-          values[cloud_sensor.nb_raw -1] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
           cloud_sensor.coef = values[CLOUD_SENSOR_OFFSET + channel] - cloud_sensor_background;
           // test border crossing and send data over ABI
           check_border();
@@ -474,8 +481,6 @@ void cloud_sensor_callback(uint8_t *buf)
     }
     // else don't check border from sensor
 
-    // store raw values
-    memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
 
 #if (defined CLOUD_SENSOR_LOG_FILE) && !(defined SITL)
     // Log on SD card in flight recorder
