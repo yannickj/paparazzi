@@ -17,10 +17,10 @@
     <waypoint lat="13.330876" lon="-59.452671" name="_22"/>
     <waypoint lat="13.256298" lon="-59.436413" name="_23"/>
     <waypoint lat="13.260744" lon="-59.558370" name="_24"/>
-    <waypoint name="_34" x="2196.8" y="167.4"/>
-    <waypoint name="_31" x="-401.6" y="76.7"/>
-    <waypoint name="_32" x="-401.6" y="1928.7"/>
-    <waypoint name="_33" x="2196.8" y="2019.4"/>
+    <waypoint name="_31" lat="13.268810" lon="-59.565897"/>
+    <waypoint name="_32" lat="13.268971" lon="-59.541394"/>
+    <waypoint name="_33" lat="13.291657" lon="-59.541394"/>
+    <waypoint name="_34" lat="13.291346" lon="-59.565897"/>
   </waypoints>
   <sectors>
     <sector color="red" name="FlightZone">

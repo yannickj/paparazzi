@@ -170,6 +170,9 @@
     <define name="LAMBDA" value="840., 505." type="float[]"/>
     <define name="ANGSTROM_COEF" value="1., 1." type="float[]"/>
     <define name="ANGSTROM_OFFSET" value="1., 1." type="float[]"/>
+    <define name="CALIB_ALPHA" value="231.67" type="float"/>
+    <define name="CALIB_BETA" value="9600.0" type="float"/>
+    <define name="CHANNEL_SCALE" value="1." type="float"/>
   </section>
 
   <section name="BAT">
