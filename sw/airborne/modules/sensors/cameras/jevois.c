@@ -33,6 +33,11 @@
 #include <string.h>
 #include <stdio.h>
 
+#if JEVOIS_CHIBIOS_LOG
+#include "modules/loggers/sdlog_chibios.h"
+static bool log_started = false;
+#endif
+
 int jevois_mapping_setting;
 bool jevois_stream_setting;
 
@@ -165,6 +170,24 @@ static void jevois_send_message(void)
       jevois.msg.dim[1],
       0,
       (int16_t)jevois_extract_nb(jevois.msg.id));
+#endif
+#if JEVOIS_CHIBIOS_LOG
+  if (pprzLogFile != -1) {
+    if (!log_started) {
+      sdLogWriteLog(pprzLogFile, "type id nb c1 c2 c3 d1 d2 d3 qic qxc qyc qzc ");
+      sdLogWriteLog(pprzLogFile, "px py pz qib qxb qyb qzb\n");
+      log_started = true;
+    } else {
+      sdLogWriteLog(pprzLogFile, "%u %s %u %d %d %d %u %u %u %.6f %.6f %.6f %.6f ",
+          jevois.msg.type, jevois.msg.id, jevois.msg.nb,
+          jevois.msg.coord[0], jevois.msg.coord[1], jevois.msg.coord[2],
+          jevois.msg.dim[0], jevois.msg.dim[1], jevois.msg.dim[2],
+          jevois.msg.quat.qi, jevois.msg.quat.qx, jevois.msg.quat.qy, jevois.msg.quat.qz);
+      sdLogWriteLog(pprzLogFile,"%.3f %.3f %.3f %.6f %.6f %.6f %.6f\n",
+          stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, stateGetPositionEnu_f()->z,
+          stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy, stateGetNedToBodyQuat_f()->qz);
+    }
+  }
 #endif
 }
 
