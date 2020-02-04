@@ -8,22 +8,43 @@
     <waypoint name="HOME" x="38.1" y="-31.0"/>
     <waypoint name="CLIMB" x="43.5" y="8.9"/>
     <waypoint lat="43.542257" lon="1.367642" name="STDBY"/>
-    <waypoint alt="230.0" lat="43.544108" lon="1.373576" name="P1"/>
-    <waypoint alt="230.0" lat="43.547839" lon="1.379448" name="P2"/>
-    <waypoint alt="230.0" lat="43.549946" lon="1.381591" name="P3"/>
-    <waypoint alt="230.0" lat="43.551423" lon="1.383495" name="P4"/>
-    <waypoint alt="230.0" lat="43.552878" lon="1.385386" name="P5"/>
-    <waypoint alt="230.0" lat="43.553865" lon="1.386853" name="P6"/>
-    <waypoint alt="230.0" lat="43.556277" lon="1.388403" name="P7"/>
-    <waypoint alt="230.0" lat="43.557237" lon="1.389483" name="P8"/>
-    <waypoint alt="230.0" lat="43.558548" lon="1.391357" name="P9"/>
-    <waypoint alt="230.0" lat="43.560048" lon="1.393507" name="P10"/>
-    <waypoint alt="230.0" lat="43.561940" lon="1.395436" name="P11"/>
-    <waypoint alt="230.0" lat="43.563230" lon="1.397051" name="P12"/>
-    <waypoint alt="230.0" lat="43.565110" lon="1.399899" name="P13"/>
-    <waypoint alt="230.0" lat="43.567012" lon="1.401877" name="P14"/>
+    <waypoint alt="230.0" lat="43.542017" lon="1.360442" name="S1"/>
+    <waypoint alt="230.0" lat="43.546964" lon="1.356099" name="S2"/>
+    <waypoint alt="230.0" lat="43.549484" lon="1.352572" name="S3"/>
+    <waypoint alt="230.0" lat="43.551472" lon="1.354510" name="S4"/>
+    <waypoint alt="230.0" lat="43.549328" lon="1.361500" name="S5"/>
+    <waypoint alt="230.0" lat="43.549343" lon="1.366255" name="S6"/>
+    <waypoint alt="230.0" lat="43.545518" lon="1.379244" name="S7"/>
+    <waypoint alt="230.0" lat="43.544217" lon="1.383495" name="S8"/>
+    <waypoint alt="230.0" lat="43.540312" lon="1.374650" name="S9"/>
+    <waypoint alt="230.0" lat="43.540299" lon="1.368598" name="S10"/>
+    <waypoint alt="230.0" lat="43.543506" lon="1.368458" name="P1"/>
+    <waypoint alt="230.0" lat="43.546545" lon="1.368775" name="P2"/>
+    <waypoint alt="230.0" lat="43.545193" lon="1.375001" name="P3"/>
+    <waypoint alt="230.0" lat="43.542127" lon="1.374310" name="P4"/>
+    <waypoint alt="230.0" lat="43.571026" lon="1.399592" name="_E"/>
     <waypoint alt="162.0" lat="43.541589" lon="1.366792" name="TD"/>
   </waypoints>
+  <sectors>
+    <sector color="red" name="SectorConstraint">
+      <corner name="S1"/>
+      <corner name="S2"/>
+      <corner name="S3"/>
+      <corner name="S4"/>
+      <corner name="S5"/>
+      <corner name="S6"/>
+      <corner name="S7"/>
+      <corner name="S8"/>
+      <corner name="S9"/>
+      <corner name="S10"/>
+    </sector>
+    <sector color="yellow" name="SectorMission">
+      <corner name="P1"/>
+      <corner name="P2"/>
+      <corner name="P3"/>
+      <corner name="P4"/>
+    </sector>
+  </sectors>
   <blocks>
     <block name="Wait GPS">
       <call_once fun="NavKillThrottle()"/>
@@ -52,7 +73,7 @@
     </block>
     <block group="extra_patern" name="route" strip_button="P1..." strip_icon="path.png">
       <set value="false" var="force_forward"/>
-      <path wpts="P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14"/>
+      <path wpts="P1,P2,_E"/>
       <deroute block="land"/>
     </block>
     <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
