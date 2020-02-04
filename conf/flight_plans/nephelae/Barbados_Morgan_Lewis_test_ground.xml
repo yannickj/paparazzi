@@ -24,7 +24,6 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <waypoint alt="500.0" name="CLOUDBASE" x="1062.5" y="30.9"/>
     <waypoint alt="150.0" name="RETURN" x="814.6" y="30.4"/>
     <waypoint alt="30.0" name="BUNGEE" x="45.2" y="57.3"/>
-    <waypoint alt="600.0" name="GO_CLOUD" x="1000." y="1000."/>
     <waypoint alt="800.0" name="H1_1" x="12600.7" y="3212.4"/>
     <waypoint alt="800.0" name="H1_2" x="12868.7" y="1695.5"/>
     <waypoint alt="800.0" name="H2_1" x="11843.5" y="5848.2"/>
@@ -60,9 +59,9 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
     <include name="Area" procedure="Morgan_Lewis_data.xml"/>
   </includes>
   <exceptions>
-    <exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT fp_max_alt) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Return"/>
+    <!--exception cond="(!InsideFlightZone(GetPosX(),GetPosY()) @OR (GetPosAlt() @GT fp_max_alt) @OR (GetPosAlt() @LT 50)) @AND (nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land'))" deroute="Return"/>
     <exception cond="(nav_block @GT IndexOfBlock('Standby')) @AND (nav_block @LT IndexOfBlock('land')) @AND (autopilot.flight_time + get_time_to_home()) > fp_max_flight_time" deroute="Return"/>
-    <exception cond="datalink_time > fp_max_lost_time" deroute="Return"/>
+    <exception cond="datalink_time > fp_max_lost_time" deroute="Return"/-->
   </exceptions>
   <blocks>
     <block name="Wait GPS">
@@ -78,10 +77,10 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
       <attitude roll="0" throttle="0" vmode="throttle"/>
     </block>
     <block group="home" key="t" name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
-      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="Standby"/>
+      <!--exception cond="GetPosAlt() > GetAltRef()+25" deroute="Standby"/>
       <set value="0" var="autopilot.kill_throttle"/>
       <set value="0" var="autopilot.flight_time"/>
-      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>
+      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/-->
       <deroute block="Standby"/>
     </block>
     <block group="home" name="Bungee Take-Off" strip_button="Bungee Takeoff" strip_icon="bungee_launch.png">
@@ -161,13 +160,8 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
       <go approaching_time="15" from="_HERE" hmode="route" wp="H3_1"/>
       <oval p1="H3_1" p2="H3_2" radius="nav_radius"/>
     </block>
-    <block group="search" name="Go to cloud" strip_button="Go_cloud">
-    	<call_once fun="NavSetWaypointPosAndAltHere(WP__HERE)"/>
-    	<set value="cloud_alt" var="WaypointAlt(WP_GO_CLOUD)"/>
-    	<circle radius="nav_radius" wp="GO_CLOUD"/>
-    </block>
     <block group="mission" name="Mission" strip_button="Mission">
-      <exception cond="!InsideMissionZone(GetPosX(), GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 70)" deroute="Land wait"/>
+      <!--exception cond="!InsideMissionZone(GetPosX(), GetPosY()) @OR (GetPosAlt() @GT 2300) @OR (GetPosAlt() @LT 70)" deroute="Land wait"/-->
       <call fun="mission_run()"/>
       <deroute block="Land wait"/>
     </block>
