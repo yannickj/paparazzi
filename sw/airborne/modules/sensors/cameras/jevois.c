@@ -35,6 +35,7 @@
 
 #if JEVOIS_CHIBIOS_LOG
 #include "modules/loggers/sdlog_chibios.h"
+#include "subsystems/gps.h"
 static bool log_started = false;
 #endif
 
@@ -175,7 +176,7 @@ static void jevois_send_message(void)
   if (pprzLogFile != -1) {
     if (!log_started) {
       sdLogWriteLog(pprzLogFile, "type id nb c1 c2 c3 d1 d2 d3 qic qxc qyc qzc ");
-      sdLogWriteLog(pprzLogFile, "px py pz qib qxb qyb qzb\n");
+      sdLogWriteLog(pprzLogFile, "px py pz qib qxb qyb qzb tow\n");
       log_started = true;
     } else {
       sdLogWriteLog(pprzLogFile, "%u %s %u %d %d %d %u %u %u %.6f %.6f %.6f %.6f ",
@@ -183,9 +184,10 @@ static void jevois_send_message(void)
           jevois.msg.coord[0], jevois.msg.coord[1], jevois.msg.coord[2],
           jevois.msg.dim[0], jevois.msg.dim[1], jevois.msg.dim[2],
           jevois.msg.quat.qi, jevois.msg.quat.qx, jevois.msg.quat.qy, jevois.msg.quat.qz);
-      sdLogWriteLog(pprzLogFile,"%.3f %.3f %.3f %.6f %.6f %.6f %.6f\n",
+      sdLogWriteLog(pprzLogFile,"%.3f %.3f %.3f %.6f %.6f %.6f %.6f %lu\n",
           stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, stateGetPositionEnu_f()->z,
-          stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy, stateGetNedToBodyQuat_f()->qz);
+          stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy, stateGetNedToBodyQuat_f()->qz,
+          gps.tow);
     }
   }
 #endif
