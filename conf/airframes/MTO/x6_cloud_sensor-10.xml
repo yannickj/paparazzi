@@ -175,6 +175,7 @@
     <define name="CALIB_ALPHA" value="450." type="float"/>
     <define name="CALIB_BETA" value="6700." type="float"/>
     <define name="CHANNEL_SCALE" value="1." type="float"/>
+    <define name="TAU" value="5." type="float"/>
   </section>
 
   <section name="BAT">
