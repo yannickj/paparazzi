@@ -414,6 +414,7 @@ void v_ctl_climb_loop(void)
   // Set Pitch output
   Bound(v_ctl_pitch_setpoint, V_CTL_AUTO_PITCH_MIN_PITCH, V_CTL_AUTO_PITCH_MAX_PITCH);
   // Set Throttle output
+  controlled_throttle = Min(controlled_throttle, v_ctl_auto_throttle_max_cruise_throttle);
   v_ctl_throttle_setpoint = TRIM_UPPRZ(controlled_throttle * MAX_PPRZ);
 
 }
