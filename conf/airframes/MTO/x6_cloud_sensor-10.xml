@@ -134,8 +134,8 @@
     <define name="ACCEL_Y_SENS" value="2.43424121497" integer="16"/>
     <define name="ACCEL_Z_SENS" value="2.44715908645" integer="16"/-->
 
-    <define name="BODY_TO_IMU_PHI" value="0" unit="deg"/>
-    <define name="BODY_TO_IMU_THETA" value="0" unit="deg"/>
+    <define name="BODY_TO_IMU_PHI" value="-2.5" unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="3.0" unit="deg"/>
     <define name="BODY_TO_IMU_PSI" value="0"/>
   </section>
 
@@ -257,7 +257,7 @@
 
   <section name="HORIZONTAL CONTROL" prefix="H_CTL_">
     <define name="COURSE_PGAIN" value="0.7"/>
-    <define name="ROLL_MAX_SETPOINT" value="36.000026929" unit="deg"/>
+    <define name="ROLL_MAX_SETPOINT" value="30.0" unit="deg"/>
     <define name="PITCH_MAX_SETPOINT" value="30." unit="deg"/>
     <define name="PITCH_MIN_SETPOINT" value="-30." unit="deg"/>
 
