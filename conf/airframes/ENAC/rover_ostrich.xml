@@ -106,6 +106,7 @@
 
   <section name="MISC">
     <define name="DEFAULT_CIRCLE_RADIUS" value="1.5"/>
+    <define name="ARRIVED_AT_WAYPOINT" value="1."/>
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">
