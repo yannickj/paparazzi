@@ -40,6 +40,7 @@
 #include "math/pprz_geodetic_float.h"
 #include "math/pprz_stat.h"
 #include "subsystems/gps.h"
+#include "filters/low_pass_filter.h"
 
 #ifndef SITL
 #include "modules/loggers/sdlog_chibios.h"
@@ -101,6 +102,10 @@
 
 #ifndef CLOUD_SENSOR_CHANNEL_SCALE
 #define CLOUD_SENSOR_CHANNEL_SCALE 1.f
+#endif
+
+#ifndef CLOUD_SENSOR_TAU
+#define CLOUD_SENSOR_TAU 0.f
 #endif
 
 // Type of data
@@ -184,6 +189,7 @@ struct MedianFilter {
 static struct CloudSensor cloud_sensor;
 static bool log_tagged;
 static struct MedianFilter medianFilter0;
+static struct FirstOrderLowPass lowPassFilter0;
 
 /** Extern variables
  */
@@ -195,6 +201,7 @@ float cloud_sensor_background;
 float cloud_sensor_calib_alpha;
 float cloud_sensor_calib_beta;
 float cloud_sensor_channel_scale;
+float cloud_sensor_tau;
 
 // handle precomputed LWC
 static float lwc_from_buffer(uint8_t *buf)
@@ -299,10 +306,15 @@ void cloud_sensor_init(void)
   cloud_sensor_calib_alpha = CLOUD_SENSOR_CALIB_ALPHA;
   cloud_sensor_calib_beta = CLOUD_SENSOR_CALIB_BETA;
   cloud_sensor_channel_scale = CLOUD_SENSOR_CHANNEL_SCALE;
+  cloud_sensor_tau = CLOUD_SENSOR_TAU;
   cloud_sensor_background = 0.f; // this should be found during the flight
 
+  // Inittializing median filter
   medianFilter0.length = 0;
   medianFilter0.current = 0;
+
+  // Initializing low-pass filter (tau is in samples, not seconds)
+  init_first_order_low_pass(&lowPassFilter0, cloud_sensor_tau, 1.0, 0.0);
 
   log_tagged = false;
 }
@@ -359,13 +371,15 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
     return new_sample; // always return something just in case.
 }
 
-float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter) {
+float cloud_sensor_filtering(float new_sample, struct MedianFilter* medianFilter, struct FirstOrderLowPass* lowPassFilter) {
     // Applying median filter
     new_sample = median_filter_update(new_sample, medianFilter);
 
     // Applying battery voltage correction and scaling
     float battery_voltage = PowerVoltage();
     new_sample = (new_sample - cloud_sensor_calib_alpha*battery_voltage - cloud_sensor_calib_beta) / cloud_sensor_channel_scale;
+
+    new_sample = update_first_order_low_pass(lowPassFilter, new_sample);
 
     return new_sample;
 }
@@ -391,7 +405,7 @@ void cloud_sensor_callback(uint8_t *buf)
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
       const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
       //Use values to make the filter processing
-      values[CLOUD_SENSOR_OFFSET + channel] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0);
+      values[CLOUD_SENSOR_OFFSET + channel] = cloud_sensor_filtering(values[CLOUD_SENSOR_OFFSET + channel], &medianFilter0, &lowPassFilter0);
       //copy filtered values in unused cloud_sensor.raw channel for feedback in GCS in rela time 
       cloud_sensor.raw[cloud_sensor.nb_raw -1] = values[CLOUD_SENSOR_OFFSET + channel];
 
