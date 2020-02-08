@@ -10,15 +10,15 @@ fp_wait_alt = SECURITY_ALT + (float)((uint8_t)(AC_ID/3)) * 20.f; \
 </header>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
-    <waypoint alt="120.0" name="STDBY" x="-34.6" y="17.4"/>
+    <waypoint alt="140.0" name="STDBY" x="-34.6" y="17.4"/>
     <waypoint name="CLIMB" x="495.4" y="47.9"/>
     <waypoint name="_BASELEG" x="100.0" y="100.0"/>
     <waypoint name="_HERE" x="100." y="-100."/>
     <waypoint alt="80.0" name="AF" x="-288.6" y="33.3"/>
     <waypoint alt="30.0" name="TD" x="-65.4" y="34.8"/>
-    <waypoint alt="130.0" name="W1" x="2.7" y="14.7"/>
-    <waypoint alt="150.0" name="W2" x="150.0" y="-61.4"/>
-    <waypoint alt="170.0" name="W3" x="322.6" y="-130.7"/>
+    <waypoint alt="220.0" name="W1" x="2.7" y="14.7"/>
+    <waypoint alt="250.0" name="W2" x="150.0" y="-61.4"/>
+    <waypoint alt="280.0" name="W3" x="322.6" y="-130.7"/>
     <waypoint alt="800.0" name="SP_TOP" x="186.6" y="15.8"/>
     <waypoint alt="200.0" name="SP_LOW" x="187.8" y="13.4"/>
     <waypoint alt="500.0" name="CLOUDBASE" x="1062.5" y="30.9"/>
