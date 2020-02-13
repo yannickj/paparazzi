@@ -33,7 +33,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#if JEVOIS_CHIBIOS_LOG
+#if JEVOIS_CHIBIOS_LOG && !SITL
 #include "modules/loggers/sdlog_chibios.h"
 #include "subsystems/gps.h"
 static bool log_started = false;
@@ -172,7 +172,7 @@ static void jevois_send_message(void)
       0,
       (int16_t)jevois_extract_nb(jevois.msg.id));
 #endif
-#if JEVOIS_CHIBIOS_LOG
+#if JEVOIS_CHIBIOS_LOG && !SITL
   if (pprzLogFile != -1) {
     if (!log_started) {
       sdLogWriteLog(pprzLogFile, "type id nb c1 c2 c3 d1 d2 d3 qic qxc qyc qzc ");
