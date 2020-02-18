@@ -1,0 +1,95 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="182" ground_alt="150" lat0="43.541806" lon0="1.367025" max_dist_from_home="4000" name="WAC2020_vtol_fpl" security_height="25">
+  <header>
+#include "autopilot.h"
+</header>
+  <waypoints>
+    <waypoint name="HOME" x="38.1" y="-31.0"/>
+    <waypoint name="CLIMB" x="43.5" y="8.9"/>
+    <waypoint lat="43.542257" lon="1.367642" name="STDBY"/>
+    <waypoint alt="230.0" lat="43.542017" lon="1.360442" name="S1"/>
+    <waypoint alt="230.0" lat="43.546964" lon="1.356099" name="S2"/>
+    <waypoint alt="230.0" lat="43.549484" lon="1.352572" name="S3"/>
+    <waypoint alt="230.0" lat="43.551472" lon="1.354510" name="S4"/>
+    <waypoint alt="230.0" lat="43.549328" lon="1.361500" name="S5"/>
+    <waypoint alt="230.0" lat="43.549343" lon="1.366255" name="S6"/>
+    <waypoint alt="230.0" lat="43.545518" lon="1.379244" name="S7"/>
+    <waypoint alt="230.0" lat="43.544217" lon="1.383495" name="S8"/>
+    <waypoint alt="230.0" lat="43.540312" lon="1.374650" name="S9"/>
+    <waypoint alt="230.0" lat="43.540299" lon="1.368598" name="S10"/>
+    <waypoint alt="230.0" lat="43.543506" lon="1.368458" name="P1"/>
+    <waypoint alt="230.0" lat="43.546545" lon="1.368775" name="P2"/>
+    <waypoint alt="230.0" lat="43.545193" lon="1.375001" name="P3"/>
+    <waypoint alt="230.0" lat="43.542127" lon="1.374310" name="P4"/>
+    <waypoint alt="230.0" lat="43.571026" lon="1.399592" name="_E"/>
+    <waypoint alt="162.0" lat="43.541589" lon="1.366792" name="TD"/>
+  </waypoints>
+  <sectors>
+    <sector color="red" name="SectorConstraint">
+      <corner name="S1"/>
+      <corner name="S2"/>
+      <corner name="S3"/>
+      <corner name="S4"/>
+      <corner name="S5"/>
+      <corner name="S6"/>
+      <corner name="S7"/>
+      <corner name="S8"/>
+      <corner name="S9"/>
+      <corner name="S10"/>
+    </sector>
+    <sector color="yellow" name="SectorMission">
+      <corner name="P1"/>
+      <corner name="P2"/>
+      <corner name="P3"/>
+      <corner name="P4"/>
+    </sector>
+  </sectors>
+  <blocks>
+    <block name="Wait GPS">
+      <call_once fun="NavKillThrottle()"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 1)"/>
+      <call_once fun="NavSetGroundReferenceHere()"/>
+    </block>
+    <block name="Holding point">
+      <call_once fun="NavKillThrottle()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="takeoff" name="Start Engine" strip_button="Start Engine" strip_icon="on.png">
+      <call_once fun="NavResurrect()"/>
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+    <block group="takeoff" name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
+      <exception cond="stateGetPositionEnu_f()->z > 5.0" deroute="Standby"/>
+      <call_once fun="NavSetWaypointHere(WP_CLIMB)"/>
+      <stay climb="nav_climb_vspeed" vmode="climb" wp="CLIMB"/>
+    </block>
+    <block name="Standby" strip_button="Standby" strip_icon="home.png">
+      <set value="false" var="force_forward"/>
+      <stay wp="STDBY"/>
+    </block>
+    <block group="extra_patern" name="route" strip_button="P1..." strip_icon="path.png">
+      <set value="false" var="force_forward"/>
+      <path wpts="P1,P2,_E"/>
+      <exception cond="sqrtf(dist2_to_home) > 4000.0" deroute="land here"/>
+      <!--deroute block="land"/-->
+    </block>
+    <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
+      <call_once fun="NavSetWaypointHere(WP_TD)"/>
+    </block>
+    <block name="land">
+      <set value="false" var="force_forward"/>
+      <go wp="TD"/>
+    </block>
+    <block name="flare">
+      <stay climb="nav_descend_vspeed" vmode="climb" wp="TD"/>
+      <exception cond="2 > stateGetPositionEnu_f()->z" deroute="landed"/>
+    </block>
+    <block name="landed">
+      <attitude pitch="0" roll="0" throttle="0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
