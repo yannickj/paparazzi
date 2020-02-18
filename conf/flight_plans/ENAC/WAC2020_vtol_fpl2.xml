@@ -74,8 +74,7 @@
     <block group="extra_patern" name="route" strip_button="P1..." strip_icon="path.png">
       <set value="false" var="force_forward"/>
       <path wpts="P1,P2,_E"/>
-      <exception cond="sqrtf(dist2_to_home) > 4000.0" deroute="land here"/>
-      <!--deroute block="land"/-->
+      <exception cond="sqrtf(dist2_to_home) > 3900.0" deroute="land here"/>
     </block>
     <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
       <call_once fun="NavSetWaypointHere(WP_TD)"/>
