@@ -178,19 +178,12 @@ static void jevois_send_message(void)
       sdLogWriteLog(pprzLogFile, "type id nb c1 c2 c3 d1 d2 d3 qic qxc qyc qzc ");
       sdLogWriteLog(pprzLogFile, "px py pz qib qxb qyb qzb tow\n");
       log_started = true;
-    } else if (jevois.msg.data_available) {
+    } else {
       sdLogWriteLog(pprzLogFile, "%u %s %u %d %d %d %u %u %u %.6f %.6f %.6f %.6f ",
                     jevois.msg.type, jevois.msg.id, jevois.msg.nb,
                     jevois.msg.coord[0], jevois.msg.coord[1], jevois.msg.coord[2],
                     jevois.msg.dim[0], jevois.msg.dim[1], jevois.msg.dim[2],
                     jevois.msg.quat.qi, jevois.msg.quat.qx, jevois.msg.quat.qy, jevois.msg.quat.qz);
-      sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %.6f %.6f %.6f %.6f %lu\n",
-                    stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, stateGetPositionEnu_f()->z,
-                    stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy,
-                    stateGetNedToBodyQuat_f()->qz,
-                    gps.tow);
-    } else {
-      sdLogWriteLog(pprzLogFile, "0 None 0 0 0 0 0 0 0 0 0 0 0 ");
       sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %.6f %.6f %.6f %.6f %lu\n",
                     stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, stateGetPositionEnu_f()->z,
                     stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy,
@@ -405,7 +398,6 @@ static void jevois_parse(struct jevois_t *jv, char c)
                            jv->msg.quat,
                            jv->msg.extra);
       // also send specific messages if needed
-      jevois_send_message();
       jv->data_available = true;
       jv->state = JV_SYNC;
       break;
@@ -462,6 +454,16 @@ void jevois_setmapping(int number)
 
 void jevois_send_state(void)
 {
+#if JEVOIS_CHIBIOS_LOG && !SITL
+  if (log_started) {
+    sdLogWriteLog(pprzLogFile, "0 None 0 0 0 0 0 0 0 0 0 0 0 ");
+    sdLogWriteLog(pprzLogFile, "%.3f %.3f %.3f %.6f %.6f %.6f %.6f %lu\n",
+                  stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, stateGetPositionEnu_f()->z,
+                  stateGetNedToBodyQuat_f()->qi, stateGetNedToBodyQuat_f()->qx, stateGetNedToBodyQuat_f()->qy,
+                  stateGetNedToBodyQuat_f()->qz,
+                  gps.tow);
+  }
+#endif
   jevois_send_message();
   char str[32] __attribute__((unused));
 #if JEVOIS_SEND_ALT
