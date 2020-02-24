@@ -27,11 +27,10 @@
 
     <module name="telemetry" type="xbee_api"/>
 
-    <module name="motor_mixing"/>
-
     <module name="actuators" type="dshot">
       <!--define name="DSHOT_SPEED" value="300"/-->
     </module>
+    <module name="motor_mixing"/>
 
     <module name="board" type="tawaki">
       <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
