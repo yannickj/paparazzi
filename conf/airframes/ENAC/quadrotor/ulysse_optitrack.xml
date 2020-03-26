@@ -55,8 +55,9 @@
       <define name="JEVOIS_CHIBIOS_LOG"/>
     </module>
 
-    <module name="cv" type="target_localization">
-    </module>
+    <!--module name="cv" type="target_localization">
+    </module-->
+    <module name="tag_tracking"/>
 
     <module name="actuators" type="pwm"/>
     <module name="switch" type="servo"/>
@@ -257,14 +258,14 @@
    <define name="NGAIN" value="0"/>
    <!-- feedforward -->
    <define name="AGAIN" value="0"/>
-   <define name="REF_MAX_SPEED" value="0.5"/>
+   <define name="REF_MAX_SPEED" value="0.2"/>
    <define name="REF_MAX_ACCEL" value="2."/>
   </section>
 
   <section name="NAV">
     <define name="ARRIVED_AT_WAYPOINT" value="0.25"/>
     <define name="NAV_DESCEND_VSPEED" value="-0.2"/>
-    <define name="RECTANGLE_SURVEY_HEADING_NS" value="90."/>
+    <define name="RECTANGLE_SURVEY_HEADING_NS" value="0."/>
   </section>
 
   <section name="BAT">
@@ -299,6 +300,10 @@
     <define name="WP_T1_ID" value="42"/>
     <define name="WP_T2" value="WP_DROP"/>
     <define name="WP_T2_ID" value="2"/>
+  </section>
+
+  <section name="TAG_TRACKING" prefix="TAG_TRACKING_">
+    <define name="BODY_TO_CAM_PSI" value="0."/>
   </section>
 
 </airframe>
