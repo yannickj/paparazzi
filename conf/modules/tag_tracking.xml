@@ -1,0 +1,17 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+<module name="tag_tracking" dir="tracking">
+  <doc>
+    <description>Track poistion of a tag (ArUco, QRcode, ...) detected by an onboard camera
+      The tag detection and pose computation is done outside of the module, only the estimation by fusion of AHRS and visual detection with a Kalman filter is performed in this module
+    </description>
+  </doc>
+  <header>
+    <file name="tag_tracking.h"/>
+  </header>
+  <init fun="tag_tracking_init()"/>
+  <periodic fun="tag_tracking_propagate()" freq="10.0" start="tag_tracking_propagate_start()" autorun="TRUE"/>
+  <periodic fun="tag_tracking_report()" freq="1.0" autorun="TRUE"/>
+  <makefile>
+    <file name="tag_tracking.c"/>
+  </makefile>
+</module>
