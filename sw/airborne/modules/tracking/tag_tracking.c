@@ -199,12 +199,22 @@ static void tag_tracking_sim(void)
       };
       uint16_t dim[3] = { 100, 100, 0 };
       struct FloatQuat quat; // TODO
+      float_quat_identity(&quat);
       PRINTF("Sending Abi Msg %d %d %d\n", coord[0], coord[1], coord[2]);
       AbiSendMsgJEVOIS_MSG(42, JEVOIS_MSG_D3, "1", 3, coord, dim, quat, "");
     }
   }
   fflush(stdout);
 }
+
+static void tag_motion_sim(void)
+{
+  struct EnuCoor_f pos = waypoints[TAG_TRACKING_SIM_WP].enu_f;
+  struct FloatVect3 speed = { 1.0f, 0.f, 0.f };
+  VECT2_ADD(pos, speed);
+  waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
+}
+
 #endif
 
 
