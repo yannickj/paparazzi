@@ -398,6 +398,7 @@ static void jevois_parse(struct jevois_t *jv, char c)
                            jv->msg.quat,
                            jv->msg.extra);
       // also send specific messages if needed
+      jevois_send_message();
       jv->data_available = true;
       jv->state = JV_SYNC;
       break;
@@ -464,7 +465,6 @@ void jevois_send_state(void)
                   gps.tow);
   }
 #endif
-  jevois_send_message();
   char str[32] __attribute__((unused));
 #if JEVOIS_SEND_ALT
   // send current altitude in millimeter
