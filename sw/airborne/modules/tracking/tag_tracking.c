@@ -75,6 +75,11 @@ static void tag_tracking_sim(void);
 #define TAG_TRACKING_CAM_POS_Z 0.f
 #endif
 
+#define R 1
+#define Q_SIGMA2 1
+#define DT 1
+#define P0_POS 10
+#define P0_SPEED 10
 // generated in modules.h
 static const float tag_track_dt = TAG_TRACKING_PROPAGATE_PERIOD;
 
@@ -90,6 +95,7 @@ struct tag_tracking {
 };
 
 static struct tag_tracking tag_track;
+struct Kalman kalman;
 
 // Abi bindings
 #ifndef TAG_TRACKING_ID
@@ -110,6 +116,7 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
     tag_track.meas.z = coord[2];
 
     // TODO call correction step from here
+    kalman_update(kalman, tag_target.meas);
   }
 }
 
@@ -144,12 +151,16 @@ void tag_tracking_propagate()
 #endif
 
   // TODO call kalman propagation step
+  kalman_predict(kalman)
 }
 
 // Propagation start function (called at each start state
 void tag_tracking_propagate_start()
-{
+{    
   // your periodic start code here.
+
+  kalman_init(kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT)
+  kalman_set_state(kalman, struct FloatVect3 tag_track.meas, struct FloatVect3 tag_track.speed)
   // TODO reset kalman state ?
 }
 
