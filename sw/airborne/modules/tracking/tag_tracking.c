@@ -24,12 +24,13 @@
  * The tag detection and pose computation is done outside of the module, only the estimation
  * by fusion of AHRS and visual detection with a Kalman filter is performed in this module
  */
-
+#include "modules/tracking/kalman.h"
 #include "modules/tracking/tag_tracking.h"
 #include "generated/modules.h"
 #include "math/pprz_algebra_float.h"
 #include "state.h"
 #include "subsystems/abi.h"
+
 
 #if defined SITL
 #include "generated/flight_plan.h"
@@ -129,7 +130,7 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
     tag_track.meas.z = coord[2];
 
     // TODO call correction step from here
-    kalman_update(kalman, tag_target.meas);
+    kalman_update(&kalman, tag_track.meas);
   }
 }
 
@@ -140,7 +141,6 @@ void tag_tracking_init()
   FLOAT_VECT3_ZERO(tag_track.meas);
   FLOAT_VECT3_ZERO(tag_track.pos);
   FLOAT_VECT3_ZERO(tag_track.speed);
-
   struct FloatEulers euler = {
     TAG_TRACKING_BODY_TO_CAM_PHI,
     TAG_TRACKING_BODY_TO_CAM_THETA,
@@ -167,7 +167,7 @@ void tag_tracking_propagate()
 #endif
 
   // TODO call kalman propagation step
-  kalman_predict(kalman)
+  kalman_predict(&kalman);
 }
 
 // Propagation start function (called at each start state
@@ -175,8 +175,8 @@ void tag_tracking_propagate_start()
 {    
   // your periodic start code here.
 
-  kalman_init(kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT)
-  kalman_set_state(kalman, struct FloatVect3 tag_track.meas, struct FloatVect3 tag_track.speed)
+  kalman_init(&kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT);
+  kalman_set_state(&kalman, tag_track.meas, tag_track.speed);
   // TODO reset kalman state ?
 }
 

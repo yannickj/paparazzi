@@ -7,11 +7,13 @@
   </doc>
   <header>
     <file name="tag_tracking.h"/>
+    <file name="kalman.h"/>
   </header>
   <init fun="tag_tracking_init()"/>
   <periodic fun="tag_tracking_propagate()" freq="10.0" start="tag_tracking_propagate_start()" autorun="TRUE"/>
   <periodic fun="tag_tracking_report()" freq="1.0" autorun="TRUE"/>
   <makefile>
     <file name="tag_tracking.c"/>
+    <file name="kalman.c"/>
   </makefile>
 </module>

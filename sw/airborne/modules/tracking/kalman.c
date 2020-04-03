@@ -1,4 +1,4 @@
-#include "kalman.h"
+#include "modules/tracking/kalman.h"
 #include <math.h>
 
 void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_sigma2, float r, float dt)
@@ -25,15 +25,41 @@ void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_si
   kalman->r = r;
   kalman->dt = dt;
 
-  kalman->F = {{1 ;dt; 0; 0 ; 0; 0};
-                 {0; 1 ; 0; 0;  0; 0};
-                 {0; 0;  1; dt 0; 0};
-                 {0; 0;  0; 1  0; 0};
-                 {0; 0;  0; 0;  1 ;dt};
-                 {0; 0;  0; 0;  0; 1 }}
-  kalman->H = {{1;0;0;0;0;0};
-                  {0;0;1;0;0;0};
-                  {0;0;0;0;1;0}}
+  // kalman->F = {{1, dt, 0, 0 , 0, 0},
+  //                {0, 1 , 0, 0,  0, 0},
+  //                {0, 0,  1, dt 0, 0},
+  //                {0, 0,  0, 1  0, 0},
+  //                {0, 0,  0, 0,  1 ,dt}
+  //                {0, 0,  0, 0,  0, 1 }};
+
+  for(int i = 0; i < KALMAN_DIM; i++){
+    for(int j = 0; j < KALMAN_DIM; j++){
+      if (i==j){
+        kalman->F[i][i] = 1;
+      }
+      else if (i%2==0 && j==i+1){
+        kalman->F[i][j] = dt;
+      }
+      else{
+        kalman->F[i][j] = 0;
+      }
+    }
+  }
+
+  // kalman->H = {{1,0,0,0,0,0},
+  //                 {0,0,1,0,0,0},
+  //                 {0,0,0,0,1,0}};
+
+  for(int i = 0; i < KALMAN_DIM/2; i++){
+    for(int j = 0; j < KALMAN_DIM; j++){
+      if (2*i==j){
+        kalman->F[i][i] = 1;
+      }
+      else{
+        kalman->F[i][j] = 0;
+      }
+    }
+  }
 }
 
 void kalman_set_state(struct Kalman *kalman, struct FloatVect3 pos, struct FloatVect3 speed)
@@ -150,9 +176,9 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
   //   Hi[2] * Hi[4] * (kalman->P[2][4] + kalman->P[4][2]) +
   //   kalman->r;
 
-  const float S[3][3] = { {p[0][0] + Kalman->r; p[0][2]; p[0][4]};
-                            {p[2][0]; p[2][2] + Kalman->r ; p[2][4]};
-                            {p[4][0]; p[4][2]; p[4][4] + Kalman->r}};
+  const float S[3][3] = { {kalman->P[0][0] + kalman->r, kalman->P[0][2], kalman->P[0][4]},
+                            {kalman->P[2][0], kalman->P[2][2] + kalman->r , kalman->P[2][4]},
+                            {kalman->P[4][0], kalman->P[4][2], kalman->P[4][4] + kalman->r}};
 
 
   if (fabsf(S[0][0]) + fabsf(S[1][1]) + fabsf(S[2][2]) < 1e-5) {
@@ -166,21 +192,23 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
 
   float K[6][3];
   float HinvS_tmp[6][3];
-  MAT_MUL(6, 3, 3, HinvS_tmp, matrix_transpose(kalman->H) , invS);
-  MAT_MUL(6, 6, 3, K, P, HinvS_tmp);
+  float ** Ht = matrix_transpose(kalman->H, 3, 6);
+  MAT_MUL(6, 3, 3, HinvS_tmp, Ht , invS);
+  MAT_MUL(6, 6, 3, K, kalman->P, HinvS_tmp);
 
-  float X[6][1] = {kalman->state}; //K(Z-HX)
-  float Z[3][1] = {anchor};
-  float HX_tmp[3][1];
-  MAT_MUL(3, 6, 1, HX_tmp, H, X);
+  float X[6][1] = {{kalman->state[0]}, {kalman->state[1]}, {kalman->state[2]}, {kalman->state[3]}, {kalman->state[4]}, {kalman->state[5]}}; //K(Z-HX)
+  float Z[3][1] ={{anchor.x}, {anchor.y}, {anchor.z}};
+  float * HX_tmp;
+  MAT_MUL_VECT(6, HX_tmp, kalman->H, kalman->state);
+  float HX[3][1] = {{HX_tmp[0]}, {HX_tmp[1]}, {HX_tmp[2]}};
   float Z_HX[3][1];
-  MAT_SUB(3,1, Z_HX ,Z, HX_tmp);
+  MAT_SUB(3,1, Z_HX, Z, HX);
   float K_ZHX_tmp[6][1];
   MAT_MUL(6,3,1, K_ZHX_tmp, K, Z_HX);
   MAT_SUM(6,1, X, X, K_ZHX_tmp);
 
   for (int i = 0; i<6; i++){
-    kalman->state[i]= X[i];
+    kalman->state[i]= X[i][0  ];
   }
 
   // for (int i = 0; i < 6; i++) {
@@ -216,31 +244,12 @@ void kalman_update_speed(struct Kalman *kalman, float speed, uint8_t type)
   // TODO
 }
 
-float** matrix_product(float** a, float** b, int n, int p, int q){
-  float c[n][q];
-  for (int i=0; i<n; i++){
-    for (int j=0; j<q; j++){
-      c[i][j] = 0;
-      for (int k=0, k<p, k++){
-        c[i][j] += a[i][k]*b[k][j];
-      }
-    }
-  }
-  return c;
-}
-
 float** matrix_transpose(float** m, int n, int p){
-  float mt[p][n];
-  for (int i=0; i<n, i++){
-    for (int j=0; j<p, j++){
+  float ** mt;
+  for (int i=0; i<n; i++){
+    for (int j=0; j<p; j++){
       mt[i][j]=m[j][i];
     }
   }
   return mt;
-}
-
-float** matrix_inverse(float** m, int n, int p){
-  //todo
-  float mi[n][p];
-  return mi;
 }

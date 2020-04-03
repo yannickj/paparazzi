@@ -1,10 +1,11 @@
 #ifndef KALMAN_H
 #define KALMAN_H
 
+
 #include "std.h"
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_geodetic_float.h"
-#include "math/pprz_matrix_simple.h"
+#include "math/pprz_simple_matrix.h"
 
 #define KALMAN_DIM 6
 
@@ -23,8 +24,9 @@ struct Kalman
   float Q[KALMAN_DIM][KALMAN_DIM]; ///< process noise matrix
   float r;                         ///< measurement noise (assumed the same for all anchors)
   float dt;                        ///< prediction step (in seconds)
-  float F;
-  float H;
+  float F[KALMAN_DIM][KALMAN_DIM];
+  float ** H; //[KALMAN_DIM/2][KALMAN_DIM];
+  
 };
 
 /** Init Kalman internal struct
@@ -99,5 +101,7 @@ extern void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor);
  * @param[in] type 1: horizontal ground speed norm, 2: vertical ground speed norm, 3: 3D ground speed norm
  */
 extern void kalman_update_speed(struct Kalman *kalman, float speed, uint8_t type);
+
+float** matrix_transpose(float** m, int n, int p);
 
 #endif
