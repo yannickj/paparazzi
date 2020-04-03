@@ -34,6 +34,7 @@
 #if defined SITL
 #include "generated/flight_plan.h"
 static void tag_tracking_sim(void);
+static void tag_motion_sim(void);
 
 // use WP_TARGET by default
 #if !(defined TAG_TRACKING_SIM_WP) && (defined WP_TARGET)
@@ -44,6 +45,18 @@ static void tag_tracking_sim(void);
 #include <stdio.h>
 //#define PRINTF printf
 #define PRINTF(...) {}
+
+#define TAG_MOTION_NONE 0
+#define TAG_MOTION_LINE 1
+#define TAG_MOTION_CIRCLE 2
+
+#define TAG_MOTION_SPEED_X 0.5f
+#define TAG_MOTION_SPEED_Y 0.f
+#define TAG_MOTION_RANGE_X 4.f
+#define TAG_MOTION_RANGE_Y 4.f
+
+static uint8_t tag_motion_sim_type = TAG_MOTION_LINE;
+static struct FloatVect3 tag_motion_speed = { TAG_MOTION_SPEED_X, TAG_MOTION_SPEED_Y, 0.f };
 #endif
 
 // Default parameters
@@ -147,6 +160,9 @@ void tag_tracking_init()
 void tag_tracking_propagate()
 {
 #if defined SITL && defined TAG_TRACKING_SIM_WP
+  if (tag_motion_sim_type != TAG_MOTION_NONE) {
+    tag_motion_sim();
+  }
   tag_tracking_sim();
 #endif
 
@@ -210,12 +226,41 @@ static void tag_tracking_sim(void)
       };
       uint16_t dim[3] = { 100, 100, 0 };
       struct FloatQuat quat; // TODO
+      float_quat_identity(&quat);
       PRINTF("Sending Abi Msg %d %d %d\n", coord[0], coord[1], coord[2]);
       AbiSendMsgJEVOIS_MSG(42, JEVOIS_MSG_D3, "1", 3, coord, dim, quat, "");
     }
   }
   fflush(stdout);
 }
+
+static void tag_motion_sim(void)
+{
+  switch (tag_motion_sim_type) {
+    case TAG_MOTION_LINE:
+      {
+        struct EnuCoor_f pos = waypoints[TAG_TRACKING_SIM_WP].enu_f;
+        struct FloatVect3 speed_dt = tag_motion_speed;
+        VECT2_SMUL(speed_dt, speed_dt, tag_track_dt);
+        if (pos.x < -TAG_MOTION_RANGE_X || pos.x > TAG_MOTION_RANGE_X ||
+            pos.y < -TAG_MOTION_RANGE_Y || pos.y > TAG_MOTION_RANGE_Y) {
+          tag_motion_speed.x = -tag_motion_speed.x;
+          tag_motion_speed.y = -tag_motion_speed.y;
+          speed_dt.x = -speed_dt.x;
+          speed_dt.y = -speed_dt.y;
+        }
+        VECT2_ADD(pos, speed_dt);
+        struct EnuCoor_i pos_i;
+        ENU_BFP_OF_REAL(pos_i, pos);
+        //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
+        waypoint_move_enu_i(TAG_TRACKING_SIM_WP, &pos_i);
+        break;
+      }
+    default:
+      break;
+  }
+}
+
 #endif
 
 
