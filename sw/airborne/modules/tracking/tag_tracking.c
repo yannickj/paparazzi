@@ -44,8 +44,8 @@ static void tag_motion_sim(void);
 
 // select print function for debug
 #include <stdio.h>
-//#define PRINTF printf
-#define PRINTF(...) {}
+#define PRINTF printf
+// #define PRINTF(...) {}
 
 #define TAG_MOTION_NONE 0
 #define TAG_MOTION_LINE 1
@@ -174,7 +174,8 @@ void tag_tracking_propagate()
 void tag_tracking_propagate_start()
 {    
   // your periodic start code here.
-
+  PRINTF("start of tag_tracking\n");
+  fflush(stdout);
   kalman_init(&kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT);
   kalman_set_state(&kalman, tag_track.meas, tag_track.speed);
   // TODO reset kalman state ?
@@ -184,7 +185,7 @@ void tag_tracking_propagate_start()
 void tag_tracking_report()
 {
   // your periodic code here.
-  // freq = 1.0 Hz
+  // freq = 1.0 Hz  
 }
 
 
@@ -201,17 +202,17 @@ static void tag_tracking_sim(void)
   struct FloatVect3 cam_pos_ltp;
   float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &tag_track.cam_pos);
   VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
-  PRINTF("Cw %f %f %f\n", cam_pos_ltp.x, cam_pos_ltp.y, cam_pos_ltp.z);
+  // PRINTF("Cw %f %f %f\n", cam_pos_ltp.x, cam_pos_ltp.y, cam_pos_ltp.z);
   // Target
   struct NedCoor_f target_ltp;
   ENU_OF_TO_NED(target_ltp, waypoints[TAG_TRACKING_SIM_WP].enu_f);
   target_ltp.z = 0.f; // force on the ground
-  PRINTF("Tw %f %f %f\n", target_ltp.x, target_ltp.y, target_ltp.z);
+  // PRINTF("Tw %f %f %f\n", target_ltp.x, target_ltp.y, target_ltp.z);
   // Compute target in camera frame Pc = R * (Pw - C)
   struct FloatVect3 target_cam, tmp;
   VECT3_DIFF(tmp, target_ltp, cam_pos_ltp);
   float_rmat_vmult(&target_cam, &ltp_to_cam_rmat, &tmp);
-  PRINTF("Tc %f %f %f\n", target_cam.x, target_cam.y, target_cam.z);
+  // PRINTF("Tc %f %f %f\n", target_cam.x, target_cam.y, target_cam.z);
   if (fabsf(target_cam.z) > 1.) {
     // If we are not too close from target
     // Compute target in image frame x = X/Z, y = X/Z
@@ -227,7 +228,7 @@ static void tag_tracking_sim(void)
       uint16_t dim[3] = { 100, 100, 0 };
       struct FloatQuat quat; // TODO
       float_quat_identity(&quat);
-      PRINTF("Sending Abi Msg %d %d %d\n", coord[0], coord[1], coord[2]);
+      // PRINTF("Sending Abi Msg %d %d %d\n", coord[0], coord[1], coord[2]);
       AbiSendMsgJEVOIS_MSG(42, JEVOIS_MSG_D3, "1", 3, coord, dim, quat, "");
     }
   }

@@ -1,9 +1,13 @@
 #include "modules/tracking/kalman.h"
 #include <math.h>
+#include <stdio.h>
+
+// #define PRINTF printf
+#define PRINTF(...) {}
 
 void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_sigma2, float r, float dt)
 {
-  int i,j;
+  int i, j;
   const float dt2 = dt * dt;
   const float dt3 = dt2 * dt / 2.f;
   const float dt4 = dt2 * dt2 / 4.f;
@@ -93,7 +97,7 @@ struct FloatVect3 kalman_get_pos(struct Kalman *kalman)
 
 struct FloatVect3 kalman_get_speed(struct Kalman *kalman)
 {
-  struct FloatVect3 speed;
+    struct FloatVect3 speed;
   speed.x = kalman->state[1];
   speed.y = kalman->state[3];
   speed.z = kalman->state[5];
@@ -128,15 +132,14 @@ void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r)
 void kalman_predict(struct Kalman *kalman)
 {
   int i;
-  for (i = 0; i < KALMAN_DIM; i += 2) {
+  for (i = 0; i < KALMAN_DIM; i += 2)
+  {
     // kinematic equation of the dynamic model X = F*X
     kalman->state[i] += kalman->state[i+1] * kalman->dt;
-  // kalman->state = matrix_product(kalman->F, kalman->state, KALMAN_DIM, KALMAN_DIM, 1);
     
     // propagate covariance P = F*P*Ft + Q
     // since F is diagonal by block, P can be updated by block here as well
     // let's unroll the matrix operations as it is simple
-  // kalman->P = matrix_product(kalman->F, matrix_product);
     
     const float d_dt = kalman->P[i+1][i+1] * kalman->dt;
     kalman->P[i][i] += kalman->P[i+1][i] * kalman->dt
@@ -145,6 +148,7 @@ void kalman_predict(struct Kalman *kalman)
     kalman->P[i+1][i] += d_dt + kalman->Q[i+1][i];
     kalman->P[i+1][i+1] += kalman->Q[i+1][i+1];
   }
+
 }
 
 /** correction step
@@ -155,27 +159,6 @@ void kalman_predict(struct Kalman *kalman)
  */
 void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
 {
-  //const float dx = kalman->state[0] - anchor.x;
-  //const float dy = kalman->state[2] - anchor.y;
-  //const float dz = kalman->state[4] - anchor.z;
-  //const float norm = sqrtf(dx * dx + dy * dy + dz * dz);
-  // build measurement error
-  //const float res = dist - norm;
-  // build Jacobian of observation model for anchor i
-  // float Hi[] = { dx / norm, 0.f, dy / norm, 0.f, dz / norm, 0.f };
-  
-  // compute kalman gain K = P*Ht (H*P*Ht + R)^-1
-  // S = H*P*Ht + R
-  
-  // const float S =
-  //   Hi[0] * Hi[0] * kalman->P[0][0] +
-  //   Hi[2] * Hi[2] * kalman->P[2][2] +
-  //   Hi[4] * Hi[4] * kalman->P[4][4] +
-  //   Hi[0] * Hi[2] * (kalman->P[0][2] + kalman->P[2][0]) +
-  //   Hi[0] * Hi[4] * (kalman->P[0][4] + kalman->P[4][0]) +
-  //   Hi[2] * Hi[4] * (kalman->P[2][4] + kalman->P[4][2]) +
-  //   kalman->r;
-
   const float S[3][3] = { {kalman->P[0][0] + kalman->r, kalman->P[0][2], kalman->P[0][4]},
                             {kalman->P[2][0], kalman->P[2][2] + kalman->r , kalman->P[2][4]},
                             {kalman->P[4][0], kalman->P[4][2], kalman->P[4][4] + kalman->r}};
@@ -184,45 +167,47 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
   if (fabsf(S[0][0]) + fabsf(S[1][1]) + fabsf(S[2][2]) < 1e-5) {
     return; // don't inverse S if it is too small
   }
+  
   // finally compute gain and correct state
-  // float K[6];
-
   float invS[3][3];
-  MAT_INV33(invS, S);
-
-  float K[6][3];
+  MAKE_MATRIX_PTR(_S, S, 3);
+  MAKE_MATRIX_PTR(_invS, invS, 3);
+  float_mat_invert(_invS, _S, 3);
   float HinvS_tmp[6][3];
-  float ** Ht = matrix_transpose(kalman->H, 3, 6);
-  MAT_MUL(6, 3, 3, HinvS_tmp, Ht , invS);
-  MAT_MUL(6, 6, 3, K, kalman->P, HinvS_tmp);
+  MAKE_MATRIX_PTR(_H, kalman->H, 3);
+  float Ht[6][3];
+  MAKE_MATRIX_PTR(_Ht, Ht, 6);
 
-  float X[6][1] = {{kalman->state[0]}, {kalman->state[1]}, {kalman->state[2]}, {kalman->state[3]}, {kalman->state[4]}, {kalman->state[5]}}; //K(Z-HX)
-  float Z[3][1] ={{anchor.x}, {anchor.y}, {anchor.z}};
-  float * HX_tmp;
-  MAT_MUL_VECT(6, HX_tmp, kalman->H, kalman->state);
-  float HX[3][1] = {{HX_tmp[0]}, {HX_tmp[1]}, {HX_tmp[2]}};
-  float Z_HX[3][1];
-  MAT_SUB(3,1, Z_HX, Z, HX);
-  float K_ZHX_tmp[6][1];
-  MAT_MUL(6,3,1, K_ZHX_tmp, K, Z_HX);
-  MAT_SUM(6,1, X, X, K_ZHX_tmp);
+  float_mat_transpose(_Ht, _H, 3, 6);
+  MAKE_MATRIX_PTR(_HinvS_tmp, HinvS_tmp, 6);
 
-  for (int i = 0; i<6; i++){
-    kalman->state[i]= X[i][0  ];
-  }
+  float_mat_mul(_HinvS_tmp, _Ht, _invS, 6, 3, 3);
+  float K[6][3];
+  MAKE_MATRIX_PTR(_K, K, 6);
 
-  // for (int i = 0; i < 6; i++) {
-  //   K[i] = (Hi[0] * kalman->P[i][0] + Hi[2] * kalman->P[i][2] + Hi[4] * kalman->P[i][4]) / S;
-  //   kalman->state[i] += K[i] * res;
-  // }
+  MAKE_MATRIX_PTR(_P, kalman->P, 6);
+  float_mat_mul(_K, _P, _HinvS_tmp, 6, 6, 3);
+
+  float HX_tmp[3];
+  float_mat_vect_mul(HX_tmp, _H, kalman->state, 3, 6);
+  float Z_HX[3];
+
+  float Z[3] ={anchor.x, anchor.y, anchor.z};
+  float_vect_diff(Z_HX, Z, HX_tmp, 6);
+  
+  float K_ZHX_tmp[6];
+  float_mat_vect_mul(K_ZHX_tmp, _K, Z_HX, 6, 3);
+  float_vect_add(kalman->state, K_ZHX_tmp, 6);
+
+
 
   // precompute K*H and store current P
   float KH_tmp[6][6];
+  MAKE_MATRIX_PTR(_KH_tmp, KH_tmp, 6);
   float P_tmp[6][6];
-  MAT_MUL(6,3,6, KH_tmp, K, kalman->H);
+  float_mat_mul(_KH_tmp, _K, _H, 6, 3, 6);
   for (int i = 0; i < 6; i++) {
     for (int j = 0; j < 6; j++) {
-      // KH_tmp[i][j] = K[i] * Hi[j];
       P_tmp[i][j] = kalman->P[i][j];
     }
   }
@@ -242,14 +227,4 @@ void kalman_update_speed(struct Kalman *kalman, float speed, uint8_t type)
   (void) speed;
   (void) type;
   // TODO
-}
-
-float** matrix_transpose(float** m, int n, int p){
-  float ** mt;
-  for (int i=0; i<n; i++){
-    for (int j=0; j<p; j++){
-      mt[i][j]=m[j][i];
-    }
-  }
-  return mt;
 }
