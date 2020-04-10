@@ -5,7 +5,7 @@
 #include "std.h"
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_geodetic_float.h"
-
+#include "subsystems/commands.h"
 #define KALMAN_DIM 6
 
 /** Kalman structure
@@ -84,7 +84,7 @@ extern void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r);
  *
  * @param[in] kalman Kalman structure
  */
-extern void kalman_predict(struct Kalman *kalman);
+extern void kalman_predict(struct Kalman *kalman, float * tag_tracking_roll, float * tag_tracking_pitch, float * tag_tracking_climb);
 
 /** Update step based on each new distance data
  *

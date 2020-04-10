@@ -36,4 +36,8 @@ extern void tag_tracking_propagate_start(void);
 extern void tag_tracking_report(void);
 
 
+extern float tag_tracking_roll;
+extern float tag_tracking_pitch;
+extern float tag_tracking_climb;
+
 #endif  // TAG_TRACKING_H

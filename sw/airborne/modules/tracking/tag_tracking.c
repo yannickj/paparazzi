@@ -154,6 +154,11 @@ void tag_tracking_init()
 
   // Bind to ABI message
   AbiBindMsgJEVOIS_MSG(TAG_TRACKING_ID, &tag_track_ev, tag_track_cb);
+
+  // tag_tracking_commands
+  tag_tracking_roll = 0;
+  tag_tracking_pitch = 0;
+  tag_tracking_climb = 0;
 }
 
 // Propagation function
@@ -167,7 +172,8 @@ void tag_tracking_propagate()
 #endif
 
   // TODO call kalman propagation step
-  kalman_predict(&kalman);
+  kalman_predict(&kalman, &tag_tracking_roll, &tag_tracking_pitch, &tag_tracking_climb);
+  // PRINTF("tag_tracking_roll : %f\n", tag_tracking_roll);
 }
 
 // Propagation start function (called at each start state
