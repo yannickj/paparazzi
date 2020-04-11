@@ -29,11 +29,11 @@ void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_si
   for (i = 0; i < KALMAN_DIM; i += 2)
   {
     kalman->P[i][i] = P0_pos;
-    kalman->P[i+1][i+1] = P0_speed;
+    kalman->P[i + 1][i + 1] = P0_speed;
     kalman->Q[i][i] = Q_sigma2 * dt4;
-    kalman->Q[i+1][i] = Q_sigma2 * dt3;
-    kalman->Q[i][i+1] = Q_sigma2 * dt3;
-    kalman->Q[i+1][i+1] = Q_sigma2 * dt2;
+    kalman->Q[i + 1][i] = Q_sigma2 * dt3;
+    kalman->Q[i][i + 1] = Q_sigma2 * dt3;
+    kalman->Q[i + 1][i + 1] = Q_sigma2 * dt2;
   }
   kalman->r = r;
   kalman->dt = dt;
@@ -53,7 +53,7 @@ void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_si
       {
         kalman->F[i][i] = 1;
       }
-      else if (i % 2 == 0 && j == i+1)
+      else if (i % 2 == 0 && j == i + 1)
       {
         kalman->F[i][j] = dt;
       }
@@ -74,7 +74,7 @@ void kalman_init(struct Kalman *kalman, float P0_pos, float P0_speed, float Q_si
     {
       if (2 * i == j)
       {
-        kalman->H[i][i] = 1;
+        kalman->H[i][j] = 1;
       }
       else
       {
@@ -132,9 +132,9 @@ void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r)
   for (i = 0; i < KALMAN_DIM; i += 2)
   {
     kalman->Q[i][i] = Q_sigma2 * dt4;
-    kalman->Q[i+1][i] = Q_sigma2 * dt3;
-    kalman->Q[i][i+1] = Q_sigma2 * dt3;
-    kalman->Q[i+1][i+1] = Q_sigma2 * dt2;
+    kalman->Q[i + 1][i] = Q_sigma2 * dt3;
+    kalman->Q[i][i + 1] = Q_sigma2 * dt3;
+    kalman->Q[i + 1][i + 1] = Q_sigma2 * dt2;
   }
   kalman->r = r;
 }
@@ -148,23 +148,23 @@ void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r)
  *       0 0  0 0  1 dt
  *       0 0  0 0  0 1  ]
  */
-void kalman_predict(struct Kalman *kalman, float * tag_tracking_roll, float * tag_tracking_pitch, float * tag_tracking_climb)
+void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_tracking_pitch, float *tag_tracking_climb)
 {
   int i;
   for (i = 0; i < KALMAN_DIM; i += 2)
   {
     // kinematic equation of the dynamic model X = F*X
-    kalman->state[i] += kalman->state[i+1] * kalman->dt;
+    kalman->state[i] += kalman->state[i + 1] * kalman->dt;
 
     // propagate covariance P = F*P*Ft + Q
     // since F is diagonal by block, P can be updated by block here as well
     // let's unroll the matrix operations as it is simple
 
-    const float d_dt = kalman->P[i+1][i+1] * kalman->dt;
-    kalman->P[i][i] += kalman->P[i+1][i] * kalman->dt + kalman->dt * (kalman->P[i][i+1] + d_dt) + kalman->Q[i][i];
-    kalman->P[i][i+1] += d_dt + kalman->Q[i][i+1];
-    kalman->P[i+1][i] += d_dt + kalman->Q[i+1][i];
-    kalman->P[i+1][i+1] += kalman->Q[i+1][i+1];
+    const float d_dt = kalman->P[i + 1][i + 1] * kalman->dt;
+    kalman->P[i][i] += kalman->P[i + 1][i] * kalman->dt + kalman->dt * (kalman->P[i][i + 1] + d_dt) + kalman->Q[i][i];
+    kalman->P[i][i + 1] += d_dt + kalman->Q[i][i + 1];
+    kalman->P[i + 1][i] += d_dt + kalman->Q[i + 1][i];
+    kalman->P[i + 1][i + 1] += kalman->Q[i + 1][i + 1];
   }
 
   struct EnuCoor_f pos;
@@ -173,18 +173,51 @@ void kalman_predict(struct Kalman *kalman, float * tag_tracking_roll, float * ta
   pos.y = kalman->state[2];
   pos.z = kalman->state[4];
 
-  float k = 4000;
-  *tag_tracking_roll = pos.y /k;
-  *tag_tracking_pitch = -pos.x / k;
-  *tag_tracking_climb = 0 ;
-  PRINTF("roll : %f\n", *tag_tracking_roll);
-  PRINTF("pitch : %f\n", *tag_tracking_pitch);
-  PRINTF("vz : %f\n", *tag_tracking_climb);
+  // float k = 4000;
+  // *tag_tracking_roll = pos.y / k;
+  // *tag_tracking_pitch = -pos.x / k;
+  *tag_tracking_climb = 0;
+  /**tag_tracking_roll = 5;
+  *tag_tracking_pitch = 0;*/
+
+  if (pos.x > 200)
+  {
+    *tag_tracking_pitch = 0.25;
+  }
+  else if (pos.x < -200)
+  {
+    *tag_tracking_pitch = 0.25;
+  }
+  else
+  {
+    *tag_tracking_pitch = 0;
+  }
+
+  if (pos.y > 200)
+  {
+    *tag_tracking_roll = 0.25;
+  }
+  else if (pos.y < -200)
+  {
+    *tag_tracking_roll = -0.25;
+  }
+  else
+  {
+    *tag_tracking_roll = 0;
+  }
+
+  PRINTF("pos.x : %f\n", pos.x);
+  PRINTF("pos.y : %f\n", pos.y);
+  PRINTF("pos.z : %f\n", pos.z);
+
+  //PRINTF("roll : %f\n", *tag_tracking_roll);
+  // PRINTF("pitch : %f\n", *tag_tracking_pitch);
+  //PRINTF("vz : %f\n", *tag_tracking_climb);
 
   struct EnuCoor_i pos_i;
   ENU_BFP_OF_REAL(pos_i, pos);
-  // PRINTF("%d %d %d\n", pos_i.x, pos_i.y, pos_i.z);
-  // fflush(stdout);
+  //PRINTF("%d %d %d\n", pos_i.x, pos_i.y, pos_i.z);
+  fflush(stdout);
   waypoint_move_enu_i(TAG_PRED_SIM_WP, &pos_i);
 }
 
@@ -196,6 +229,11 @@ void kalman_predict(struct Kalman *kalman, float * tag_tracking_roll, float * ta
  */
 void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
 {
+  PRINTF("anchor.x : %f\n", anchor.x);
+  PRINTF("anchor.y : %f\n", anchor.y);
+  PRINTF("anchor.z : %f\n", anchor.z);
+  fflush(stdout);
+
   const float S[3][3] = {{kalman->P[0][0] + kalman->r, kalman->P[0][2], kalman->P[0][4]},
                          {kalman->P[2][0], kalman->P[2][2] + kalman->r, kalman->P[2][4]},
                          {kalman->P[4][0], kalman->P[4][2], kalman->P[4][4] + kalman->r}};
@@ -215,9 +253,20 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
   float_mat_invert(_invS, _S, 3);
   float HinvS_tmp[6][3];
   MAKE_MATRIX_PTR(_H, kalman->H, 3);
-  //for (int i = 0; i < 3; i++){
-    //PRINTF("H : %f %f %f %f %f %f\n", kalman->H[i][0],kalman->H[i][1],kalman->H[i][2],kalman->H[i][3],kalman->H[i][4],kalman->H[i][5]);fflush(stdout);
-  //}
+
+  /*
+  for (int i = 0; i < 3; i++)
+  {
+    PRINTF("S : %f %f %f\n", S[i][0], S[i][1], S[i][2]);
+
+  }
+  fflush(stdout);
+  */
+  /*  for (int i = 0; i < 3; i++)
+  {
+    PRINTF("H : %f %f %f %f %f %f\n", kalman->H[i][0], kalman->H[i][1], kalman->H[i][2], kalman->H[i][3], kalman->H[i][4], kalman->H[i][5]);
+    fflush(stdout);
+  }*/
   float Ht[6][3];
   MAKE_MATRIX_PTR(_Ht, Ht, 6);
 
@@ -230,7 +279,7 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
 
   MAKE_MATRIX_PTR(_P, kalman->P, 6);
   float_mat_mul(_K, _P, _HinvS_tmp, 6, 6, 3);
-  //PRINTF("K : %f %f %f %f %f %f\n %f %f %f %f %f %f\n ", _K[0][0], _K[0][1], _K[0][2], _K[0][3], _K[0][4], _K[0][5], _K[1][0], _K[1][1], _K[1][2], _K[1][3], _K[1][4], _K[1][5], _K[2][0], _K[2][1], _K[2][2], _K[2][3], _K[2][4], _K[2][5]);
+  // PRINTF("K : %f %f %f %f %f %f\n %f %f %f %f %f %f\n %f %f %f %f %f %f\n ", _K[0][0], _K[0][1], _K[0][2], _K[0][3], _K[0][4], _K[0][5], _K[1][0], _K[1][1], _K[1][2], _K[1][3], _K[1][4], _K[1][5], _K[2][0], _K[2][1], _K[2][2], _K[2][3], _K[2][4], _K[2][5]);
   /*fflush(stdout);
   for (int i = 0; i < 6; i++)
   {
@@ -238,19 +287,21 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
     fflush(stdout);}
 */
 
-
   float HX_tmp[3];
   float_mat_vect_mul(HX_tmp, _H, kalman->state, 3, 6);
   float Z_HX[3];
 
   float Z[3] = {anchor.x, anchor.y, anchor.z};
   // PRINTF("Z : %f, %f, %f\n", Z[0], Z[1], Z[2]);
-  float_vect_diff(Z_HX, Z, HX_tmp, 6);
+  float_vect_diff(Z_HX, Z, HX_tmp, 3);
+  //PRINTF(" : %f, %f, %f\n", Z_HX[0], Z_HX[1], Z_HX[2]);
 
   float K_ZHX_tmp[6];
   float_mat_vect_mul(K_ZHX_tmp, _K, Z_HX, 6, 3);
   float_vect_add(kalman->state, K_ZHX_tmp, 6);
-  //PRINTF("state : %f %f %f %f %f %f \n", K_ZHX_tmp[0],K_ZHX_tmp[1],K_ZHX_tmp[2],K_ZHX_tmp[3],K_ZHX_tmp[4],K_ZHX_tmp[5]);fflush(stdout);
+  //PRINTF("KZHX : %f %f %f %f %f %f \n", K_ZHX_tmp[0], K_ZHX_tmp[1], K_ZHX_tmp[2], K_ZHX_tmp[3], K_ZHX_tmp[4], K_ZHX_tmp[5]);
+  fflush(stdout);
+  //PRINTF("state : %f, %f, %f\n", kalman->state[0], kalman->state[2], kalman->state[4]);
 
   // precompute K*H and store current P
   float KH_tmp[6][6];
@@ -275,6 +326,9 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
       }
     }
   }
+
+  PRINTF("VU!\n");
+  fflush(stdout);
 }
 
 void kalman_update_speed(struct Kalman *kalman, float speed, uint8_t type)
