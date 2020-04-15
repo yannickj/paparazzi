@@ -3,10 +3,11 @@
 #include <stdio.h>
 
 // use WP_PRED by default
+/*
 #include "generated/flight_plan.h"
 #if !(defined TAG_PRED_SIM_WP) && (defined WP_PRED)
 #define TAG_PRED_SIM_WP WP_PRED
-#endif
+#endif*/
 
 #define PRINTF printf
 //#define PRINTF(...) {}
@@ -180,26 +181,28 @@ void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_
   /**tag_tracking_roll = 5;
   *tag_tracking_pitch = 0;*/
 
+  int COM_ANGLE_X = 0.25;
+  int COM_ANGLE_Y = 0.5;
+
   if (pos.x > 200)
   {
-    *tag_tracking_pitch = 0.25;
+    *tag_tracking_pitch = - COM_ANGLE_X;
   }
   else if (pos.x < -200)
   {
-    *tag_tracking_pitch = 0.25;
+    *tag_tracking_pitch = COM_ANGLE_X;
   }
   else
   {
     *tag_tracking_pitch = 0;
   }
-
   if (pos.y > 200)
   {
-    *tag_tracking_roll = 0.25;
+    *tag_tracking_roll = - COM_ANGLE_Y;
   }
   else if (pos.y < -200)
   {
-    *tag_tracking_roll = -0.25;
+    *tag_tracking_roll = COM_ANGLE_Y;
   }
   else
   {
@@ -214,11 +217,11 @@ void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_
   // PRINTF("pitch : %f\n", *tag_tracking_pitch);
   //PRINTF("vz : %f\n", *tag_tracking_climb);
 
-  struct EnuCoor_i pos_i;
-  ENU_BFP_OF_REAL(pos_i, pos);
+  // struct EnuCoor_i pos_i;
+ // ENU_BFP_OF_REAL(pos_i, pos);
   //PRINTF("%d %d %d\n", pos_i.x, pos_i.y, pos_i.z);
-  fflush(stdout);
-  waypoint_move_enu_i(TAG_PRED_SIM_WP, &pos_i);
+  // fflush(stdout);
+  //waypoint_move_enu_i(TAG_PRED_SIM_WP, &pos_i);
 }
 
 /** correction step
