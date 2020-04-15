@@ -9,7 +9,7 @@
     <waypoint name="STDBY" x="-0.7" y="-0.8"/>
     <waypoint name="TARGET" x="2.0" y="2.0"/>
     <waypoint name="TD" x="0.8" y="-1.7"/>
-    <waypoint name="PRED" x="3" y="2"/>
+   <!-- <waypoint name="PRED" x="3" y="2"/>-->
     <waypoint name="S1" x="2" y="2.8"/>
     <waypoint name="S2" x="2" y="-2.8"/>
     <waypoint name="S3" x="-2.5" y="-2.8"/>
@@ -75,9 +75,9 @@
     <block group="target" name="Stay Target" strip_button="Follow Target">
       <stay wp="TARGET"/>
     </block>
-    <block name="Follow Prediction" strip_button="Follow Prediction">
+    <!-- <block name="Follow Prediction" strip_button="Follow Prediction">
       <stay wp="PRED"/>
-    </block>
+    </block> -->
     <block name="track tag">
       <attitude climb="0" pitch="tag_tracking_pitch" roll="tag_tracking_roll" vmode="climb"/>
     </block>
