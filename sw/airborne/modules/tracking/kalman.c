@@ -149,7 +149,7 @@ void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r)
  *       0 0  0 0  1 dt
  *       0 0  0 0  0 1  ]
  */
-void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_tracking_pitch, float *tag_tracking_climb)
+void kalman_predict(struct Kalman *kalman)
 {
   int i;
   for (i = 0; i < KALMAN_DIM; i += 2)
@@ -177,45 +177,41 @@ void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_
   // float k = 4000;
   // *tag_tracking_roll = pos.y / k;
   // *tag_tracking_pitch = -pos.x / k;
-  *tag_tracking_climb = 0;
+  //*tag_tracking_climb = 0;
   /**tag_tracking_roll = 5;
   *tag_tracking_pitch = 0;*/
 
-  int COM_ANGLE_X = 0.25;
-  int COM_ANGLE_Y = 0.5;
+  // int COM_ANGLE_X = 0.25;
+  // int COM_ANGLE_Y = 0.5;
 
-  if (pos.x > 200)
-  {
-    *tag_tracking_pitch = - COM_ANGLE_X;
-  }
-  else if (pos.x < -200)
-  {
-    *tag_tracking_pitch = COM_ANGLE_X;
-  }
-  else
-  {
-    *tag_tracking_pitch = 0;
-  }
-  if (pos.y > 200)
-  {
-    *tag_tracking_roll = - COM_ANGLE_Y;
-  }
-  else if (pos.y < -200)
-  {
-    *tag_tracking_roll = COM_ANGLE_Y;
-  }
-  else
-  {
-    *tag_tracking_roll = 0;
-  }
+  // if (pos.x > 200)
+  // {
+  //   *tag_tracking_pitch = - COM_ANGLE_X;
+  // }
+  // else if (pos.x < -200)
+  // {
+  //   *tag_tracking_pitch = COM_ANGLE_X;
+  // }
+  // else
+  // {
+  //   *tag_tracking_pitch = 0;
+  // }
+  // if (pos.y > 200)
+  // {
+  //   *tag_tracking_roll = - COM_ANGLE_Y;
+  // }
+  // else if (pos.y < -200)
+  // {
+  //   *tag_tracking_roll = COM_ANGLE_Y;
+  // }
+  // else
+  // {
+  //   *tag_tracking_roll = 0;
+  // }
 
   PRINTF("pos.x : %f\n", pos.x);
   PRINTF("pos.y : %f\n", pos.y);
   PRINTF("pos.z : %f\n", pos.z);
-
-  PRINTF("roll : %f\n", *tag_tracking_roll);
-  PRINTF("pitch : %f\n", *tag_tracking_pitch);
-  //PRINTF("vz : %f\n", *tag_tracking_climb);
 
   // struct EnuCoor_i pos_i;
  // ENU_BFP_OF_REAL(pos_i, pos);

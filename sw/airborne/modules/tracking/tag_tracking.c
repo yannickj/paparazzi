@@ -38,8 +38,13 @@ static void tag_tracking_sim(void);
 static void tag_motion_sim(void);
 
 // use WP_TARGET by default
-#if !(defined TAG_TRACKING_SIM_WP) && (defined WP_TARGET)
+#if !(defined TAG_TRACKING_SIM_WP) && (defined WP_TARGET) 
 #define TAG_TRACKING_SIM_WP WP_TARGET
+#endif
+
+#if !(defined TAG_TRACKING_PRED) && (defined WP_PRED)
+#define TAG_TRACKING_PRED WP_PRED
+
 #endif
 
 // select print function for debug
@@ -51,7 +56,7 @@ static void tag_motion_sim(void);
 #define TAG_MOTION_LINE 1
 #define TAG_MOTION_CIRCLE 2
 
-#define TAG_MOTION_SPEED_X 0.5f
+#define TAG_MOTION_SPEED_X 0.3f //0.5f
 #define TAG_MOTION_SPEED_Y 0.f
 #define TAG_MOTION_RANGE_X 4.f
 #define TAG_MOTION_RANGE_Y 4.f
@@ -141,7 +146,28 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
 }
 
 //static void compute_command(...);
+static void compute_command(){
+  tag_tracking_pitch = - tag_tracking_kp * kalman.state[0] - tag_tracking_kd * kalman.state[1]; 
+  tag_tracking_roll = tag_tracking_kp * kalman.state[2] + tag_tracking_kd * kalman.state[3];
 
+  struct EnuCoor_f * posDrone = stateGetPositionEnu_f();
+
+  PRINTF("x drone : %f", posDrone->x);
+  PRINTF("y drone : %f", posDrone->y);
+  struct EnuCoor_f pos;
+  pos.x = kalman.state[2] / 1000 + posDrone->x;
+  pos.y = kalman.state[0] / 1000 + posDrone->y;
+  pos.z = 0;
+  struct EnuCoor_i pos_i;
+  ENU_BFP_OF_REAL(pos_i, pos);
+  //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
+  waypoint_move_enu_i(TAG_TRACKING_PRED, &pos_i);
+
+  PRINTF("roll : %f\n", tag_tracking_roll);
+  PRINTF("pitch : %f\n", tag_tracking_pitch);
+  // PRINTF("climb : %f\n", tag_tracking_climb);
+  fflush(stdout);
+}
 /*
  * cmd = kp*(e - m) + kd*(ev - v)
  * e = 0
@@ -173,8 +199,8 @@ void tag_tracking_init()
   tag_tracking_roll = 0.f;
   tag_tracking_pitch = 0.f;
   tag_tracking_climb = 0.f;
-  tag_tracking_kp = 1.f; //FIXME
-  tag_tracking_kd = 1.f;
+  tag_tracking_kp = 0.001f; //FIXME
+  tag_tracking_kd = 0.001f;
 }
 
 // Propagation function
@@ -188,7 +214,8 @@ void tag_tracking_propagate()
 #endif
 
   // TODO call kalman propagation step
-  kalman_predict(&kalman, &tag_tracking_roll, &tag_tracking_pitch, &tag_tracking_climb);
+  kalman_predict(&kalman);
+  compute_command();
   // PRINTF("tag_tracking_roll : %f\n", tag_tracking_roll);
 }
 
@@ -285,5 +312,3 @@ static void tag_motion_sim(void)
 }
 
 #endif
-
-

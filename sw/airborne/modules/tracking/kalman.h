@@ -84,7 +84,7 @@ extern void kalman_update_noise(struct Kalman *kalman, float Q_sigma2, float r);
  *
  * @param[in] kalman Kalman structure
  */
-extern void kalman_predict(struct Kalman *kalman, float * tag_tracking_roll, float * tag_tracking_pitch, float * tag_tracking_climb);
+extern void kalman_predict(struct Kalman *kalman);
 
 /** Update step based on each new distance data
  *
