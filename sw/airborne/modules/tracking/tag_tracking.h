@@ -40,4 +40,7 @@ extern float tag_tracking_roll;
 extern float tag_tracking_pitch;
 extern float tag_tracking_climb;
 
+extern float tag_tracking_kp;
+extern float tag_tracking_kd;
+
 #endif  // TAG_TRACKING_H

@@ -213,8 +213,8 @@ void kalman_predict(struct Kalman *kalman, float *tag_tracking_roll, float *tag_
   PRINTF("pos.y : %f\n", pos.y);
   PRINTF("pos.z : %f\n", pos.z);
 
-  //PRINTF("roll : %f\n", *tag_tracking_roll);
-  // PRINTF("pitch : %f\n", *tag_tracking_pitch);
+  PRINTF("roll : %f\n", *tag_tracking_roll);
+  PRINTF("pitch : %f\n", *tag_tracking_pitch);
   //PRINTF("vz : %f\n", *tag_tracking_climb);
 
   // struct EnuCoor_i pos_i;
@@ -237,7 +237,7 @@ void kalman_update(struct Kalman *kalman, struct FloatVect3 anchor)
   PRINTF("anchor.z : %f\n", anchor.z);
   fflush(stdout);
 
-  const float S[3][3] = {{kalman->P[0][0] + kalman->r, kalman->P[0][2], kalman->P[0][4]},
+  float S[3][3] = {{kalman->P[0][0] + kalman->r, kalman->P[0][2], kalman->P[0][4]},
                          {kalman->P[2][0], kalman->P[2][2] + kalman->r, kalman->P[2][4]},
                          {kalman->P[4][0], kalman->P[4][2], kalman->P[4][4] + kalman->r}};
 

@@ -111,6 +111,12 @@ struct tag_tracking {
 static struct tag_tracking tag_track;
 struct Kalman kalman;
 
+float tag_tracking_roll;
+float tag_tracking_pitch;
+float tag_tracking_climb;
+float tag_tracking_kp;
+float tag_tracking_kd;
+
 // Abi bindings
 #ifndef TAG_TRACKING_ID
 #define TAG_TRACKING_ID ABI_BROADCAST
@@ -134,6 +140,14 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
   }
 }
 
+//static void compute_command(...);
+
+/*
+ * cmd = kp*(e - m) + kd*(ev - v)
+ * e = 0
+ * ev = 0
+ */
+
 // Init function
 void tag_tracking_init()
 {
@@ -156,9 +170,11 @@ void tag_tracking_init()
   AbiBindMsgJEVOIS_MSG(TAG_TRACKING_ID, &tag_track_ev, tag_track_cb);
 
   // tag_tracking_commands
-  tag_tracking_roll = 0;
-  tag_tracking_pitch = 0;
-  tag_tracking_climb = 0;
+  tag_tracking_roll = 0.f;
+  tag_tracking_pitch = 0.f;
+  tag_tracking_climb = 0.f;
+  tag_tracking_kp = 1.f; //FIXME
+  tag_tracking_kd = 1.f;
 }
 
 // Propagation function
