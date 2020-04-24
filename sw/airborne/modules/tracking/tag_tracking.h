@@ -42,6 +42,7 @@ extern float tag_tracking_climb;
 
 extern float tag_tracking_kp;
 extern float tag_tracking_kd;
+extern bool tag_tracking_lost;
 
 
 void visualizer_init();

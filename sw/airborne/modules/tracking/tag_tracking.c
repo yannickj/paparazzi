@@ -122,6 +122,7 @@ float tag_tracking_pitch;
 float tag_tracking_climb;
 float tag_tracking_kp;
 float tag_tracking_kd;
+bool tag_tracking_lost;
 
 // Abi bindings
 #ifndef TAG_TRACKING_ID
@@ -268,6 +269,7 @@ void tag_tracking_propagate_start()
   kalman_init(&kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT);
   kalman_set_state(&kalman, tag_track.meas, tag_track.speed);
   // TODO reset kalman state ?
+  tag_tracking_lost = false;
 }
 
 // Report function

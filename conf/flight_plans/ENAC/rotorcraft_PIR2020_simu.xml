@@ -76,7 +76,10 @@
       <stay wp="PRED"/>
     </block> -->
     <block name="track tag">
-      <attitude climb="0" pitch="tag_tracking_pitch" roll="tag_tracking_roll" vmode="climb" until="FALSE" />
+      <set var="tag_tracking_tag_tracking_propagate_status" value="MODULES_START"/>
+      <attitude climb="0" pitch="tag_tracking_pitch" roll="tag_tracking_roll" vmode="climb" until="tag_tracking_lost" />
+      <set var="tag_tracking_tag_tracking_propagate_status" value="MODULES_STOP"/>
+      <deroute block="Standby"/>
     </block>
     <block group="target" name="Land Target" strip_button="Land Target">
       <exception cond="stateGetPositionEnu_f()->z @LT 0.3" deroute="Ramp down"/>
