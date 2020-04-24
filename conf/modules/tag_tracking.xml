@@ -16,6 +16,7 @@
   <header>
     <file name="tag_tracking.h"/>
     <file name="kalman.h"/>
+    <file name="visualizer.h"/>
   </header>
   <init fun="tag_tracking_init()"/>
   <periodic fun="tag_tracking_propagate()" freq="10.0" start="tag_tracking_propagate_start()" autorun="TRUE"/>
@@ -23,5 +24,6 @@
   <makefile>
     <file name="tag_tracking.c"/>
     <file name="kalman.c"/>
+    <file name="visualizer.c"/>
   </makefile>
 </module>
