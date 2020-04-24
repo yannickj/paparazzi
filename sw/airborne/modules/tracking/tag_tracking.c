@@ -30,7 +30,8 @@
 #include "math/pprz_algebra_float.h"
 #include "state.h"
 #include "subsystems/abi.h"
-
+// #include "modules/tracking/visualizer.h"
+#include "stdlib.h"
 
 #if defined SITL
 #include "generated/flight_plan.h"
@@ -56,7 +57,7 @@ static void tag_motion_sim(void);
 #define TAG_MOTION_LINE 1
 #define TAG_MOTION_CIRCLE 2
 
-#define TAG_MOTION_SPEED_X 0.3f //0.5f
+#define TAG_MOTION_SPEED_X 0.25f //0.5f
 #define TAG_MOTION_SPEED_Y 0.f
 #define TAG_MOTION_RANGE_X 4.f
 #define TAG_MOTION_RANGE_Y 4.f
@@ -167,6 +168,9 @@ static void compute_command(){
   PRINTF("pitch : %f\n", tag_tracking_pitch);
   // PRINTF("climb : %f\n", tag_tracking_climb);
   fflush(stdout);
+
+  visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb);
+
 }
 /*
  * cmd = kp*(e - m) + kd*(ev - v)
@@ -200,8 +204,44 @@ void tag_tracking_init()
   tag_tracking_pitch = 0.f;
   tag_tracking_climb = 0.f;
   tag_tracking_kp = 0.001f; //FIXME
-  tag_tracking_kd = 0.001f;
+  tag_tracking_kd = 0.f;
+
+  // file for saving data
+  visualizer_init();
 }
+
+// saving in a file
+char * output_file_command = "kalman_command";
+
+void visualizer_init(){
+  FILE *f = fopen(output_file_command, "w");
+  fclose(f);
+}
+
+void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float tag_tracking_climb){
+  FILE *f = fopen(output_file_command, "a");
+  // char str[100];
+  // strcpy(str, String(tag_tracking_climb));
+  // buf += String(tag_tracking_climb);
+
+  // char * = "%f ; %f ; %f\n", tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb
+  char roll_s[20];
+  char pitch_s[20];
+  char climb_s[20];
+  snprintf(roll_s, 20, "%f", tag_tracking_roll);
+  snprintf(pitch_s, 20, "%f", tag_tracking_pitch);
+  snprintf(climb_s, 20, "%f", tag_tracking_climb);
+  char buf[200];
+  strcpy(buf, roll_s);
+  strcat(buf, " ; "); 
+  strcat(buf, pitch_s);
+  strcat(buf, " ; "); 
+  strcat(buf, climb_s);
+  strcat(buf, " \n");
+  fputs(buf, f);
+  fclose(f);
+}
+
 
 // Propagation function
 void tag_tracking_propagate()
