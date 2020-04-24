@@ -30,7 +30,7 @@
 #include "math/pprz_algebra_float.h"
 #include "state.h"
 #include "subsystems/abi.h"
-// #include "modules/tracking/visualizer.h"
+#include "modules/tracking/visualizer.h"
 #include "stdlib.h"
 
 #if defined SITL
@@ -100,6 +100,7 @@ static struct FloatVect3 tag_motion_speed = { TAG_MOTION_SPEED_X, TAG_MOTION_SPE
 #define DT 1
 #define P0_POS 10
 #define P0_SPEED 10
+#define SECURITY_ANGLE_THRESHOLD 1 //Degree FIXME
 // generated in modules.h
 static const float tag_track_dt = TAG_TRACKING_PROPAGATE_PERIOD;
 
@@ -141,9 +142,13 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
     tag_track.meas.x = coord[0];
     tag_track.meas.y = coord[1];
     tag_track.meas.z = coord[2];
-
+    struct FloatVect3 measures;
+    struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
+    struct FloatRMat ltp_to_cam_rmat;
+    float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track.body_to_cam);
+    float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track.meas);
     // TODO call correction step from here
-    kalman_update(&kalman, tag_track.meas);
+    kalman_update(&kalman, measures);
   }
 }
 
@@ -152,26 +157,34 @@ static void compute_command(){
   tag_tracking_pitch = - tag_tracking_kp * kalman.state[0] - tag_tracking_kd * kalman.state[1]; 
   tag_tracking_roll = tag_tracking_kp * kalman.state[2] + tag_tracking_kd * kalman.state[3];
 
-  struct EnuCoor_f * posDrone = stateGetPositionEnu_f();
+  PRINTF("pitch : %f", tag_tracking_pitch);
+  PRINTF("roll : %f", tag_tracking_roll);
+  //integrity tests
+  if (abs(tag_tracking_pitch) > SECURITY_ANGLE_THRESHOLD || abs(tag_tracking_roll) > SECURITY_ANGLE_THRESHOLD){
+    tag_tracking_lost = true;
+    PRINTF("INTEGRITY STOP");
+  }
+  else{
+    struct EnuCoor_f * posDrone = stateGetPositionEnu_f();
 
-  PRINTF("x drone : %f", posDrone->x);
-  PRINTF("y drone : %f", posDrone->y);
-  struct EnuCoor_f pos;
-  pos.x = kalman.state[2] / 1000 + posDrone->x;
-  pos.y = kalman.state[0] / 1000 + posDrone->y;
-  pos.z = 0;
-  struct EnuCoor_i pos_i;
-  ENU_BFP_OF_REAL(pos_i, pos);
-  //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
-  waypoint_move_enu_i(TAG_TRACKING_PRED, &pos_i);
+    // PRINTF("x drone : %f", posDrone->x);
+    // PRINTF("y drone : %f", posDrone->y);
+    struct EnuCoor_f pos;
+    pos.x = kalman.state[2] / 1000 + posDrone->x;
+    pos.y = kalman.state[0] / 1000 + posDrone->y;
+    pos.z = 0;
+    struct EnuCoor_i pos_i;
+    ENU_BFP_OF_REAL(pos_i, pos);
+    //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
+    waypoint_move_enu_i(TAG_TRACKING_PRED, &pos_i);
 
-  PRINTF("roll : %f\n", tag_tracking_roll);
-  PRINTF("pitch : %f\n", tag_tracking_pitch);
-  // PRINTF("climb : %f\n", tag_tracking_climb);
-  fflush(stdout);
+    PRINTF("roll : %f\n", tag_tracking_roll);
+    PRINTF("pitch : %f\n", tag_tracking_pitch);
+    // PRINTF("climb : %f\n", tag_tracking_climb);
+    fflush(stdout);
 
-  visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb);
-
+    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb);
+  }
 }
 /*
  * cmd = kp*(e - m) + kd*(ev - v)
@@ -205,43 +218,13 @@ void tag_tracking_init()
   tag_tracking_pitch = 0.f;
   tag_tracking_climb = 0.f;
   tag_tracking_kp = 0.001f; //FIXME
-  tag_tracking_kd = 0.f;
+  tag_tracking_kd = 0.015f;
 
   // file for saving data
   visualizer_init();
 }
 
-// saving in a file
-char * output_file_command = "kalman_command";
 
-void visualizer_init(){
-  FILE *f = fopen(output_file_command, "w");
-  fclose(f);
-}
-
-void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float tag_tracking_climb){
-  FILE *f = fopen(output_file_command, "a");
-  // char str[100];
-  // strcpy(str, String(tag_tracking_climb));
-  // buf += String(tag_tracking_climb);
-
-  // char * = "%f ; %f ; %f\n", tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb
-  char roll_s[20];
-  char pitch_s[20];
-  char climb_s[20];
-  snprintf(roll_s, 20, "%f", tag_tracking_roll);
-  snprintf(pitch_s, 20, "%f", tag_tracking_pitch);
-  snprintf(climb_s, 20, "%f", tag_tracking_climb);
-  char buf[200];
-  strcpy(buf, roll_s);
-  strcat(buf, " ; "); 
-  strcat(buf, pitch_s);
-  strcat(buf, " ; "); 
-  strcat(buf, climb_s);
-  strcat(buf, " \n");
-  fputs(buf, f);
-  fclose(f);
-}
 
 
 // Propagation function
@@ -266,8 +249,14 @@ void tag_tracking_propagate_start()
   // your periodic start code here.
   PRINTF("start of tag_tracking\n");
   fflush(stdout);
+  struct FloatVect3 speed, measures;
+  struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
+  struct FloatRMat ltp_to_cam_rmat;
+  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track.body_to_cam);
+  float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track.meas);
+  float_rmat_transp_vmult(&speed, &ltp_to_cam_rmat, &tag_track.speed);
   kalman_init(&kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT);
-  kalman_set_state(&kalman, tag_track.meas, tag_track.speed);
+  kalman_set_state(&kalman, measures, speed);
   // TODO reset kalman state ?
   tag_tracking_lost = false;
 }
