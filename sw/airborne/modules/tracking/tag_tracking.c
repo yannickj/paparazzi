@@ -183,7 +183,10 @@ static void compute_command(){
     // PRINTF("climb : %f\n", tag_tracking_climb);
     fflush(stdout);
 
-    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb);
+    struct EnuCoor_f posPlt = waypoints[TAG_TRACKING_SIM_WP].enu_f;
+
+
+    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb, kalman.state[0], kalman.state[2], pos.x, pos.y, posPlt.x, posPlt.y);
   }
 }
 /*
