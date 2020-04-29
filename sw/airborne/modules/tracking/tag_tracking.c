@@ -32,6 +32,7 @@
 #include "subsystems/abi.h"
 #include "modules/tracking/visualizer.h"
 #include "stdlib.h"
+#include <math.h>
 
 #if defined SITL
 #include "generated/flight_plan.h"
@@ -124,6 +125,11 @@ float tag_tracking_climb;
 float tag_tracking_kp;
 float tag_tracking_kd;
 bool tag_tracking_lost;
+
+// variables for circle
+int time_circle = 0;
+float time_circle_corrected;
+float speed_circle = 0.03;
 
 // Abi bindings
 #ifndef TAG_TRACKING_ID
@@ -340,6 +346,23 @@ static void tag_motion_sim(void)
         waypoint_move_enu_i(TAG_TRACKING_SIM_WP, &pos_i);
         break;
       }
+    case TAG_MOTION_CIRCLE:
+    {
+        time_circle += 1;
+        time_circle_corrected = time_circle * 0.02;
+        struct EnuCoor_f pos = waypoints[TAG_TRACKING_SIM_WP].enu_f;
+        struct FloatVect3 speed_dt = tag_motion_speed;
+        VECT2_SMUL(speed_dt, speed_dt, tag_track_dt);
+        tag_motion_speed.x = speed_circle * cos(time_circle_corrected);
+        tag_motion_speed.y =  speed_circle * sin(time_circle_corrected);
+        speed_dt.x = speed_circle * cos(time_circle_corrected);;
+        speed_dt.y = speed_circle * sin(time_circle_corrected);
+        VECT2_ADD(pos, speed_dt);
+        struct EnuCoor_i pos_i;
+        ENU_BFP_OF_REAL(pos_i, pos);
+        //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
+        waypoint_move_enu_i(TAG_TRACKING_SIM_WP, &pos_i);
+    }
     default:
       break;
   }
