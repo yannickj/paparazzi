@@ -13,13 +13,13 @@ char * output_file_command = "sw/airborne/modules/tracking/kalman_command";
 
 void visualizer_init(){
   FILE *f = fopen(output_file_command, "w");
-  char * buf = "roll_command ; pitch_command ; climb_command ; phi_real ; theta_real ; psi_real ; posx ; posy ; dronex ; droney ; predx ; predy ; pltx ; plty\n";
+  char * buf = "roll_command ; pitch_command ; climb_command ; phi_real ; theta_real ; psi_real ; posx ; posy ; posz ; dronex ; droney ; dronez ; predx ; predy ; predz ; pltx ; plty ; pltz\n";
   fputs(buf, f);
   fclose(f);
 }
 
 
-void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float tag_tracking_climb, float posx, float posy, float pltpredx, float pltpredy, float pltposx, float pltposy){
+void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float tag_tracking_climb, float posx, float posy, float posz, float pltpredx, float pltpredy, float pltpredz, float pltposx, float pltposy, float pltposz){
   struct FloatEulers * angles = stateGetNedToBodyEulers_f();
   struct EnuCoor_f * posDrone = stateGetPositionEnu_f();
 
@@ -40,6 +40,11 @@ void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float t
   char plt_posx_s[20];
   char plt_posy_s[20];
 
+  char plt_predz_s[20];
+  char plt_posz_s[20];
+  char posz_s[20];
+  char drone_posz_s[20];
+
   snprintf(roll_s, 20, "%f", tag_tracking_roll);
   snprintf(pitch_s, 20, "%f", tag_tracking_pitch);
   snprintf(climb_s, 20, "%f", tag_tracking_climb);
@@ -48,14 +53,18 @@ void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float t
   snprintf(psi_s, 20, "%f", 180/3.14 * angles->psi);
   snprintf(posx_s, 20, "%f", posx);
   snprintf(posy_s, 20, "%f", posy);
+  snprintf(posz_s, 20, "%f", posz);
   snprintf(drone_posx_s, 20, "%f", posDrone->x);
   snprintf(drone_posy_s, 20, "%f", posDrone->y);
+  snprintf(drone_posz_s, 20, "%f", posDrone->z);
   snprintf(plt_predx_s, 20, "%f", pltpredx);
   snprintf(plt_predy_s, 20, "%f", pltpredy);
+  snprintf(plt_predz_s, 20, "%f", pltpredz);
   snprintf(plt_posx_s, 20, "%f", pltposx);
   snprintf(plt_posy_s, 20, "%f", pltposy);
+  snprintf(plt_posz_s, 20, "%f", pltposz);
 
-  char buf[200];
+  char buf[300];
   strcpy(buf, roll_s);
   strcat(buf, " ; "); 
   strcat(buf, pitch_s);
@@ -72,17 +81,25 @@ void visualizer_write(float tag_tracking_roll, float tag_tracking_pitch, float t
   strcat(buf, " ; ");
   strcat(buf, posy_s);
   strcat(buf, " ; ");
+  strcat(buf, posz_s);
+  strcat(buf, " ; ");
   strcat(buf, drone_posx_s);
   strcat(buf, " ; ");
   strcat(buf, drone_posy_s);
+  strcat(buf, " ; ");
+  strcat(buf, drone_posz_s);
   strcat(buf, " ; ");
   strcat(buf, plt_predx_s);
   strcat(buf, " ; ");
   strcat(buf, plt_predy_s);
   strcat(buf, " ; ");
+  strcat(buf, plt_predz_s);
+  strcat(buf, " ; ");
   strcat(buf, plt_posx_s);
   strcat(buf, " ; ");
   strcat(buf, plt_posy_s);
+  strcat(buf, " ; ");
+  strcat(buf, plt_posz_s);
   strcat(buf, " \n");
   fputs(buf, f);
   fclose(f);

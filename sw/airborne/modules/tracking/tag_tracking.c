@@ -125,6 +125,9 @@ float tag_tracking_climb;
 float tag_tracking_kp;
 float tag_tracking_kd;
 bool tag_tracking_lost;
+float tag_tracking_kp_descent;
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 // variables for circle
 int time_circle = 0;
@@ -162,6 +165,7 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
 static void compute_command(){
   tag_tracking_pitch = - tag_tracking_kp * kalman.state[0] - tag_tracking_kd * kalman.state[1]; 
   tag_tracking_roll = tag_tracking_kp * kalman.state[2] + tag_tracking_kd * kalman.state[3];
+  tag_tracking_climb = - MIN(tag_tracking_kp_descent * kalman.state[4], 0.5);
 
   PRINTF("pitch : %f", tag_tracking_pitch);
   PRINTF("roll : %f", tag_tracking_roll);
@@ -178,7 +182,7 @@ static void compute_command(){
     struct EnuCoor_f pos;
     pos.x = kalman.state[2] / 1000 + posDrone->x;
     pos.y = kalman.state[0] / 1000 + posDrone->y;
-    pos.z = 0;
+    pos.z = posDrone->z - kalman.state[4] / 1000;
     struct EnuCoor_i pos_i;
     ENU_BFP_OF_REAL(pos_i, pos);
     //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
@@ -190,9 +194,9 @@ static void compute_command(){
     fflush(stdout);
 
     struct EnuCoor_f posPlt = waypoints[TAG_TRACKING_SIM_WP].enu_f;
+    PRINTF(" plt : %f %f %f ", posPlt.x, posPlt.y, posPlt.z);
 
-
-    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb, kalman.state[0], kalman.state[2], pos.x, pos.y, posPlt.x, posPlt.y);
+    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb, kalman.state[0], kalman.state[2], kalman.state[4], pos.x, pos.y, pos.z, posPlt.x, posPlt.y, posPlt.z);
   }
 }
 /*
@@ -228,6 +232,7 @@ void tag_tracking_init()
   tag_tracking_climb = 0.f;
   tag_tracking_kp = 0.001f; //FIXME
   tag_tracking_kd = 0.015f;
+  tag_tracking_kp_descent = 0.0005f;
 
   // file for saving data
   visualizer_init();
