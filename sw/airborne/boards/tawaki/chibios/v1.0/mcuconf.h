@@ -119,7 +119,7 @@
 /*
  * ADC driver system settings.
  */
-#define STM32_ADC_ADCPRE                    ADC_CCR_ADCPRE_DIV4
+#define STM32_ADC_ADCPRE                    ADC_CCR_ADCPRE_DIV8
 #define STM32_ADC_USE_ADC1                  TRUE
 #define STM32_ADC_USE_ADC2                  FALSE
 #define STM32_ADC_USE_ADC3                  FALSE
@@ -305,6 +305,11 @@
 #define STM32_PWM4_UP_DMA_CHANNEL           2
 #define STM32_PWM4_UP_DMA_IRQ_PRIORITY      6
 #define STM32_PWM4_UP_DMA_PRIORITY          2
+
+#define STM32_PWM5_UP_DMA_STREAM            STM32_DMA_STREAM_ID(1, 0)
+#define STM32_PWM5_UP_DMA_CHANNEL           6
+#define STM32_PWM5_UP_DMA_IRQ_PRIORITY      6
+#define STM32_PWM5_UP_DMA_PRIORITY          2
 
 /*
  * SERIAL driver system settings.
