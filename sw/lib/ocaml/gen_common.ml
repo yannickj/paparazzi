@@ -98,8 +98,8 @@ let targets_of_string =
     match targets with 
     | None -> Any
     | Some t ->
-        if Compat.bytes_length t > 0 && Compat.bytes_get t 0 = '!' then
-          Not (expr_of_targets (fun x y -> Or(x,y)) (Str.split pipe (Compat.bytes_sub t 1 ((Compat.bytes_length t) - 1))))
+        if String.length t > 0 && String.get t 0 = '!' then
+          Not (expr_of_targets (fun x y -> Or(x,y)) (Str.split pipe (String.sub t 1 ((String.length t) - 1))))
         else
           expr_of_targets (fun x y -> Or(x,y)) (Str.split pipe t)
 
