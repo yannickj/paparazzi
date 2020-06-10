@@ -294,9 +294,9 @@ let dump_firmware = fun f ac_id ac_xml firmware fp ->
     parse_firmware f ac_id ac_xml firmware fp
   with Xml.No_attribute _ -> failwith "Warning: firmware name is undeclared"
 
-let dump_firmware_sections = fun makefile_ac ac_id fp xml ->
+let dump_firmware_sections = fun makefile_ac ac_id ac_xml fp_xml ->
   ExtXml.iter_tag "firmware"
-    (fun tag -> dump_firmware makefile_ac ac_id xml tag fp) xml
+    (fun tag -> dump_firmware makefile_ac ac_id ac_xml tag fp_xml) ac_xml
 
 (** Generate makefile configuration files *)
 let generate_makefile = fun ac_id airframe flight_plan makefile_out ->
@@ -308,4 +308,6 @@ let generate_makefile = fun ac_id airframe flight_plan makefile_out ->
 
   (** Search and dump the firmware sections *)
   dump_firmware_sections f ac_id airframe.Airframe.xml flight_plan.Flight_plan.xml;
+
+  close_out f
 
