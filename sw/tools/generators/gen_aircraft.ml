@@ -43,7 +43,9 @@ let flight_plan_h = "flight_plan.h"
 let flight_plan_dump = "flight_plan.xml"
 let radio_h = "radio.h"
 let periodic_h = "periodic_telemetry.h"
+let modules_h = "modules.h"
 let default_periodic_freq = 60
+let default_modules_freq = 60
 
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
@@ -68,6 +70,7 @@ let init_target_conf = fun firmware_name board_type ->
 (* add a module if compatible with target and firmware
  * and its autoloaded modules to a conf, return final conf *)
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
+  printf "ADD MODULE %s %s %s\n" name target firmware;
   let m = Module.from_module_name name mtype in
   (* add autoloaded modules *)
   let conf = List.fold_left (fun c autoload ->
@@ -133,6 +136,13 @@ let sort_airframe_by_target = fun airframe ->
                       defines = c.defines @ m_af.Module.defines } in
             target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype UserLoad
           ) conf t.AfT.modules in
+        (* iter on modules in firmwares *)
+        let conf = List.fold_left (fun c m_af ->
+            let c = { c with
+                      configures = c.configures @ m_af.Module.configures;
+                      defines = c.defines @ m_af.Module.defines } in
+            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype UserLoad
+          ) conf f.AfF.modules in
         Hashtbl.add config_by_target name conf
       ) l
 
@@ -202,6 +212,7 @@ let () =
   and gen_set = ref false
   and gen_rc = ref false
   and gen_tl = ref false
+  and modules_freq = ref default_modules_freq
   and tl_freq = ref default_periodic_freq in
 
   let options =
@@ -213,7 +224,8 @@ let () =
       "-settings", Arg.Set gen_set, " Generate settings file";
       "-radio", Arg.Set gen_set, " Generate radio file";
       "-telemetry", Arg.Set gen_tl, " Generate telemetry file";
-      "-periodic_freq", Arg.Int (fun x -> tl_freq := x), (sprintf " Periodic telemetry frequency (default %d)" default_periodic_freq)
+      "-periodic_freq", Arg.Int (fun x -> tl_freq := x), (sprintf " Periodic telemetry frequency (default %d)" default_periodic_freq);
+      "-modules_freq", Arg.Int (fun x -> modules_freq := x), (sprintf " Modules frequency (default %d)" default_modules_freq);
       ] in
 
   Arg.parse
@@ -374,6 +386,18 @@ let () =
            let mods = Module.from_file (paparazzi_conf // f) in
            acc @ mods.Module.settings
         ) [] settings_modules_files in
+    Printf.printf " done\nDumping modules header...%!";
+    List.iter (fun (t, m) ->
+      match t with UserLoad -> printf "USER %s\n" m.Module.filename
+      | AutoLoad -> printf "AUTO %s\n" m.Module.filename
+      | Unloaded -> printf "UNLOAD %s\n" m.Module.filename
+    ) modules;
+    let abs_modules_h = aircraft_gen_dir // modules_h in
+    generate_config_element modules
+      (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
+      [ abs_modules_h, List.map (fun (_, m) -> m.Module.filename) modules ];
+    Printf.printf " done\n%!";
+    
 
     (* TODO: update aircraft with all above settings *)
     (* finally, concat all settings and filter on target *)
