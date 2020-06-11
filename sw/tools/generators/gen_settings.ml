@@ -365,11 +365,28 @@ let join_xml_files = fun xml_sys_files xml_user_files ->
   Xml.Element("rc_settings",[],!rc_settings), Xml.Element("dl_settings",[],!dl_settings)
 
 
+let h_name = "SETTINGS_H"
 
+let generate = fun settings xml_files out_xml out_file ->
+  let out = open_out out_file in
+
+  let rc_settings, dl_settings = join_xml_files xml_sys_files xml_user_files in
+
+  (* generate C file *)
+  begin_out out (String.concat " " xml_files) h_name;
+
+  finish_out out h_name;
+
+  (* generate XML concatenated file *)
+  let xml = Xml.Element ("settings", [], [rc_settings; dl_settings]) in
+  let f = open_out xml_out in
+  fprintf f "%s\n" (ExtXml.to_string_fmt xml);
+  close_out f
+
+(*
 let _ =
   if Array.length Sys.argv < 4 then
     failwith (Printf.sprintf "Usage: %s output_xml_file input_xml_file(s) input_xml_modules" Sys.argv.(0));
-  let h_name = "SETTINGS_H"
   and xml_files = Array.to_list (Array.sub Sys.argv 2 (Array.length Sys.argv - 2)) in
   (* split system settings and user settings based on '*' separator *)
   let xml_sys_files, xml_user_files, _ = List.fold_left (fun (sys, user, delim) x ->
@@ -408,3 +425,5 @@ let _ =
       Xml.Error e -> prerr_endline (Xml.error e); exit 1
     | Dtd.Prove_error e ->  prerr_endline (Dtd.prove_error e); exit 1
     | Dtd.Parse_error e ->  prerr_endline (Dtd.parse_error e); exit 1
+*)
+

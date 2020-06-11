@@ -293,16 +293,15 @@ let () =
       | Some fp ->
         Printf.printf "\nModules from FP %s: " fp.Flight_plan.filename;
         List.iter (fun (m : Module.config) -> Printf.printf "%s " m.Module.name) fp.Flight_plan.modules; Printf.printf "\n%!";
-        List.iter (fun m ->
-            Hashtbl.iter
-              (fun target conf ->
-                 let conf = { conf with
-                              configures = conf.configures @ m.Module.configures
-                                           (* deuxième tentative, en cours...*)
-                            } in
-                 Hashtbl.replace config_by_target target conf
-              ) config_by_target
-          ) fp.Flight_plan.modules
+        Hashtbl.iter (fun target conf ->
+          let conf = List.fold_left (fun c m ->
+              let c = { c with
+                        configures = c.configures @ m.Module.configures;
+                        defines = c.defines @ m.Module.defines } in
+              target_conf_add_module c target "" m.Module.name m.Module.mtype UserLoad
+          ) conf fp.Flight_plan.modules in
+          Hashtbl.replace config_by_target target conf
+        ) config_by_target
     end;
     (* TODO : same with autopilot *)
     Printf.printf " done\nParsing radio...%!";
@@ -391,11 +390,11 @@ let () =
            acc @ mods.Module.settings
         ) [] settings_modules_files in
     Printf.printf " done\nDumping modules header...%!";
-    List.iter (fun (t, m) ->
+    (*List.iter (fun (t, m) ->
       match t with UserLoad -> printf "USER %s\n" m.Module.filename
       | AutoLoad -> printf "AUTO %s\n" m.Module.filename
       | Unloaded -> printf "UNLOAD %s\n" m.Module.filename
-    ) modules;
+    ) modules;*)
     let abs_modules_h = aircraft_gen_dir // modules_h in
     generate_config_element (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules)
       (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
@@ -416,13 +415,14 @@ let () =
       end
       else settings
     in
-    Printf.printf "Settings: ";
+    List.iter (fun s -> printf "Set: %s %s\n" s.Settings.filename (Xml.to_string s.Settings.xml)) settings;
+    (*Printf.printf "Settings: ";
     List.iter
       (fun s -> Printf.printf "%s(%s) "
           (match s.Settings.name with None -> s.Settings.filename | Some s -> s)
           (match s.Settings.target with None -> "all tagets" | Some t -> t))
       settings;
-    Printf.printf "\n%!";
+    Printf.printf "\n%!";*)
 
     (** Expands the configuration of the A/C into one single file *)
     let conf_aircraft = Env.expand_ac_xml aircraft_xml in

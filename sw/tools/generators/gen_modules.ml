@@ -1,7 +1,7 @@
 (*
  * XML preprocessing for modules
  *
- * Copyright (C) 2009 Gautier Hattenberger
+ * Copyright (C) 2009-2020 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi.
  *
@@ -418,7 +418,6 @@ let h_name = "MODULES_H"
 let generate = fun modules freq xml_file out_file ->
   let out = open_out out_file in
 
-  printf "%s\n" out_file;
   begin_out out xml_file h_name;
   define_out out "MODULES_IDLE " "0";
   define_out out "MODULES_RUN  " "1";
@@ -438,56 +437,3 @@ let generate = fun modules freq xml_file out_file ->
 
   finish_out out h_name
 
-(*
-  if Array.length Sys.argv <> 6 then
-    failwith (Printf.sprintf "Usage: %s ac_id out_settings_file default_freq fp_file xml_file" Sys.argv.(0));
-  let xml_file = Sys.argv.(5)
-  and fp_file = Sys.argv.(4)
-  and default_freq = int_of_string(Sys.argv.(3))
-  and out_set = open_out Sys.argv.(2)
-  and ac_id = Sys.argv.(1) in
-  try
-    let xml = start_and_begin xml_file h_name in
-    fprintf out_h "#define MODULES_IDLE  0\n";
-    fprintf out_h "#define MODULES_RUN   1\n";
-    fprintf out_h "#define MODULES_START 2\n";
-    fprintf out_h "#define MODULES_STOP  3\n";
-    nl ();
-    (* Extract main_freq parameter *)
-    let modules = try (ExtXml.child xml "modules") with _ -> Xml.Element("modules",[],[]) in
-    let main_freq = try (int_of_string (Xml.attrib modules "main_freq")) with _ -> default_freq in
-    freq := main_freq;
-    fprintf out_h "#define MODULES_FREQUENCY %d\n" !freq;
-    nl ();
-    fprintf out_h "#ifdef MODULES_C\n";
-    fprintf out_h "#define EXTERN_MODULES\n";
-    fprintf out_h "#else\n";
-    fprintf out_h "#define EXTERN_MODULES extern\n";
-    fprintf out_h "#endif";
-    nl ();
-    (* Extract modules list *)
-    let modules =
-      try
-        let target = Sys.getenv "TARGET" in
-        GC.get_modules_of_config ~target ac_id xml (ExtXml.parse_file fp_file)
-      with
-      | Not_found -> failwith "TARTGET env needs to be specified to generate modules files"
-    in
-    (* Extract modules names (file name and module name) *)
-    let modules_name =
-      (List.map (fun m -> try Xml.attrib m.GC.xml "name" with _ -> "") modules) @
-      (List.map (fun m -> m.GC.filename) modules) in
-    (* Extract xml modules nodes *)
-    let modules_list = List.map (fun m -> m.GC.xml) modules in
-    check_dependencies modules_list modules_name;
-    parse_modules modules_list;
-    finish h_name;
-    write_settings xml_file out_set modules_list;
-    close_out out_set;
-  with
-      Xml.Error e -> fprintf stderr "%s: XML error:%s\n" xml_file (Xml.error e); exit 1
-    | Dtd.Prove_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.prove_error e); exit 1
-    | Dtd.Check_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.check_error e); exit 1
-    | Dtd.Parse_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.parse_error e); exit 1
-
-    *)
