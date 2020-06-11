@@ -53,6 +53,25 @@ let print_bool = fun v e ->
   in
   print_b v e; eprintf "\n"
 
+(** pretty print boolean expression *)
+let sprint_bool = fun v e ->
+  let rec print_b s v = function
+    | Any -> sprintf "%sAny " s
+    | Var x -> sprintf "%sVar ( %s =? %s ) " s x v
+    | Not e -> let s = sprintf "%sNot ( " s in
+               let s = print_b s v e in
+               sprintf "%s) " s
+    | And (e1, e2) -> let s = sprintf "%sAnd ( " s in
+                      let s = print_b s v e1 in
+                      let s =  print_b s v e2 in
+                      sprintf "%s) " s
+    | Or (e1, e2) -> let s = sprintf "%sOr ( " s in
+                     let s = print_b s v e1 in
+                     let s = print_b s v e2 in
+                     sprintf "%s) " s
+  in
+  print_b "" v e
+
 
 type module_conf = {
     name: string;

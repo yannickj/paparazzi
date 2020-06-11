@@ -67,10 +67,13 @@ let init_target_conf = fun firmware_name board_type ->
   { configures = []; configures_default = []; defines = [];
     firmware_name; board_type; modules = []; autopilot = None }
 
+let string_of_load = fun lt ->
+  match lt with UserLoad -> "USER" | AutoLoad -> "AUTO" | Unloaded -> "UNLOAD"
+
 (* add a module if compatible with target and firmware
  * and its autoloaded modules to a conf, return final conf *)
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
-  printf "ADD MODULE %s %s %s\n" name target firmware;
+  printf "ADD MODULE (%s) %s %s %s\n" (string_of_load load_type) name target firmware;
   let m = Module.from_module_name name mtype in
   (* add autoloaded modules *)
   let conf = List.fold_left (fun c autoload ->
@@ -100,9 +103,10 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
           if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
         ) conf.defines  m.Module.makefiles;
       modules = conf.modules @ [load_type, m] }
-  else
+  else begin
+    printf "Unloading %s\n" name;
     (* add "unloaded" module for reference *)
-    { conf with modules = conf.modules @ [(Unloaded, m)] }
+    { conf with modules = conf.modules @ [(Unloaded, m)] } end
 
 
 (* configuration sorted by target name: (string, target_conf) *)
@@ -393,7 +397,7 @@ let () =
       | Unloaded -> printf "UNLOAD %s\n" m.Module.filename
     ) modules;
     let abs_modules_h = aircraft_gen_dir // modules_h in
-    generate_config_element modules
+    generate_config_element (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules)
       (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
       [ abs_modules_h, List.map (fun (_, m) -> m.Module.filename) modules ];
     Printf.printf " done\n%!";

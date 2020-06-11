@@ -434,8 +434,7 @@ let generate = fun modules freq xml_file out_file ->
   fprintf out "#define EXTERN_MODULES extern\n";
   fprintf out "#endif\n";
 
-  let _, modules_list = List.split modules in
-  parse_modules out freq modules_list;
+  parse_modules out freq modules;
 
   finish_out out h_name
 

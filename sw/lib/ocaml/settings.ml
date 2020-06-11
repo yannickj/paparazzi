@@ -41,7 +41,7 @@ module Dl_setting = struct
           match ExtXml.attrib_opt xml "module",
                 ExtXml.attrib_opt xml "header" with
           | Some m, _ ->
-            Printf.eprintf "Warning: please rename 'module' attribute in settings with 'header'\n";
+            (*Printf.eprintf "Warning: please rename 'module' attribute in settings with 'header'\n"; FIXME *)
             Some m
           | None, Some h -> Some h
           | None, None -> None

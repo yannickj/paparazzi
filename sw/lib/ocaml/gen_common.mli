@@ -30,6 +30,9 @@ type bool_expr =
   | And of bool_expr * bool_expr
   | Or of bool_expr * bool_expr
 
+val print_bool : string -> bool_expr -> unit
+val sprint_bool : string -> bool_expr -> string
+
 (* Module configuration:
   * Xml node
   * file (with path)

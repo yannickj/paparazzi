@@ -342,7 +342,11 @@ let from_module_name = fun name mtype ->
 (** check if a makefile node is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)
 let check_mk = fun target firmware mk ->
-  mk.firmware = (Some firmware) && GC.test_targets target (GC.targets_of_string mk.targets)
+  (*Printf.printf "Check %s => %s = " target (GC.sprint_bool target (GC.targets_of_string mk.targets));
+  if GC.test_targets target (GC.targets_of_string mk.targets) then Printf.printf "True\n" else Printf.printf "False\n";
+  let s_of_f = function None -> "None" | Some f -> f in
+  if mk.firmware = (Some firmware) then Printf.printf "Firmware check (%s = %s): True\n" (s_of_f mk.firmware) firmware else Printf.printf "Firmware check (%s = %s): False\n" (s_of_f mk.firmware) firmware;*)
+  (mk.firmware = (Some firmware) || mk.firmware = None) && GC.test_targets target (GC.targets_of_string mk.targets)
 
 (** check if a module is compatible with a target and a firmware *)
 let check_loading = fun target firmware m ->
