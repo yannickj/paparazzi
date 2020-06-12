@@ -25,6 +25,9 @@
 
 open Printf
 module U = Unix
+module Af = Airframe
+module AfT = Airframe.Target
+module AfF = Airframe.Firmware
 
 open Gen_common
 
@@ -230,7 +233,10 @@ let fallback_subsys_xml2mk = fun f global_targets firmware target xml ->
     ignore(Gen_common.get_module xml global_targets)
   with Gen_common.Subsystem _file -> subsystem_xml2mk f firmware xml
 
-let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
+let parse_firmware = fun makefile_ac ac_id ac firmware fp ->
+  let ac_xml = ac.Af.xml
+  and firmware = firmware.AfF.xml
+  and fp = fp.Flight_plan.xml in
   let firmware_name = Xml.attrib firmware "name" in
   (* get the configures, targets, subsystems and defines for this firmware *)
   let config, rest = ExtXml.partition_tag "configure" (Xml.children firmware) in
@@ -286,17 +292,16 @@ let parse_firmware = fun makefile_ac ac_id ac_xml firmware fp ->
 
 
 (** Search and dump the firmware section *)
-let dump_firmware = fun f ac_id ac_xml firmware fp ->
+let dump_firmware = fun f ac_id ac firmware fp ->
   try
     fprintf f "\n####################################################\n";
-    fprintf f   "# makefile firmware '%s'\n" (Xml.attrib firmware "name");
+    fprintf f   "# makefile firmware '%s'\n" firmware.AfF.name;
     fprintf f   "####################################################\n";
-    parse_firmware f ac_id ac_xml firmware fp
+    parse_firmware f ac_id ac firmware fp
   with Xml.No_attribute _ -> failwith "Warning: firmware name is undeclared"
 
-let dump_firmware_sections = fun makefile_ac ac_id ac_xml fp_xml ->
-  ExtXml.iter_tag "firmware"
-    (fun tag -> dump_firmware makefile_ac ac_id ac_xml tag fp_xml) ac_xml
+let dump_firmware_sections = fun makefile_ac ac_id ac fp ->
+  List.iter (fun f -> dump_firmware makefile_ac ac_id ac f fp) ac.Af.firmwares
 
 (** Generate makefile configuration files *)
 let generate_makefile = fun ac_id airframe flight_plan makefile_out ->
@@ -307,7 +312,7 @@ let generate_makefile = fun ac_id airframe flight_plan makefile_out ->
   fprintf f "AC_ID=%s\n" ac_id;
 
   (** Search and dump the firmware sections *)
-  dump_firmware_sections f ac_id airframe.Airframe.xml flight_plan.Flight_plan.xml;
+  dump_firmware_sections f ac_id airframe flight_plan;
 
   close_out f
 
