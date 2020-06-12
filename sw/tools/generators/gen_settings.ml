@@ -27,13 +27,14 @@
 open Printf
 open Xml2h
 
+
 let margin = ref 0
 let step = 2
-let tab () = printf "%s" (String.make !margin ' ')
+let tab = fun out -> fprintf out "%s" (String.make !margin ' ')
 let right () = margin := !margin + step
 let left () = margin := !margin - step
 
-let lprintf = fun f -> tab (); printf f
+let lprintf = fun out f -> tab out; fprintf out f
 
 let rec flatten = fun xml r ->
   if ExtXml.tag_is xml "dl_setting" then
@@ -49,45 +50,50 @@ let rec flatten = fun xml r ->
 module StringSet = Set.Make(struct type t = string let compare = compare end)
 
 
-let print_dl_settings = fun settings ->
-  let settings = flatten settings [] in
+let print_dl_settings = fun out settings settings_xml ->
+  let settings_xml = flatten settings_xml [] in
 
   (** include  headers **)
-  let modules = ref StringSet.empty in
+  (*let modules = ref StringSet.empty in
   List.iter
     (fun s ->
       try
         modules := StringSet.add (ExtXml.attrib s "module") !modules
       with ExtXml.Error e -> ()
     )
-    settings;
+    settings;*)
 
-  lprintf "\n";
-  StringSet.iter (fun m -> lprintf "#include \"%s.h\"\n" m) !modules;
-  lprintf "#include \"generated/modules.h\"\n";
-  lprintf "\n";
+  lprintf out "\n";
+  List.iter (fun s ->
+    List.iter (fun h ->
+      lprintf out "#include \"%s.h\"\n" h
+    ) (Settings.get_headers s)
+  ) settings;
+  (*StringSet.iter (fun m -> lprintf out "#include \"%s.h\"\n" m) !modules;*)
+  lprintf out "#include \"generated/modules.h\"\n";
+  lprintf out "\n";
 
   (** Datalink knowing what settings mean **)
-  Xml2h.define "SETTINGS_NAMES" "{ \\";
-  List.iter (fun b -> printf " { \"%s\" }, \\\n" (ExtXml.attrib b "var")) settings;
-  lprintf "};\n";
+  Xml2h.define_out out "SETTINGS_NAMES" "{ \\";
+  List.iter (fun b -> fprintf out " { \"%s\" }, \\\n" (ExtXml.attrib b "var")) settings_xml;
+  lprintf out "};\n";
 
-  Xml2h.define "SETTINGS_NAMES_SHORT" "{ \\";
+  Xml2h.define_out out "SETTINGS_NAMES_SHORT" "{ \\";
   List.iter (fun b ->
     let varname = Str.split (Str.regexp "[_.]+") (ExtXml.attrib b "var") in
     let shortname = List.fold_left (fun acc c ->
       try acc ^"_"^ (Str.first_chars c 3) with _ -> acc ^"_"^ c
     ) "" varname in
     let shorted = try String.sub shortname 1 16 with _ -> String.sub shortname 1 ((String.length shortname)-1) in
-    printf " \"%s\" , \\\n" shorted
-  ) settings;
-  lprintf "};\n";
-  Xml2h.define "NB_SETTING" (string_of_int (List.length settings));
+    fprintf out " \"%s\" , \\\n" shorted
+  ) settings_xml;
+  lprintf out "};\n";
+  Xml2h.define_out out "NB_SETTING" (string_of_int (List.length settings_xml));
 
   (** Macro to call to set one variable *)
-  lprintf "#define DlSetting(_idx, _value) { \\\n";
+  lprintf out "#define DlSetting(_idx, _value) { \\\n";
   right ();
-  lprintf "switch (_idx) { \\\n";
+  lprintf out "switch (_idx) { \\\n";
   right ();
   let idx = ref 0 in
   List.iter
@@ -99,63 +105,63 @@ let print_dl_settings = fun settings ->
           begin
             try
               let m =  ExtXml.attrib s "module" in
-              lprintf "case %d: %s_%s( _value ); _value = %s; break;\\\n" !idx (Filename.basename m) h v
+              lprintf out "case %d: %s_%s( _value ); _value = %s; break;\\\n" !idx (Filename.basename m) h v
             with
                 ExtXml.Error e -> prerr_endline (sprintf "Error: You need to specify the module attribute for setting %s to use the handler %s" v h); exit 1
           end;
         with
-            ExtXml.Error e -> lprintf "case %d: %s = _value; break;\\\n" !idx v
+            ExtXml.Error e -> lprintf out "case %d: %s = _value; break;\\\n" !idx v
       end;
       incr idx
     )
-    settings;
-  lprintf "default: break;\\\n";
+    settings_xml;
+  lprintf out "default: break;\\\n";
   left ();
-  lprintf "}\\\n";
+  lprintf out "}\\\n";
   left ();
-  lprintf "}\n";
+  lprintf out "}\n";
   let nb_values = !idx in
 
   (** Macro to call to downlink current values *)
-  lprintf "#define PeriodicSendDlValue(_trans, _dev) { \\\n";
+  lprintf out "#define PeriodicSendDlValue(_trans, _dev) { \\\n";
   if nb_values > 0 then begin
     right ();
-    lprintf "static uint8_t i;\\\n";
-    lprintf "float var;\\\n";
-    lprintf "if (i >= %d) i = 0;\\\n" nb_values;
+    lprintf out "static uint8_t i;\\\n";
+    lprintf out "float var;\\\n";
+    lprintf out "if (i >= %d) i = 0;\\\n" nb_values;
     let idx = ref 0 in
-    lprintf "switch (i) { \\\n";
+    lprintf out "switch (i) { \\\n";
     right ();
     List.iter
       (fun s ->
         let v = ExtXml.attrib s "var" in
-        lprintf "case %d: var = %s; break;\\\n" !idx v; incr idx)
-      settings;
-    lprintf "default: var = 0.; break;\\\n";
+        lprintf out "case %d: var = %s; break;\\\n" !idx v; incr idx)
+      settings_xml;
+    lprintf out "default: var = 0.; break;\\\n";
     left ();
-    lprintf "}\\\n";
-    lprintf "pprz_msg_send_DL_VALUE(_trans, _dev, AC_ID, &i, &var);\\\n";
-    lprintf "i++;\\\n";
+    lprintf out "}\\\n";
+    lprintf out "pprz_msg_send_DL_VALUE(_trans, _dev, AC_ID, &i, &var);\\\n";
+    lprintf out "i++;\\\n";
     left ()
   end;
-  lprintf "}\n";
+  lprintf out "}\n";
 
   (** Inline function to get a setting value *)
-  lprintf "static inline float settings_get_value(uint8_t i) {\n";
+  lprintf out "static inline float settings_get_value(uint8_t i) {\n";
   right ();
   let idx = ref 0 in
-  lprintf "switch (i) {\n";
+  lprintf out "switch (i) {\n";
   right ();
   List.iter
     (fun s ->
       let v = ExtXml.attrib s "var" in
-      lprintf "case %d: return %s;\n" !idx v; incr idx)
-    settings;
-  lprintf "default: return 0.;\n";
+      lprintf out "case %d: return %s;\n" !idx v; incr idx)
+    settings_xml;
+  lprintf out "default: return 0.;\n";
   left ();
-  lprintf "}\n";
+  lprintf out "}\n";
   left ();
-  lprintf "}\n"
+  lprintf out "}\n"
 
 
 let inttype = function
@@ -176,39 +182,39 @@ let inttype = function
 (*
   Generate code for persistent settings
 *)
-let print_persistent_settings = fun settings ->
-  let settings = flatten settings [] in
+let print_persistent_settings = fun out settings settings_xml ->
+  let settings_xml = flatten settings_xml [] in
   let pers_settings =
-    List.filter (fun x -> try let _ = Xml.attrib x "persistent" in true with _ -> false) settings in
+    List.filter (fun x -> try let _ = Xml.attrib x "persistent" in true with _ -> false) settings_xml in
   (* structure declaration *)
   (*  if List.length pers_settings > 0 then begin *)
-  lprintf "\n/* Persistent Settings */\n";
-  lprintf "struct PersistentSettings {\n";
+  lprintf out "\n/* Persistent Settings */\n";
+  lprintf out "struct PersistentSettings {\n";
   right();
   let idx = ref 0 in
   List.iter
     (fun s ->
       let v = ExtXml.attrib s "var" in
       let t = try ExtXml.attrib s "type" with _ -> "float" in
-      lprintf "%s s_%d; /* %s */\n" (inttype t) !idx v; incr idx)
+      lprintf out "%s s_%d; /* %s */\n" (inttype t) !idx v; incr idx)
     pers_settings;
   left();
-  lprintf "};\n\n";
-  lprintf "extern struct PersistentSettings pers_settings;\n\n";
+  lprintf out "};\n\n";
+  lprintf out "extern struct PersistentSettings pers_settings;\n\n";
   (*  Inline function to store persistent settings *)
   idx := 0;
-  lprintf "static inline void persistent_settings_store( void ) {\n";
+  lprintf out "static inline void persistent_settings_store( void ) {\n";
   right();
   List.iter
     (fun s ->
       let v = ExtXml.attrib s "var" in
-      lprintf "pers_settings.s_%d = %s;\n" !idx v; incr idx)
+      lprintf out "pers_settings.s_%d = %s;\n" !idx v; incr idx)
     pers_settings;
   left();
-  lprintf "}\n\n";
+  lprintf out "}\n\n";
   (*  Inline function to load persistent settings *)
   idx := 0;
-  lprintf "static inline void persistent_settings_load( void ) {\n";
+  lprintf out "static inline void persistent_settings_load( void ) {\n";
   right();
   List.iter
     (fun s ->
@@ -217,64 +223,17 @@ let print_persistent_settings = fun settings ->
         try
           let h = ExtXml.attrib s "handler" and
               m =  ExtXml.attrib s "module" in
-          lprintf "%s_%s( pers_settings.s_%d );\n"  (Filename.basename m) h !idx ;
-        (*     lprintf "%s = pers_settings.s_%d;\n" v !idx *) (* do we want to set the value too or just call the handler ? *)
+          lprintf out "%s_%s( pers_settings.s_%d );\n"  (Filename.basename m) h !idx ;
+        (*     lprintf out "%s = pers_settings.s_%d;\n" v !idx *) (* do we want to set the value too or just call the handler ? *)
         with
-            ExtXml.Error e ->  lprintf "%s = pers_settings.s_%d;\n" v !idx
+            ExtXml.Error e ->  lprintf out "%s = pers_settings.s_%d;\n" v !idx
       end;
       incr idx)
     pers_settings;
   left();
-  lprintf "}\n"
+  lprintf out "}\n"
 (*  end *)
 
-
-(*
-  Blaaaaaa2
-*)
-let calib_mode_of_rc = function
-"gain_1_up" -> 1, "up"
-  | "gain_1_down" -> 1, "down"
-  | "gain_2_up" -> 2, "up"
-  | "gain_2_down" -> 2, "down"
-  | x -> failwith (sprintf "Unknown rc: %s" x)
-
-let param_macro_of_type = fun x -> "ParamVal"^Compat.capitalize_ascii x
-
-let parse_rc_setting = fun xml ->
-  let cursor, cm = calib_mode_of_rc (ExtXml.attrib xml "rc")
-  and var = ExtXml.attrib xml "var"
-  and range = float_of_string (ExtXml.attrib xml "range") in
-  let t = (ExtXml.attrib xml "type") in
-  let param_macro = param_macro_of_type t in
-  let dot_pos =
-    try String.rindex var '.' + 1 with
-        Not_found -> 0 in
-  let var_nostruct = String.sub var dot_pos (String.length var - dot_pos) in
-  let var_init = var_nostruct ^ "_init" in
-
-  lprintf "if (rc_settings_mode == RC_SETTINGS_MODE_%s) { \\\n" (Compat.uppercase_ascii cm);
-  right ();
-  lprintf "static %s %s; \\\n" (inttype t) var_init;
-  lprintf "static int16_t slider%d_init; \\\n" cursor;
-  lprintf "if (mode_changed) { \\\n";
-  right ();
-  lprintf "%s = %s; \\\n" var_init var;
-  lprintf "slider%d_init = RcChannel(RADIO_GAIN%d); \\\n" cursor cursor;
-  left (); lprintf "} \\\n";
-  lprintf "%s = %s(%s, %f, RcChannel(RADIO_GAIN%d), slider%d_init); \\\n" var param_macro var_init range cursor cursor;
-  lprintf "slider_%d_val = (float)%s; \\\n" cursor var;
-  left (); lprintf "} \\\n"
-
-
-let parse_rc_mode = fun xml ->
-  lprintf "if (autopilot_get_mode() == AP_MODE_%s) { \\\n" (ExtXml.attrib xml "name");
-  right ();
-  List.iter parse_rc_setting (Xml.children xml);
-  left (); lprintf "} \\\n"
-
-let parse_rc_modes = fun xml ->
-  List.iter parse_rc_mode (Xml.children xml)
 
 (*
  Check if target t is marked as supported in the targets string.
@@ -370,18 +329,25 @@ let h_name = "SETTINGS_H"
 let generate = fun settings xml_files out_xml out_file ->
   let out = open_out out_file in
 
-  let rc_settings, dl_settings = join_xml_files xml_sys_files xml_user_files in
+  (*let rc_settings, dl_settings = join_xml_files xml_sys_files xml_user_files in*)
+
+  (* generate XML concatenated file *)
+  let settings_xml = List.fold_left (fun l s ->
+    if List.length s.Settings.dl_settings > 0 then s.Settings.xml :: l else l
+  ) [] settings
+  in
+  let settings_xml = List.rev settings_xml in (* list in correct order *)
+  let dl_settings = Xml.Element("dl_settings", [], settings_xml) in
+  let xml = Xml.Element ("settings", [], [dl_settings]) in
+  let f = open_out out_xml in
+  fprintf f "%s\n" (ExtXml.to_string_fmt xml);
+  close_out f;
 
   (* generate C file *)
   begin_out out (String.concat " " xml_files) h_name;
-
-  finish_out out h_name;
-
-  (* generate XML concatenated file *)
-  let xml = Xml.Element ("settings", [], [rc_settings; dl_settings]) in
-  let f = open_out xml_out in
-  fprintf f "%s\n" (ExtXml.to_string_fmt xml);
-  close_out f
+  print_dl_settings out settings dl_settings;
+  print_persistent_settings out settings dl_settings;
+  finish_out out h_name
 
 (*
 let _ =

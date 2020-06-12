@@ -44,6 +44,8 @@ let flight_plan_dump = "flight_plan.xml"
 let radio_h = "radio.h"
 let periodic_h = "periodic_telemetry.h"
 let modules_h = "modules.h"
+let settings_h = "settings.h"
+let settings_xml = "settings.xml"
 let default_periodic_freq = 60
 let default_modules_freq = 60
 
@@ -73,7 +75,7 @@ let string_of_load = fun lt ->
 (* add a module if compatible with target and firmware
  * and its autoloaded modules to a conf, return final conf *)
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
-  printf "ADD MODULE (%s) %s %s %s\n" (string_of_load load_type) name target firmware;
+  (*printf "ADD MODULE (%s) %s %s %s\n" (string_of_load load_type) name target firmware;*)
   let m = Module.from_module_name name mtype in
   (* add autoloaded modules *)
   let conf = List.fold_left (fun c autoload ->
@@ -81,6 +83,9 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
     ) conf m.Module.autoloads in
   (* check compatibility with target *)
   if Module.check_loading target firmware m then
+    (* check is the module itself is already loaded, merging options in all case *)
+    let add_module = if List.exists (fun (_, lm) -> m.Module.name = lm.Module.name) conf.modules
+      then [] else [(load_type, m)] in
     (* add configures and defines to conf if needed *)
     { conf with
       configures = List.fold_left (fun cm mk ->
@@ -102,9 +107,9 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
       defines = List.fold_left (fun dm mk ->
           if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
         ) conf.defines  m.Module.makefiles;
-      modules = conf.modules @ [load_type, m] }
+      modules = conf.modules @ add_module }
   else begin
-    printf "Unloading %s\n" name;
+    (*printf "Unloading %s\n" name;*)
     (* add "unloaded" module for reference *)
     { conf with modules = conf.modules @ [(Unloaded, m)] } end
 
@@ -226,7 +231,7 @@ let () =
       "-airframe", Arg.Set gen_af, " Generate airframe file";
       "-flight_plan", Arg.Set gen_fp, " Generate flight plan file";
       "-settings", Arg.Set gen_set, " Generate settings file";
-      "-radio", Arg.Set gen_set, " Generate radio file";
+      "-radio", Arg.Set gen_rc, " Generate radio file";
       "-telemetry", Arg.Set gen_tl, " Generate telemetry file";
       "-periodic_freq", Arg.Int (fun x -> tl_freq := x), (sprintf " Periodic telemetry frequency (default %d)" default_periodic_freq);
       "-modules_freq", Arg.Int (fun x -> modules_freq := x), (sprintf " Modules frequency (default %d)" default_modules_freq);
@@ -330,7 +335,7 @@ let () =
 
     Printf.printf " done\nDumping flight plan XML and header...%!";
     let abs_flight_plan_h = aircraft_gen_dir // flight_plan_h in
-    let abs_flight_plan_dump = aircraft_gen_dir // flight_plan_dump in
+    let abs_flight_plan_dump = aircraft_dir // flight_plan_dump in
     begin match flight_plan with
       | None -> ()
       | Some flight_plan ->
@@ -365,15 +370,21 @@ let () =
           [ (abs_telemetry_h, [telemetry.Telemetry.filename]) ] end;
     Printf.printf " done\n%!";
 
-    Printf.printf "target->firmware: ";
-    Hashtbl.iter (fun tgt cfg -> Printf.printf "(%s -> %s) " tgt cfg.firmware_name) config_by_target;
-    Printf.printf "\n%!";
-
     let config = Hashtbl.find config_by_target target in
     let modules = config.modules in
-    Printf.printf "Modules: ";
-    List.iter (fun (_, m) -> Printf.printf "%s " m.Module.name) modules;
-    Printf.printf "\n%!";
+    let loaded_modules = (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules) in
+    printf "Loading modules:\n";
+    List.iter (fun m ->
+      printf " - %s (%s) [%s]\n" m.Module.name (get_string_opt m.Module.dir) m.Module.filename) loaded_modules;
+    Printf.printf "Dumping modules header...%!";
+    let abs_modules_h = aircraft_gen_dir // modules_h in
+    generate_config_element loaded_modules
+      (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
+      [ abs_modules_h, List.map (fun (_, m) -> m.Module.filename) modules ];
+    Printf.printf " done\n%!";
+    
+
+    (* TODO: update aircraft with all above settings ??? *)
     (* normal settings *)
     let settings = try Env.filter_settings (value "settings") with _ -> "" in
     let settings_files = Str.split (Str.regexp " ") settings in
@@ -385,44 +396,26 @@ let () =
       with _ -> "" in
     let settings_modules_files = Str.split (Str.regexp " ") settings_modules in
     let settings_modules = List.fold_left
-        (fun acc f ->
-           let mods = Module.from_file (paparazzi_conf // f) in
-           acc @ mods.Module.settings
-        ) [] settings_modules_files in
-    Printf.printf " done\nDumping modules header...%!";
-    (*List.iter (fun (t, m) ->
-      match t with UserLoad -> printf "USER %s\n" m.Module.filename
-      | AutoLoad -> printf "AUTO %s\n" m.Module.filename
-      | Unloaded -> printf "UNLOAD %s\n" m.Module.filename
-    ) modules;*)
-    let abs_modules_h = aircraft_gen_dir // modules_h in
-    generate_config_element (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules)
-      (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
-      [ abs_modules_h, List.map (fun (_, m) -> m.Module.filename) modules ];
-    Printf.printf " done\n%!";
-    
-
-    (* TODO: update aircraft with all above settings *)
-    (* finally, concat all settings and filter on target *)
-    let settings = List.fold_left (fun acc s ->
-        if Gen_common.test_targets target
-            (Gen_common.targets_of_string s.Settings.target)
-        then acc @ [s] else acc) [] (settings @ settings_modules) in
-    let settings = if List.length settings = 0 then
-      begin
-        Printf.eprintf "\nInfo: No 'settings' attribute specified for A/C '%s', using 'settings/dummy.xml'\n\n%!" aircraft;
-        [Settings.from_file "settings/dummy.xml"]
-      end
-      else settings
-    in
+        (fun acc m ->
+          if List.exists (fun name -> m.Module.name = (paparazzi_conf // name)) settings_modules_files
+          then acc @ m.Module.settings else acc
+           (*let mods = Module.from_file (paparazzi_conf // f) in
+           acc @ mods.Module.settings*)
+        ) [] loaded_modules in
+    let settings = settings @ settings_modules in
     List.iter (fun s -> printf "Set: %s %s\n" s.Settings.filename (Xml.to_string s.Settings.xml)) settings;
-    (*Printf.printf "Settings: ";
-    List.iter
-      (fun s -> Printf.printf "%s(%s) "
-          (match s.Settings.name with None -> s.Settings.filename | Some s -> s)
-          (match s.Settings.target with None -> "all tagets" | Some t -> t))
-      settings;
-    Printf.printf "\n%!";*)
+    let sys_mod_settings = Gen_modules.get_sys_modules_settings loaded_modules in
+
+    Printf.printf " done\nDumping settings XML and header...%!";
+    let abs_settings_h = aircraft_gen_dir // settings_h in
+    let abs_settings_xml = aircraft_dir // settings_xml in
+    let system_settings = List.fold_left (fun l s -> match s with None -> l | Some x -> x::l) [] [sys_mod_settings] in
+    let settings = system_settings @ settings in (* add system settings in front *)
+    generate_config_element settings
+      (fun e -> Gen_settings.generate e [(*TODO list file names*)] abs_settings_xml abs_settings_h)
+      [ (abs_settings_h, List.map (fun s -> s.Settings.filename) settings) ];
+    Printf.printf " done\n%!";
+
 
     (** Expands the configuration of the A/C into one single file *)
     let conf_aircraft = Env.expand_ac_xml aircraft_xml in
@@ -456,32 +449,6 @@ let () =
       let f = open_out (d // filename) in
       Printf.fprintf f "%s\n" (ExtXml.to_string_fmt configuration);
       close_out f end;
-
-(**
-
-    let airframe_dir = Filename.dirname airframe_file in
-    let var_airframe_dir = aircraft_conf_dir // airframe_dir in
-    mkdir var_airframe_dir;
-    assert (Sys.command (sprintf "cp %s %s" (paparazzi_conf // airframe_file) var_airframe_dir) = 0);
-
-    (** Calls the Makefile with target and options *)
-    let make = fun target options ->
-      let c = sprintf "make -f Makefile.ac AIRCRAFT=%s AC_ID=%s AIRFRAME_XML=%s TELEMETRY=%s SETTINGS=\"%s\" MD5SUM=\"%s\" %s %s" aircraft (value "ac_id") airframe_file (value "telemetry") settings md5sum options target in
-      begin (** Quiet is speficied in the Makefile *)
-        try if Sys.getenv "Q" <> "@" then raise Not_found with
-            Not_found -> prerr_endline c
-      end;
-      let returned_code = Sys.command c in
-      if returned_code <> 0 then
-        exit returned_code in
-
-    (** Calls the makefile if the optional attribute is available *)
-    let make_opt = fun target var attr ->
-      try
-        let value = Xml.attrib aircraft_xml attr in
-        make target (sprintf "%s=%s" var value)
-      with Xml.No_attribute _ -> () in
-*)
 
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
     begin match airframe, flight_plan with

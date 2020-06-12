@@ -21,6 +21,8 @@
 
 (**
  * Settings module for parsing XML config files
+ *
+ * FIXME order is not preserved if dl_settings and dl_setting are in separated lists
  *)
 
 module Dl_setting = struct

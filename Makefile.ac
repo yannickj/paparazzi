@@ -240,61 +240,61 @@ $(AIRFRAME_H) : $(CONF)/$(AIRFRAME_XML) $(CONF_XML) $(AIRCRAFT_MD5) $(GENERATORS
 	@echo GENERATE autopilots in $(AUTOPILOT_DIR)
 	$(Q)$(GENERATORS)/gen_autopilot.out $(CONF)/$(AIRFRAME_XML) $(AUTOPILOT_DIR) $(SETTINGS_AUTOPILOT)
 
-$(RADIO_H) : $(CONF)/$(RADIO) $(CONF_XML) $(GENERATORS)/gen_radio.out
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@ from $(RADIO)
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_radio.out $< > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-	$(Q)cp $< $(AIRCRAFT_CONF_DIR)/radios
-
-$(PERIODIC_H) : $(MESSAGES_XML) $(CONF_XML) $(CONF)/$(TELEMETRY) $(MAKEFILE_AC)
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@ from $(TELEMETRY)
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_periodic.out $(MESSAGES_XML) $(CONF)/$(TELEMETRY) $(TELEMETRY_FREQUENCY) $(SETTINGS_TELEMETRY) > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-	$(Q)cp $(CONF)/$(TELEMETRY) $(AIRCRAFT_CONF_DIR)/telemetry
-
-$(FLIGHT_PLAN_H) : $(CONF)/$(FLIGHT_PLAN) $(CONF_XML) $(GENERATORS)/gen_flight_plan.out
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@ from $(FLIGHT_PLAN)
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_flight_plan.out -settings $(SETTINGS_FLIGHTPLAN) $< > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-	$(Q)cp $< $(AIRCRAFT_CONF_DIR)/flight_plans
-
-$(FLIGHT_PLAN_XML) : $(CONF)/$(FLIGHT_PLAN) $(CONF_XML) $(GENERATORS)/gen_flight_plan.out
-	@echo GENERATE $@ from $(FLIGHT_PLAN)
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_flight_plan.out -dump $< > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-
-# split system settings (generated) from user settings with a '--'
-$(SETTINGS_H) : $(SETTINGS_XMLS_DEP) $(CONF_XML) $(SETTINGS_MODULES) $(SETTINGS_TELEMETRY) $(SETTINGS_AUTOPILOT) $(GENERATORS)/gen_settings.out
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_settings.out $(SETTINGS_XML) $(SETTINGS_AUTOPILOT) $(SETTINGS_TELEMETRY) $(SETTINGS_FLIGHTPLAN) $(SETTINGS_MODULES) -- $(SETTINGS_XMLS) > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-	$(Q)cp $(SETTINGS_XMLS_DEP) $(AIRCRAFT_CONF_DIR)/settings
-
-$(MODULES_H) : $(CONF)/$(AIRFRAME_XML) $(FLIGHT_PLAN_XML) $(GENERATORS)/gen_modules.out $(CONF)/modules/*.xml
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_modules.out $(AC_ID) $(SETTINGS_MODULES) $(DEFAULT_MODULES_FREQUENCY) $(FLIGHT_PLAN_XML) $< > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-
-$(SETTINGS_MODULES) : $(MODULES_H)
-$(SETTINGS_TELEMETRY) : $(PERIODIC_H)
-$(SETTINGS_FLIGHTPLAN) : $(FLIGHT_PLAN_H)
+#$(RADIO_H) : $(CONF)/$(RADIO) $(CONF_XML) $(GENERATORS)/gen_radio.out
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@ from $(RADIO)
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_radio.out $< > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#	$(Q)cp $< $(AIRCRAFT_CONF_DIR)/radios
+#
+#$(PERIODIC_H) : $(MESSAGES_XML) $(CONF_XML) $(CONF)/$(TELEMETRY) $(MAKEFILE_AC)
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@ from $(TELEMETRY)
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_periodic.out $(MESSAGES_XML) $(CONF)/$(TELEMETRY) $(TELEMETRY_FREQUENCY) $(SETTINGS_TELEMETRY) > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#	$(Q)cp $(CONF)/$(TELEMETRY) $(AIRCRAFT_CONF_DIR)/telemetry
+#
+#$(FLIGHT_PLAN_H) : $(CONF)/$(FLIGHT_PLAN) $(CONF_XML) $(GENERATORS)/gen_flight_plan.out
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@ from $(FLIGHT_PLAN)
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_flight_plan.out -settings $(SETTINGS_FLIGHTPLAN) $< > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#	$(Q)cp $< $(AIRCRAFT_CONF_DIR)/flight_plans
+#
+#$(FLIGHT_PLAN_XML) : $(CONF)/$(FLIGHT_PLAN) $(CONF_XML) $(GENERATORS)/gen_flight_plan.out
+#	@echo GENERATE $@ from $(FLIGHT_PLAN)
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_flight_plan.out -dump $< > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#
+## split system settings (generated) from user settings with a '--'
+#$(SETTINGS_H) : $(SETTINGS_XMLS_DEP) $(CONF_XML) $(SETTINGS_MODULES) $(SETTINGS_TELEMETRY) $(SETTINGS_AUTOPILOT) $(GENERATORS)/gen_settings.out
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_settings.out $(SETTINGS_XML) $(SETTINGS_AUTOPILOT) $(SETTINGS_TELEMETRY) $(SETTINGS_FLIGHTPLAN) $(SETTINGS_MODULES) -- $(SETTINGS_XMLS) > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#	$(Q)cp $(SETTINGS_XMLS_DEP) $(AIRCRAFT_CONF_DIR)/settings
+#
+#$(MODULES_H) : $(CONF)/$(AIRFRAME_XML) $(FLIGHT_PLAN_XML) $(GENERATORS)/gen_modules.out $(CONF)/modules/*.xml
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_modules.out $(AC_ID) $(SETTINGS_MODULES) $(DEFAULT_MODULES_FREQUENCY) $(FLIGHT_PLAN_XML) $< > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#
+#$(SETTINGS_MODULES) : $(MODULES_H)
+#$(SETTINGS_TELEMETRY) : $(PERIODIC_H)
+#$(SETTINGS_FLIGHTPLAN) : $(FLIGHT_PLAN_H)
 
 %.ac_h : $(GENERATORS)/gen_aircraft.out
 	$(Q)if (expr "$(AIRCRAFT)") > /dev/null; then : ; else echo "AIRCRAFT undefined: type 'make AIRCRAFT=AircraftName ...'"; exit 1; fi
