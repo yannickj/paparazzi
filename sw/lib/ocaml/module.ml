@@ -37,13 +37,15 @@ let find_name = fun xml ->
         ExtXml.sprint_fields (Xml.attribs xml) in
     raise (ExtXml.Error msg)
 
-type file = { filename: string; directory: string option }
+type file = { filename: string; directory: string option; filecond: string option }
 type file_arch = file
 
 let parse_file = fun xml ->
   match xml with
   | Xml.Element ("file", _, []) | Xml.Element ("file_arch", _, []) ->
-      { filename = find_name xml; directory = ExtXml.attrib_opt xml "dir" }
+      { filename = find_name xml;
+        directory = ExtXml.attrib_opt xml "dir";
+        filecond = ExtXml.attrib_opt xml "cond" }
   | _ -> failwith "Module.parse_file: unreachable"
 
 type configure = {
@@ -79,7 +81,7 @@ let parse_define = fun xml ->
 
 type incl = { element: string; condition: string option }
 
-type flag = { flag: string; value: string }
+type flag = { flag: string; value: string; fcond: string option }
 
 type raw = string
 
@@ -119,7 +121,8 @@ let rec parse_makefile mkf = function
                  :: mkf.inclusions }
   | Xml.Element ("flag", _, []) as xml ->
     let flag = Xml.attrib xml "name" and value = Xml.attrib xml "value" in
-    { mkf with flags = { flag; value } :: mkf.flags }
+    { mkf with flags = { flag; value; fcond = ExtXml.attrib_opt xml "cond" }
+    :: mkf.flags }
   | Xml.Element ("file", _, []) as xml ->
     { mkf with files = parse_file xml :: mkf.files }
   | Xml.Element ("file_arch", _, []) as xml ->
@@ -235,7 +238,7 @@ let config_from_xml = function
   | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
 
 type t = {
-  filename: string;
+  xml_filename: string;
   name: string;
   dir: string option;
   task: string option;
@@ -256,7 +259,7 @@ type t = {
 }
 
 let empty =
-  { filename = ""; name = ""; dir = None;
+  { xml_filename = ""; name = ""; dir = None;
     task = None; path = ""; doc = Xml.Element ("doc", [], []);
     requires = []; conflicts = []; provides = []; autoloads = []; settings = [];
     headers = []; inits = []; periodics = []; events = []; datalinks = [];
@@ -337,7 +340,7 @@ let from_module_name = fun name mtype ->
     else raise (Module_not_found name)
   in
   let m = from_xml (ExtXml.parse_file name) in
-  { m with filename = name }
+  { m with xml_filename = name }
 
 (** check if a makefile node is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)

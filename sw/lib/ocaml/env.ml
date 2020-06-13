@@ -78,7 +78,7 @@ let get_gcs_icon_path = fun theme icon ->
     (* or raise not found *)
     raise Not_found
 
-let dump_fp = paparazzi_src // "sw" // "tools" // "generators" // "gen_flight_plan.out -dump"
+let dump_fp = paparazzi_src // "sw" // "tools" // "generators" // "dump_flight_plan.out"
 
 let default_module_targets = "ap|sim|nps|hitl"
 
@@ -155,7 +155,7 @@ let expand_ac_xml = fun ?(raise_exception = true) ac_conf ->
       (* create a temporary dump file *)
       let dump = Filename.temp_file "fp_dump" ".xml" in
       (* set command then call it *)
-      let c = sprintf "%s %s > %s" dump_fp fp dump in
+      let c = sprintf "%s %s %s" dump_fp fp dump in
       if Sys.command c <> 0 then
         begin
           Sys.remove dump;

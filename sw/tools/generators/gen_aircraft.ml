@@ -32,6 +32,7 @@ module GC = Gen_common
 module Af = Airframe
 module AfT = Airframe.Target
 module AfF = Airframe.Firmware
+module GM = Gen_makefile
 
 let (//) = Filename.concat
 
@@ -51,26 +52,13 @@ let default_modules_freq = 60
 
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
-(* type of loading (user, auto) *)
-type load_type = UserLoad | AutoLoad | Unloaded
-
-type target_conf = {
-  configures: Module.configure list; (* configure variables *)
-  configures_default: Module.configure list; (* default configure options *)
-  defines: Module.define list; (* define flags *)
-  firmware_name: string;
-  board_type: string;
-  modules: (load_type * Module.t) list; (* list of modules *)
-  autopilot: Autopilot.t option; (* autopilot file if any *)
-}
-
 (* init structure *)
 let init_target_conf = fun firmware_name board_type ->
-  { configures = []; configures_default = []; defines = [];
+  { GM.configures = []; configures_default = []; defines = [];
     firmware_name; board_type; modules = []; autopilot = None }
 
 let string_of_load = fun lt ->
-  match lt with UserLoad -> "USER" | AutoLoad -> "AUTO" | Unloaded -> "UNLOAD"
+  match lt with GM.UserLoad -> "USER" | GM.AutoLoad -> "AUTO" | GM.Unloaded -> "UNLOAD"
 
 (* add a module if compatible with target and firmware
  * and its autoloaded modules to a conf, return final conf *)
@@ -79,23 +67,23 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
   let m = Module.from_module_name name mtype in
   (* add autoloaded modules *)
   let conf = List.fold_left (fun c autoload ->
-      target_conf_add_module c target firmware autoload.Module.aname autoload.Module.atype AutoLoad
+      target_conf_add_module c target firmware autoload.Module.aname autoload.Module.atype GM.AutoLoad
     ) conf m.Module.autoloads in
   (* check compatibility with target *)
   if Module.check_loading target firmware m then
     (* check is the module itself is already loaded, merging options in all case *)
-    let add_module = if List.exists (fun (_, lm) -> m.Module.name = lm.Module.name) conf.modules
+    let add_module = if List.exists (fun (_, lm) -> m.Module.name = lm.Module.name) conf.GM.modules
       then [] else [(load_type, m)] in
     (* add configures and defines to conf if needed *)
     { conf with
-      configures = List.fold_left (fun cm mk ->
+      GM.configures = List.fold_left (fun cm mk ->
           if Module.check_mk target firmware mk then
             List.fold_left (fun cmk c ->
                 if not (c.Module.cvalue = None) then cmk @ [c]
                 else cmk
               ) cm mk.Module.configures
           else
-            cm) conf.configures  m.Module.makefiles;
+            cm) conf.GM.configures  m.Module.makefiles;
       configures_default = List.fold_left (fun cm mk ->
           if Module.check_mk target firmware mk then
             List.fold_left (fun cmk c ->
@@ -103,15 +91,15 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
                 else cmk
               ) cm mk.Module.configures
           else
-            cm) conf.configures  m.Module.makefiles;
+            cm) conf.GM.configures  m.Module.makefiles;
       defines = List.fold_left (fun dm mk ->
           if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
-        ) conf.defines  m.Module.makefiles;
-      modules = conf.modules @ add_module }
+        ) conf.GM.defines  m.Module.makefiles;
+      modules = conf.GM.modules @ add_module }
   else begin
     (*printf "Unloading %s\n" name;*)
     (* add "unloaded" module for reference *)
-    { conf with modules = conf.modules @ [(Unloaded, m)] } end
+    { conf with GM.modules = conf.GM.modules @ [(GM.Unloaded, m)] } end
 
 
 (* configuration sorted by target name: (string, target_conf) *)
@@ -136,21 +124,21 @@ let sort_airframe_by_target = fun airframe ->
         (* init and add configure/define from airframe *)
         let conf = init_target_conf f.AfF.name t.AfT.board in
         let conf = { conf with
-                     configures = t.AfT.configures @ f.AfF.configures;
+                     GM.configures = t.AfT.configures @ f.AfF.configures;
                      defines = t.AfT.defines @ f.AfF.defines } in
         (* iter on modules in target *)
         let conf = List.fold_left (fun c m_af ->
             let c = { c with
-                      configures = c.configures @ m_af.Module.configures;
-                      defines = c.defines @ m_af.Module.defines } in
-            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype UserLoad
+                      GM.configures = c.GM.configures @ m_af.Module.configures;
+                      defines = c.GM.defines @ m_af.Module.defines } in
+            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype GM.UserLoad
           ) conf t.AfT.modules in
         (* iter on modules in firmwares *)
         let conf = List.fold_left (fun c m_af ->
             let c = { c with
-                      configures = c.configures @ m_af.Module.configures;
-                      defines = c.defines @ m_af.Module.defines } in
-            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype UserLoad
+                      GM.configures = c.GM.configures @ m_af.Module.configures;
+                      defines = c.GM.defines @ m_af.Module.defines } in
+            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype GM.UserLoad
           ) conf f.AfF.modules in
         Hashtbl.add config_by_target name conf
       ) l
@@ -301,9 +289,9 @@ let () =
         Hashtbl.iter (fun target conf ->
           let conf = List.fold_left (fun c m ->
               let c = { c with
-                        configures = c.configures @ m.Module.configures;
-                        defines = c.defines @ m.Module.defines } in
-              target_conf_add_module c target "" m.Module.name m.Module.mtype UserLoad
+                        GM.configures = c.GM.configures @ m.Module.configures;
+                        defines = c.GM.defines @ m.Module.defines } in
+              target_conf_add_module c target "" m.Module.name m.Module.mtype GM.UserLoad
           ) conf fp.Flight_plan.modules in
           Hashtbl.replace config_by_target target conf
         ) config_by_target
@@ -371,16 +359,16 @@ let () =
     Printf.printf " done\n%!";
 
     let config = Hashtbl.find config_by_target target in
-    let modules = config.modules in
-    let loaded_modules = (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules) in
+    let modules = config.GM.modules in
+    let loaded_modules = (List.fold_left (fun l (t, m) -> if t <> GM.Unloaded then l @ [m] else l) [] modules) in
     printf "Loading modules:\n";
     List.iter (fun m ->
-      printf " - %s (%s) [%s]\n" m.Module.name (get_string_opt m.Module.dir) m.Module.filename) loaded_modules;
+      printf " - %s (%s) [%s]\n" m.Module.name (get_string_opt m.Module.dir) m.Module.xml_filename) loaded_modules;
     Printf.printf "Dumping modules header...%!";
     let abs_modules_h = aircraft_gen_dir // modules_h in
     generate_config_element loaded_modules
       (fun e -> Gen_modules.generate e !modules_freq "" abs_modules_h)
-      [ abs_modules_h, List.map (fun (_, m) -> m.Module.filename) modules ];
+      [ abs_modules_h, List.map (fun (_, m) -> m.Module.xml_filename) modules ];
     Printf.printf " done\n%!";
     
 
@@ -453,7 +441,7 @@ let () =
     let temp_makefile_ac = Filename.temp_file "Makefile.ac" "tmp" in
     begin match airframe, flight_plan with
     | Some af, Some fp ->
-      Gen_makefile.generate_makefile af.Airframe.name af fp temp_makefile_ac
+      GM.generate_makefile (value "ac_id") config_by_target temp_makefile_ac
     | _ -> Printf.eprintf "Missing airframe or flight_plan" end;
 
     (* Create Makefile.ac only if needed *)
@@ -461,7 +449,7 @@ let () =
     match airframe with
     | None -> ()
     | Some airframe ->
-      let module_files = List.map (fun (_, m) -> m.Module.filename) modules in
+      let module_files = List.map (fun (_, m) -> m.Module.xml_filename) modules in
       if is_older makefile_ac (airframe.Airframe.filename :: module_files)
       then
         assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0)
