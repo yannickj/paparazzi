@@ -25,7 +25,9 @@
 let () =
 
   let fp_xml, dump_out =
-    try Sys.argv.(1), Sys.argv.(2) with _ -> failwith "Please choose a flight plan XML and an output file"; exit (1)
+    try Sys.argv.(1), Sys.argv.(2)
+    with _ ->
+      failwith "Dump FP: please choose a flight plan XML and an output file"
   in
 
   let fp = Flight_plan.from_file fp_xml in

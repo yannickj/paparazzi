@@ -182,7 +182,7 @@ let make_element = fun t a c -> Xml.Element (t,a,c)
  * [bool -> Xml.xml -> string -> (Xml.xml -> a') -> (string * a' option)]
  *)
 let get_config_element = fun flag ac_xml elt f ->
-  if flag then None (* generation is not requested *)
+  if flag then None (* generation is not requested *) (*FIXME wrong logic *)
   else
     (* try *) (* TODO: uncomment? *)
       let file = Xml.attrib ac_xml elt in
@@ -455,15 +455,6 @@ let () =
         assert(Sys.command (sprintf "mv %s %s" temp_makefile_ac makefile_ac) = 0)
       ;
 
-(*
-    (* Get TARGET env, needed to build modules.h according to the target *)
-    let t = try Printf.sprintf "TARGET=%s" (Sys.getenv "TARGET") with _ -> "" in
-    (* Get FLIGHT_PLAN attribute, needed to build modules.h as well FIXME *)
-    let t = t ^ try Printf.sprintf " FLIGHT_PLAN=%s" (Xml.attrib aircraft_xml "flight_plan") with _ -> "" in
-    make_opt "radio_ac_h" "RADIO" "radio";
-    make_opt "flight_plan_ac_h" "FLIGHT_PLAN" "flight_plan";
-    make "all_ac_h" t
-    *)
   with Failure f ->
     prerr_endline f;
     exit 1

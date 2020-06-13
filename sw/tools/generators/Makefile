@@ -41,9 +41,9 @@ gen_srtm.out : gen_srtm.ml $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $@
 	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(LINKPKG) $<
 
-dump_flight_plan.out : gen_flight_plan.ml $(LIBPPRZCMA)
+dump_flight_plan.out : gen_flight_plan.ml dump_flight_plan.ml $(LIBPPRZCMA)
 	@echo OL $@
-	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(LINKPKG) $<
+	$(Q)$(OCAMLC) $(INCLUDES) -o $@ $(LINKPKG) $^
 
 %.out : %.ml $(LIBPPRZCMA) $(LIBPPRZLINKCMA)
 	@echo OL $<
