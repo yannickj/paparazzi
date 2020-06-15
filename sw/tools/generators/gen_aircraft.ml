@@ -176,6 +176,9 @@ let is_older = fun target_file dep_files ->
 
 let make_element = fun t a c -> Xml.Element (t,a,c)
 
+let copy_file = fun source dest ->
+  assert (Sys.command (sprintf "cp %s %s" source dest) = 0)
+
 (** Extract a configuration element from aircraft config,
  *  returns a tuple with absolute file path and element object
  * 
@@ -189,6 +192,13 @@ let get_config_element = fun flag ac_xml elt f ->
       let abs_file = paparazzi_conf // file in
       Some (f abs_file)
     (* with Xml.No_attribute _ -> None (\* no attribute elt in conf file *\) *)
+
+let get_element_relative_path = fun flag ac_xml elt ->
+  if flag then None (* generation is not requested *) (*FIXME wrong logic *)
+  else
+    try (* TODO: uncomment? *)
+      Some (Xml.attrib ac_xml elt)
+    with Xml.No_attribute _ -> None (* no attribute elt in conf file *)
 
 (** Generate a configuration element
  *  Also check dependencies
@@ -284,8 +294,8 @@ let () =
     begin match flight_plan with
       | None -> ()
       | Some fp ->
-        Printf.printf "\nModules from FP %s: " fp.Flight_plan.filename;
-        List.iter (fun (m : Module.config) -> Printf.printf "%s " m.Module.name) fp.Flight_plan.modules; Printf.printf "\n%!";
+        (*Printf.printf "\nModules from FP %s: " fp.Flight_plan.filename;
+        List.iter (fun (m : Module.config) -> Printf.printf "%s " m.Module.name) fp.Flight_plan.modules; Printf.printf "\n%!";*)
         Hashtbl.iter (fun target conf ->
           let conf = List.fold_left (fun c m ->
               let c = { c with
@@ -303,7 +313,6 @@ let () =
     let telemetry = get_config_element !gen_tl aircraft_xml "telemetry" Telemetry.from_file in
     Printf.printf " done\n%!";
 
-    (* TODO? filter duplicates: seems it's done in target_conf_add_module *)
     (* TODO resolve modules dep *)
 
     (* Generate output files *)
@@ -318,7 +327,17 @@ let () =
                e (value "ac_id") (get_string_opt !ac_name)
                "0x42" airframe.Airframe.filename abs_airframe_h)
           (* TODO compute correct MD5SUM *)
-          [ (abs_airframe_h, [airframe.Airframe.filename]) ] end;
+          [ (abs_airframe_h, [airframe.Airframe.filename]) ];
+        (* save conf file in aircraft conf dir *)
+        begin match get_element_relative_path !gen_af aircraft_xml "airframe" with
+          | None -> ()
+          | Some f ->
+              let dir = (aircraft_conf_dir // (Filename.dirname f)) in
+              mkdir dir;
+              copy_file airframe.Airframe.filename dir;
+              copy_file (paparazzi_conf  // "airframes" // "airframe.dtd") (aircraft_conf_dir // "airframes")
+        end;
+    end;
     (* TODO add dep in included files *)
 
     Printf.printf " done\nDumping flight plan XML and header...%!";
@@ -336,7 +355,15 @@ let () =
           (fun e ->
              Gen_flight_plan.generate
                e ~dump:true flight_plan.Flight_plan.filename abs_flight_plan_dump)
-          [ (abs_flight_plan_dump, [flight_plan.Flight_plan.filename]) ]
+          [ (abs_flight_plan_dump, [flight_plan.Flight_plan.filename]) ];
+          (* save conf file in aircraft conf dir *)
+        begin match get_element_relative_path !gen_fp aircraft_xml "flight_plan" with
+          | None -> ()
+          | Some f ->
+              let dir = (aircraft_conf_dir // (Filename.dirname f)) in
+              mkdir dir;
+              copy_file flight_plan.Flight_plan.filename dir;
+        end;
     end;
 
     Printf.printf " done\nDumping radio header...%!";
