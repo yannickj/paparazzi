@@ -281,7 +281,7 @@ let print_ap_periodic = fun modes ctrl_block main_freq name out_h ->
     right ();
     lprintf out_h "static uint16_t prescaler = 0;\n";
     lprintf out_h "prescaler++;\n";
-    lprintf out_h "if (prescaler >= (uint16_t)(%s / %s)) {\n" main_freq freq;
+    lprintf out_h "if (prescaler >= (uint16_t)(%f / %s)) {\n" main_freq freq;
     right ();
     lprintf out_h "prescaler = 0;\n";
     print_ctrl ctrl;
@@ -369,7 +369,7 @@ let parse_and_gen_modes xml_file ap_name main_freq h_dir sm =
     print_global_exceptions (get_exceptions sm) name out_h;
     print_set_mode modes name out_h;
     (* Select freq, airframe definition will supersede autopilot one *)
-    let freq = match main_freq, (Xml.attrib sm "freq") with
+    let freq = match main_freq, float_of_string (Xml.attrib sm "freq") with
     | None, f -> f
     | Some f, _ -> f
     in

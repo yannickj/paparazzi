@@ -319,12 +319,12 @@ let () =
                 ) conf ap.Autopilot.modules in
                 Hashtbl.replace config_by_target target conf
               ) config_by_target;
-              ap
+              (af_ap.Airframe.Autopilot.freq, ap)
             ) af.Airframe.autopilots in
             Some autopilots
       end
     else None in
-    let conf_aircraft = conf_aircraft @ (match autopilots with None -> [] | Some lx -> List.map (fun x -> x.Autopilot.xml) lx) in
+    let conf_aircraft = conf_aircraft @ (match autopilots with None -> [] | Some lx -> List.map (fun (_, x) -> x.Autopilot.xml) lx) in
     Printf.printf " done.\n%!";
     
     Printf.printf "Parsing flight plan%!";
@@ -456,7 +456,7 @@ let () =
                md5sum airframe.Airframe.filename abs_airframe_h)
           [ (abs_airframe_h, [airframe.Airframe.filename]) ];
         (* save conf file in aircraft conf dir *)
-        begin match get_element_relative_path !gen_af aircraft_xml "airframe" with
+        begin match get_element_relative_path (!gen_af || !gen_all) aircraft_xml "airframe" with
           | None -> ()
           | Some f ->
               let dir = (aircraft_conf_dir // (Filename.dirname f)) in
@@ -467,6 +467,18 @@ let () =
     end;
     Printf.printf " done\n%!";
     (* TODO add dep in included files *)
+
+    Printf.printf "Dumping autopilot header...%!";
+    begin match autopilots with
+      | None -> ()
+      | Some autopilots ->
+          List.iter (fun (freq, autopilot) ->
+            generate_config_element autopilot
+              (fun e -> Gen_autopilot.generate e freq aircraft_gen_dir)
+              [ ]
+          ) autopilots
+    end;
+    Printf.printf " done\n%!";
 
     Printf.printf "Dumping flight plan XML and header...%!";
     let abs_flight_plan_h = aircraft_gen_dir // flight_plan_h in
@@ -485,7 +497,7 @@ let () =
                e ~dump:true flight_plan.Flight_plan.filename abs_flight_plan_dump)
           [ (abs_flight_plan_dump, [flight_plan.Flight_plan.filename]) ];
           (* save conf file in aircraft conf dir *)
-        begin match get_element_relative_path !gen_fp aircraft_xml "flight_plan" with
+        begin match get_element_relative_path (!gen_fp || !gen_all) aircraft_xml "flight_plan" with
           | None -> ()
           | Some f ->
               let dir = (aircraft_conf_dir // (Filename.dirname f)) in
