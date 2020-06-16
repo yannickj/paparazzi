@@ -450,7 +450,7 @@ let parse_and_gen_modes xml_file ap_name main_freq h_dir sm =
 
 (** Main generation function
   *)
-let generate = fun autopilot ap_freq xml_file out_dir ->
+let generate = fun autopilot ap_freq out_dir ->
   (*let (ap, ap_freq) = try
     let target = try Some (Sys.getenv "TARGET") with _ -> None in
     Gen_common.get_autopilot_of_airframe ?target (Xml.parse_file xml_file)
@@ -465,7 +465,6 @@ let generate = fun autopilot ap_freq xml_file out_dir ->
   try
     let ap_name = ExtXml.attrib_or_default autopilot.Autopilot.xml "name" "Autopilot" in
     let state_machines = get_state_machines autopilot.Autopilot.xml in
-    List.iter (parse_and_gen_modes xml_file ap_name ap_freq out_dir) state_machines
-    (* write_settings xml_file out_set ap_xml TODO in gen_settings *)
+    List.iter (parse_and_gen_modes autopilot.Autopilot.filename ap_name ap_freq out_dir) state_machines
   with
     _ -> fprintf stderr "gen_autopilot: What the heck? Something went wrong...\n"; exit 1

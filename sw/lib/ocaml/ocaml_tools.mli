@@ -26,6 +26,9 @@ val open_compress : string -> in_channel
 (** [open_compress file] Opens [file] compressed or non-compressed.
     [.gz], [.Z], [.bz2], [.zip] and [.ZIP] recognized *)
 
+val compress : string -> unit
+(** [compress file] Compress [file] with gzip *)
+
 val find_file : string list -> string -> string
 (** [find_file path file] Search for [file] or a compressed extension of it in
     [path]. Returns the first occurence found. Checked extensions are

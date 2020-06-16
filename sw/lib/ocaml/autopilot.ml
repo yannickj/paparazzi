@@ -26,6 +26,7 @@
 module OT = Ocaml_tools
 
 type t = {
+  filename: string;
   modules: Module.config list;
   xml: Xml.xml;
 }
@@ -38,6 +39,9 @@ let from_xml = function
         else
           m
       ) [] children in
-      { modules; xml }
+      { filename = ""; modules; xml }
   | _ -> failwith "Autopilot.from_xml: unreachable"
 
+let from_file = fun filename ->
+  let ap = from_xml (Xml.parse_file filename) in
+  { ap with filename }

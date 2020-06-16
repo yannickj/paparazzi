@@ -388,7 +388,6 @@ let get_sys_modules_settings = fun modules ->
   (* build an XML node corresponding to the settings *)
   let mod_settings = List.fold_left (fun lm m ->
     let periodic_settings = List.fold_left (fun lp p ->
-      printf "fname %s, call %s\n" p.Module.fname p.Module.call;
       if not (p.Module.autorun = Module.Lock) then
         lp @ [Xml.Element("dl_setting",
                     [("min","2");
@@ -402,7 +401,6 @@ let get_sys_modules_settings = fun modules ->
     lm @ periodic_settings
   ) [] modules in
   let xml = Xml.Element("dl_settings",[("name","Modules")],mod_settings) in
-  printf "%s\n" (Xml.to_string xml);
   if List.length mod_settings > 0 then
     Some (Settings.from_xml (Xml.Element("settings",[],[xml])))
   else

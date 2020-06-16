@@ -32,6 +32,9 @@ let open_compress file =
     Unix.open_process_in ("bunzip2 -c "^file)
   else open_in file
 
+let compress file =
+  assert (Sys.command ("gzip "^file) = 0)
+
 
 let extensions = ["";".gz";".Z";".bz2";".zip";".ZIP"]
 let find_file = fun path file ->

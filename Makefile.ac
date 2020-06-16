@@ -229,17 +229,17 @@ flight_plan_ac_h : $(FLIGHT_PLAN_H) $(FLIGHT_PLAN_XML)
 
 makefile_ac: $(MAKEFILE_AC)
 
-$(AIRFRAME_H) : $(CONF)/$(AIRFRAME_XML) $(CONF_XML) $(AIRCRAFT_MD5) $(GENERATORS)/gen_airframe.out $(GENERATORS)/gen_autopilot.out $(CONF)/autopilot/*.xml
-	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
-	@echo GENERATE $@ from $(AIRFRAME_XML)
-	$(eval $@_TMP := $(shell $(MKTEMP)))
-	$(Q)$(GENERATORS)/gen_airframe.out $(AC_ID) $(AIRCRAFT) $(MD5SUM) $< > $($@_TMP)
-	$(Q)mv $($@_TMP) $@
-	$(Q)chmod a+r $@
-	$(Q)cp $(CONF)/airframes/airframe.dtd $(AIRCRAFT_CONF_DIR)/airframes
-	@echo GENERATE autopilots in $(AUTOPILOT_DIR)
-	$(Q)$(GENERATORS)/gen_autopilot.out $(CONF)/$(AIRFRAME_XML) $(AUTOPILOT_DIR) $(SETTINGS_AUTOPILOT)
-
+#$(AIRFRAME_H) : $(CONF)/$(AIRFRAME_XML) $(CONF_XML) $(AIRCRAFT_MD5) $(GENERATORS)/gen_airframe.out $(GENERATORS)/gen_autopilot.out $(CONF)/autopilot/*.xml
+#	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
+#	@echo GENERATE $@ from $(AIRFRAME_XML)
+#	$(eval $@_TMP := $(shell $(MKTEMP)))
+#	$(Q)$(GENERATORS)/gen_airframe.out $(AC_ID) $(AIRCRAFT) $(MD5SUM) $< > $($@_TMP)
+#	$(Q)mv $($@_TMP) $@
+#	$(Q)chmod a+r $@
+#	$(Q)cp $(CONF)/airframes/airframe.dtd $(AIRCRAFT_CONF_DIR)/airframes
+#	@echo GENERATE autopilots in $(AUTOPILOT_DIR)
+#	$(Q)$(GENERATORS)/gen_autopilot.out $(CONF)/$(AIRFRAME_XML) $(AUTOPILOT_DIR) $(SETTINGS_AUTOPILOT)
+#
 #$(RADIO_H) : $(CONF)/$(RADIO) $(CONF_XML) $(GENERATORS)/gen_radio.out
 #	$(Q)test -d $(AC_GENERATED) || mkdir -p $(AC_GENERATED)
 #	@echo GENERATE $@ from $(RADIO)
@@ -301,7 +301,7 @@ $(AIRFRAME_H) : $(CONF)/$(AIRFRAME_XML) $(CONF_XML) $(AIRCRAFT_MD5) $(GENERATORS
 	@echo "#######################################"
 	@echo "# BUILD AIRCRAFT=$(AIRCRAFT), TARGET $*"
 	@echo "#######################################"
-	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) PAPARAZZI_QT_GEN=$(PAPARAZZI_QT_GEN) TARGET=$* Q=$(Q) $(GENERATORS)/gen_aircraft.out -name $(AIRCRAFT) -target $* -conf $(CONF_XML)
+	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) PAPARAZZI_QT_GEN=$(PAPARAZZI_QT_GEN) TARGET=$* Q=$(Q) $(GENERATORS)/gen_aircraft.out -all -name $(AIRCRAFT) -target $* -conf $(CONF_XML)
 
 %.qt: %.ac_h
 	@echo "GENERATED Qt project"
