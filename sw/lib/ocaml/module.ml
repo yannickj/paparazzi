@@ -235,7 +235,7 @@ let config_from_xml = function
        configures = ExtXml.parse_children "configure" parse_configure children;
        defines = ExtXml.parse_children "define" parse_define children;
        xml }
-  | _ -> failwith "Airframe.Module_af.from_xml: unreachable"
+  | _ -> failwith "Module.config_from_xml: unreachable"
 
 type t = {
   xml_filename: string;
@@ -359,5 +359,4 @@ let fprint_headers = fun ch m ->
     (fun h ->
       let dir = match h.directory with None -> dirname | Some d -> d in
       Printf.fprintf ch "#include \"%s/%s\"\n" dir h.filename
-  (* TODO: Filename.concat? *)
     ) m.headers

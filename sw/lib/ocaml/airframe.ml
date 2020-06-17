@@ -103,7 +103,7 @@ type t = {
   filename: string;
   name: string;
   includes: Include.t list;
-  modules: Module.config list;
+  (*modules: Module.config list; TODO remove unused*)
   firmwares: Firmware.t list;
   autopilots: Autopilot.t list;
   xml: Xml.xml
@@ -111,9 +111,11 @@ type t = {
 
 let from_xml = function
   | Xml.Element ("airframe", _, children) as xml ->
+      if List.exists (fun c -> Xml.tag c = "modules") children then
+        Printf.eprintf "\nWarning: 'modules' node is deprecated, please move modules to 'firmware' section\n%!";
       { filename = ""; name = Xml.attrib xml "name";
         includes = ExtXml.parse_children "include" Include.from_xml children;
-        modules = ExtXml.parse_children "modules" Module.config_from_xml children;
+        (*modules = ExtXml.parse_children "modules" Module.config_from_xml children;*)
         firmwares = ExtXml.parse_children "firmware" Firmware.from_xml children;
         autopilots = ExtXml.parse_children "autopilot" Autopilot.from_xml children;
         xml }
