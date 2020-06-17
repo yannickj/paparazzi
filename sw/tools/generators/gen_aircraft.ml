@@ -63,7 +63,6 @@ let string_of_load = fun lt ->
 (* add a module if compatible with target and firmware
  * and its autoloaded modules to a conf, return final conf *)
 let rec target_conf_add_module = fun conf target firmware name mtype load_type ->
-  (*printf "ADD MODULE (%s) %s %s %s\n" (string_of_load load_type) name target firmware;*)
   let m = Module.from_module_name name mtype in
   (* add autoloaded modules *)
   let conf = List.fold_left (fun c autoload ->
@@ -79,7 +78,7 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
       GM.configures = List.fold_left (fun cm mk ->
           if Module.check_mk target firmware mk then
             List.fold_left (fun cmk c ->
-                if not (c.Module.cvalue = None) then cmk @ [c]
+              if not (c.Module.cvalue = None) then cmk @ [c]
                 else cmk
               ) cm mk.Module.configures
           else
@@ -87,17 +86,16 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
       configures_default = List.fold_left (fun cm mk ->
           if Module.check_mk target firmware mk then
             List.fold_left (fun cmk c ->
-                if not (c.Module.default = None) then cmk @ [c]
+              if not (c.Module.default = None && c.Module.case = None) then cmk @ [c]
                 else cmk
               ) cm mk.Module.configures
           else
-            cm) conf.GM.configures  m.Module.makefiles;
+            cm) conf.GM.configures_default  m.Module.makefiles;
       defines = List.fold_left (fun dm mk ->
           if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
         ) conf.GM.defines  m.Module.makefiles;
       modules = conf.GM.modules @ add_module }
   else begin
-    (*printf "Unloading %s\n" name;*)
     (* add "unloaded" module for reference *)
     { conf with GM.modules = conf.GM.modules @ [(GM.Unloaded, m)] } end
 
@@ -555,9 +553,12 @@ let () =
     begin match settings with
       | None -> ()
       | Some settings ->
+        let dep_list = List.fold_left
+          (fun l s -> if Sys.file_exists s.Settings.filename then s.Settings.filename :: l else l) [] settings
+        in
         generate_config_element settings
-          (fun e -> Gen_settings.generate e [(*TODO list file names*)] abs_settings_xml abs_settings_h)
-          [ (abs_settings_h, List.map (fun s -> s.Settings.filename) settings) ] end;
+          (fun e -> Gen_settings.generate e dep_list abs_settings_xml abs_settings_h)
+          [ (abs_settings_h, dep_list) ] end;
     Printf.printf " done\n%!";
 
 

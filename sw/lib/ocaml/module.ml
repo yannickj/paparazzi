@@ -340,15 +340,12 @@ let from_module_name = fun name mtype ->
     else raise (Module_not_found name)
   in
   let m = from_xml (ExtXml.parse_file name) in
-  { m with xml_filename = name }
+  let settings = List.map (fun s -> { s with Settings.filename = name }) m.settings in
+  { m with xml_filename = name; settings }
 
 (** check if a makefile node is compatible with a target and a firmware
  * TODO add 'board' type filter ? *)
 let check_mk = fun target firmware mk ->
-  (*Printf.printf "Check %s => %s = " target (GC.sprint_bool target (GC.targets_of_string mk.targets));
-  if GC.test_targets target (GC.targets_of_string mk.targets) then Printf.printf "True\n" else Printf.printf "False\n";
-  let s_of_f = function None -> "None" | Some f -> f in
-  if mk.firmware = (Some firmware) then Printf.printf "Firmware check (%s = %s): True\n" (s_of_f mk.firmware) firmware else Printf.printf "Firmware check (%s = %s): False\n" (s_of_f mk.firmware) firmware;*)
   (mk.firmware = (Some firmware) || mk.firmware = None) && GC.test_targets target (GC.targets_of_string mk.targets)
 
 (** check if a module is compatible with a target and a firmware *)

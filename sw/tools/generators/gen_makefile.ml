@@ -55,20 +55,20 @@ let configure2mk = fun ?(default_configure=false) f c ->
   if default_configure then begin
     (* Only print variable if default is set but not value *)
     if String.length default > 0 && String.length value = 0 then
-      fprintf f "%s ?= %s\n" name default;
-    (* also providing lower and upper case version on request *)
-    if Str.string_match (Str.regexp ".*lower.*") case 0 then
-      fprintf f "%s_LOWER = $(shell echo $(%s) | tr A-Z a-z)\n" name name;
-    if Str.string_match (Str.regexp ".*upper.*") case 0 then
-      fprintf f "%s_UPPER = $(shell echo $(%s) | tr a-z A-Z)\n" name name
-  end
-  else
+      fprintf f "%s ?= %s\n" name default
+  end else begin
     (* Only print variable if value is not empty *)
     if String.length value > 0 then
       fprintf f "%s = %s\n" name value;
     (* Or if only the name is given (unset a variable *)
     if String.length value = 0 && String.length default = 0 && String.length case = 0 then
       fprintf f "%s =\n" name
+  end;
+  (* also providing lower and upper case version on request *)
+  if Str.string_match (Str.regexp ".*lower.*") case 0 then
+    fprintf f "%s_LOWER = $(shell echo $(%s) | tr A-Z a-z)\n" name name;
+  if Str.string_match (Str.regexp ".*upper.*") case 0 then
+    fprintf f "%s_UPPER = $(shell echo $(%s) | tr a-z A-Z)\n" name name
 
 let include2mk = fun f ?(target="$(TARGET)") ?(vpath=None) inc ->
   let name = inc.Module.element
@@ -149,7 +149,9 @@ let dump_target_conf = fun out target conf ->
   fprintf out "\ninclude $(PAPARAZZI_SRC)/conf/boards/%s.makefile\n" conf.board_type;
   fprintf out "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n\n" conf.firmware_name;
   List.iter (configure2mk ~default_configure:true out) conf.configures_default;
+  fprintf out "\n";
   List.iter (define2mk out) conf.defines;
+  fprintf out "\n";
   List.iter (fun (l, m) -> match l with
               | UserLoad | AutoLoad -> module2mk out target conf.firmware_name m
               | _ -> ()

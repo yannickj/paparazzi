@@ -451,17 +451,6 @@ let parse_and_gen_modes xml_file ap_name main_freq h_dir sm =
 (** Main generation function
   *)
 let generate = fun autopilot ap_freq out_dir ->
-  (*let (ap, ap_freq) = try
-    let target = try Some (Sys.getenv "TARGET") with _ -> None in
-    Gen_common.get_autopilot_of_airframe ?target (Xml.parse_file xml_file)
-    with
-      Xml.Error e -> fprintf stderr "%s: XML error:%s\n" xml_file (Xml.error e); exit 1
-    | Dtd.Prove_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.prove_error e); exit 1
-    | Dtd.Check_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.check_error e); exit 1
-    | Dtd.Parse_error e -> fprintf stderr "%s: DTD error:%s\n%!" xml_file (Dtd.parse_error e); exit 1
-    | Not_found -> (* No autopilot file found *)
-        ("", None)
-  in FIXME move to gen_aircraft ? *)
   try
     let ap_name = ExtXml.attrib_or_default autopilot.Autopilot.xml "name" "Autopilot" in
     let state_machines = get_state_machines autopilot.Autopilot.xml in
