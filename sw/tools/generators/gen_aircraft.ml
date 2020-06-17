@@ -365,7 +365,7 @@ let () =
       with Not_found -> [] (* nothing for this target *)
     in
 
-    Printf.printf "Parsing settings...%b %b %!" !gen_set !gen_all;
+    Printf.printf "Parsing settings...%!";
     let settings =
       if !gen_set || !gen_all then begin
         (* normal settings *)
@@ -380,14 +380,28 @@ let () =
         let settings_modules_files = Str.split (Str.regexp " ") settings_modules in
         let settings_modules = List.fold_left
             (fun acc m ->
-              if List.exists (fun name -> m.Module.name = (paparazzi_conf // name)) settings_modules_files
+              if List.exists (fun name -> m.Module.xml_filename = (paparazzi_conf // name)) settings_modules_files
               then acc @ m.Module.settings else acc
             ) [] loaded_modules in
         (* system settings *)
+        (* TODO telemetry *)
         let sys_mod_settings = Gen_modules.get_sys_modules_settings loaded_modules in
+        (* TODO flight plan *)
+        (* TODO autopilot *)
         let system_settings = List.fold_left (fun l s -> match s with None -> l | Some x -> x::l) [] [sys_mod_settings] in
+        let sys_dl_settings = List.fold_left (fun l s -> s.Settings.dl_settings @ l) [] system_settings in
+        let sys_dl_settings = {
+          Settings.Dl_settings.name = Some "System";
+          dl_settings = sys_dl_settings; dl_setting = []; headers = [];
+          xml = make_element "dl_settings" [("name","System")] (List.map (fun s -> s.Settings.Dl_settings.xml) sys_dl_settings)
+        } in
+        let system_settings = {
+          Settings.filename = ""; name = None; target = None;
+          dl_settings = [sys_dl_settings];
+          xml = make_element "settings" [] [make_element "dl_settings" [] (List.map (fun s -> s.Settings.Dl_settings.xml) [sys_dl_settings])]
+        } in
         (* join all settings in correct order *)
-        Some (system_settings @ settings @ settings_modules)
+        Some ([system_settings] @ settings @ settings_modules)
       end
       else None
     in
