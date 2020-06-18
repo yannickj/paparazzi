@@ -399,7 +399,13 @@ let () =
           xml = make_element "settings" [] [make_element "dl_settings" [] (List.map (fun s -> s.Settings.Dl_settings.xml) [sys_dl_settings])]
         } in
         (* join all settings in correct order *)
-        Some ([system_settings] @ settings @ settings_modules)
+        let settings = [system_settings] @ settings @ settings_modules in
+        (* filter on targets *)
+        let settings = List.fold_left (fun l s ->
+          if GC.test_targets target (GC.targets_of_string s.Settings.target) then s :: l
+          else l
+        ) [] settings in
+        Some (List.rev settings)
       end
       else None
     in
