@@ -38,7 +38,7 @@ type target_conf = {
   firmware_name: string;
   board_type: string;
   modules: (load_type * Module.t) list; (* list of modules *)
-  autopilot: Autopilot.t option; (* autopilot file if any *)
+  autopilot: bool; (* autopilot if any *)
 }
 
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
@@ -142,9 +142,8 @@ let dump_target_conf = fun out target conf ->
     | None -> m.Module.name::l | Some d -> d::l) [] conf.modules) in
   List.iter (fun d -> fprintf out "%s_DIR = modules/%s\n" (Compat.uppercase_ascii d) d) dir_list;
   fprintf out "\n";
-  begin match conf.autopilot with None -> () | Some _ ->
-    fprintf out "USE_GENERATED_AUTOPILOT = TRUE\n"
-  end;
+  if conf.autopilot then
+    fprintf out "USE_GENERATED_AUTOPILOT = TRUE\n";
   List.iter (configure2mk out) conf.configures;
   fprintf out "\ninclude $(PAPARAZZI_SRC)/conf/boards/%s.makefile\n" conf.board_type;
   fprintf out "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n\n" conf.firmware_name;

@@ -385,7 +385,7 @@ let check_dependencies = fun modules names ->
 
 (* return a Settings object from modules *)
 let get_sys_modules_settings = fun modules ->
-  (* build an XML node corresponding to the settings *)
+  (* build a XML node corresponding to the settings *)
   let mod_settings = List.fold_left (fun lm m ->
     let periodic_settings = List.fold_left (fun lp p ->
       if not (p.Module.autorun = Module.Lock) then

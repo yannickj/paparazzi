@@ -55,7 +55,7 @@ let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 (* init structure *)
 let init_target_conf = fun firmware_name board_type ->
   { GM.configures = []; configures_default = []; defines = [];
-    firmware_name; board_type; modules = []; autopilot = None }
+    firmware_name; board_type; modules = []; autopilot = false }
 
 let string_of_load = fun lt ->
   match lt with GM.UserLoad -> "USER" | GM.AutoLoad -> "AUTO" | GM.Unloaded -> "UNLOAD"
@@ -304,8 +304,21 @@ let () =
         | None -> None
         | Some af ->
             (* extract autopilots *)
+            let autopilots = List.fold_left (fun lf f ->
+              let ap_f = match f.Airframe.Firmware.autopilot with None -> [] | Some a -> [a] in
+              let ap_t = List.fold_left (fun lt t ->
+                if t.Airframe.Target.name = target then
+                  match t.Airframe.Target.autopilot with None -> lt | Some a -> a :: lt
+                else lt
+              ) ap_f f.Airframe.Firmware.targets in
+              ap_t @ lf
+            ) af.Airframe.autopilots af.Airframe.firmwares in
             let autopilots = List.map (fun af_ap ->
               let filename = af_ap.Airframe.Autopilot.name in
+              let filename = if Filename.extension filename = ".xml"
+                             then filename
+                             else filename^".xml" in
+              let filename = paparazzi_conf // "autopilot" // filename in
               let ap = Autopilot.from_file filename in
               (* extract modules from autopilot *)
               Hashtbl.iter (fun target conf ->
@@ -318,7 +331,9 @@ let () =
                 Hashtbl.replace config_by_target target conf
               ) config_by_target;
               (af_ap.Airframe.Autopilot.freq, ap)
-            ) af.Airframe.autopilots in
+            ) autopilots in
+            let c = Hashtbl.find config_by_target target in
+            Hashtbl.replace config_by_target target { c with GM.autopilot = true };
             Some autopilots
       end
     else None in
@@ -382,11 +397,16 @@ let () =
               then acc @ m.Module.settings else acc
             ) [] loaded_modules in
         (* system settings *)
-        (* TODO telemetry *)
+        let sys_tl_settings = Gen_periodic.get_sys_telemetry_settings telemetry in
         let sys_mod_settings = Gen_modules.get_sys_modules_settings loaded_modules in
-        (* TODO flight plan *)
-        (* TODO autopilot *)
-        let system_settings = List.fold_left (fun l s -> match s with None -> l | Some x -> x::l) [] [sys_mod_settings] in
+        let sys_fp_settings = Gen_flight_plan.get_sys_fp_settings flight_plan in
+        let sys_ap_settings = Gen_autopilot.get_sys_ap_settings autopilots in
+        (* filter system settings *)
+        let system_settings = List.fold_left
+          (fun l s -> match s with None -> l | Some x -> x::l) []
+          [sys_tl_settings; sys_fp_settings; sys_mod_settings; sys_ap_settings]
+        in
+        (* group into a common System dl_settings *)
         let sys_dl_settings = List.fold_left (fun l s -> s.Settings.dl_settings @ l) [] system_settings in
         let sys_dl_settings = {
           Settings.Dl_settings.name = Some "System";
@@ -491,9 +511,12 @@ let () =
       | None -> ()
       | Some autopilots ->
           List.iter (fun (freq, autopilot) ->
+            let dep = List.map (fun sm ->
+              let h_name = paparazzi_conf // ("autopilot_core_"^(Xml.attrib sm "name")^".h") in
+              (h_name, [autopilot.Autopilot.filename])
+            ) (Xml.children autopilot.Autopilot.xml) in
             generate_config_element autopilot
-              (fun e -> Gen_autopilot.generate e freq aircraft_gen_dir)
-              [ ]
+            (fun e -> Gen_autopilot.generate e freq aircraft_gen_dir) dep
           ) autopilots
     end;
     Printf.printf " done\n%!";

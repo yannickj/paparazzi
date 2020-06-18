@@ -27,12 +27,12 @@ module OT = Ocaml_tools
 
 module Autopilot = struct
 
-  type t = { name: string; freq: float option; xml: Xml.xml }
+  type t = { name: string; freq: string option; xml: Xml.xml }
 
   let from_xml = function
     | Xml.Element ("autopilot", attrs, []) as xml ->
         { name = Xml.attrib xml "name";
-          freq = ExtXml.attrib_opt_map xml "freq" float_of_string;
+          freq = ExtXml.attrib_opt xml "freq";
           xml }
     | _ -> failwith "Airframe.Autopilot.from_xml: unreachable"
 

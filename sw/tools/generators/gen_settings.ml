@@ -47,29 +47,16 @@ let rec flatten = fun xml r ->
         List.fold_right flatten (x::xs) r
 
 
-module StringSet = Set.Make(struct type t = string let compare = compare end)
-
-
 let print_dl_settings = fun out settings settings_xml ->
   let settings_xml = flatten settings_xml [] in
 
   (** include  headers **)
-  (*let modules = ref StringSet.empty in
-  List.iter
-    (fun s ->
-      try
-        modules := StringSet.add (ExtXml.attrib s "module") !modules
-      with ExtXml.Error e -> ()
-    )
-    settings;*)
-
   lprintf out "\n";
   List.iter (fun s ->
     List.iter (fun h ->
       lprintf out "#include \"%s.h\"\n" h
     ) (Settings.get_headers s)
   ) settings;
-  (*StringSet.iter (fun m -> lprintf out "#include \"%s.h\"\n" m) !modules;*)
   lprintf out "#include \"generated/modules.h\"\n";
   lprintf out "\n";
 
@@ -103,11 +90,13 @@ let print_dl_settings = fun out settings settings_xml ->
         try
           let h = ExtXml.attrib s "handler" in
           begin
-            try
-              let m =  ExtXml.attrib s "module" in
-              lprintf out "case %d: %s_%s( _value ); _value = %s; break;\\\n" !idx (Filename.basename m) h v
-            with
-                ExtXml.Error e -> prerr_endline (sprintf "Error: You need to specify the module attribute for setting %s to use the handler %s" v h); exit 1
+            let m1 = ExtXml.attrib_or_default s "module" "" in
+            let m2 = ExtXml.attrib_or_default s "header" "" in
+            match m1, m2 with
+            | "", "" -> prerr_endline (sprintf "Error: You need to specify the header (or module for legacy) attribute for setting %s to use the handler %s" v h); exit 1
+            | "", _ -> lprintf out "case %d: %s_%s( _value ); _value = %s; break;\\\n" !idx (Filename.basename m2) h v
+            | _, "" -> lprintf out "case %d: %s_%s( _value ); _value = %s; break;\\\n" !idx (Filename.basename m1) h v
+            | _, _ -> prerr_endline (sprintf "Error: You can't specify both module and header attributes for setting %s to use the handler %s" v h); exit 1
           end;
         with
             ExtXml.Error e -> lprintf out "case %d: %s = _value; break;\\\n" !idx v
@@ -234,95 +223,7 @@ let print_persistent_settings = fun out settings settings_xml ->
   lprintf out "}\n"
 (*  end *)
 
-
-(*
- Check if target t is marked as supported in the targets string.
- The targets string is a pipe delimited list of supported targets, e.g. "ap|nps"
- To specifiy a list with unsupported targets, prefix with !
- e.g. "!sim|nps" to mark support for all targets except sim and nps.
-*)
-let supports_target = fun t targets ->
-  if String.length targets > 0 && targets.[0] = '!' then
-    not (Str.string_match (Str.regexp (".*"^t^".*")) targets 0)
-  else
-    Str.string_match (Str.regexp (".*"^t^".*")) targets 0
-
-let join_xml_files = fun xml_sys_files xml_user_files ->
-  let dl_settings = ref []
-  and rc_settings = ref [] in
-  let target = try Sys.getenv "TARGET" with _ -> "" in
-  List.iter (fun xml_file ->
-    (* look for a specific name after settings file (in case of modules) *)
-    let split = Str.split (Str.regexp "~") xml_file in
-    let xml_file, name = match split with
-    | [f; n] -> f, n
-    | _ -> xml_file, ""
-    in
-    let xml = ExtXml.parse_file xml_file in
-    let these_rc_settings =
-      try Xml.children (ExtXml.child xml "rc_settings") with
-          Not_found -> [] in
-    let these_dl_settings =
-      try
-        (* test if the file is plain settings file or a module file *)
-        let xml =
-          if Xml.tag xml = "module"
-          then begin
-            (* test if the module is loaded or not *)
-            if List.exists (fun n ->
-              if Xml.tag n = "makefile" then begin
-                let t = ExtXml.attrib_or_default n "target" Env.default_module_targets in
-                supports_target target t
-              end
-              else false
-              ) (Xml.children xml)
-            then
-              List.filter (fun t ->
-                (* filter xml nodes and keep them if:
-                 * it is a settings node
-                 * the current target is supported in the 'target' attribute
-                 * if no 'target' attribute always keep it
-                 *)
-                Xml.tag t = "settings" && supports_target target (ExtXml.attrib_or_default t "target" target)
-              ) (Xml.children xml)
-            else []
-          end
-          else begin
-            (* if the top <settings> node has a target attribute,
-               only add if matches current target *)
-            let t = ExtXml.attrib_or_default xml "target" "" in
-            if t = "" || (supports_target target t) then
-              [xml]
-            else
-              []
-          end
-        in
-        (* include settings if name is matching *)
-        List.fold_left (fun l x ->
-          if (ExtXml.attrib_or_default x "name" "") = name then
-            l @ (Xml.children (ExtXml.child x "dl_settings"))
-          else l
-        ) [] xml
-      with
-      | Not_found -> [] in
-    rc_settings := these_rc_settings @ !rc_settings;
-    dl_settings := these_dl_settings @ !dl_settings)
-    xml_user_files;
-
-    (* add system settings grouped under the same tab *)
-    let dl_sys = List.map (fun xml_file ->
-      let xml = ExtXml.parse_file xml_file in
-      (* take "second stage" dl_settings nodes *)
-      try
-        let dl = ExtXml.child xml "dl_settings" in
-        Xml.children dl
-      with Not_found -> []
-    ) xml_sys_files in
-    dl_settings := Xml.Element("dl_settings", [("name", "System")], List.rev (List.flatten dl_sys)) :: !dl_settings;
-
-    (* return final node *)
-  Xml.Element("rc_settings",[],!rc_settings), Xml.Element("dl_settings",[],!dl_settings)
-
+(* Get settings as a single XML node *)
 let get_settings_xml = fun settings ->
   let settings_xml = List.fold_left (fun l s ->
     if List.length s.Settings.dl_settings > 0

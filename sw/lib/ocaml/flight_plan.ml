@@ -37,7 +37,7 @@ let from_xml = function
     let settings = List.fold_left (fun s el ->
         if Xml.tag el = "variables" then
           s @ List.fold_left (fun s e -> 
-              if Xml.tag el = "variable" then
+              if Xml.tag e = "variable" then
                 let test = fun attrib ->
                   match ExtXml.attrib_opt e attrib with
                   | Some _ -> true | None -> false in
