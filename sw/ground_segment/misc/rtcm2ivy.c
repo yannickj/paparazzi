@@ -58,6 +58,8 @@ rtcm3_msg_callbacks_node_t rtcm3_1230_node;
 
 rtcm3_msg_callbacks_node_t ubx_nav_svin_node;
 
+bool svin_converged   = FALSE;
+
 /** Default values **/
 uint8_t ac_id         = 0;
 uint32_t msg_cnt      = 0;
@@ -76,6 +78,7 @@ bool logger           = FALSE;
 #define printf_debug    if(verbose == TRUE) printf
 
 FILE  *pFile;
+char *logfilename="/tmp/RTCM3_log.txt";
 
 /** Ivy Bus default */
 #ifdef __APPLE__
@@ -122,11 +125,11 @@ static void ivy_send_message(uint8_t packet_id, uint8_t len, uint8_t msg[])
 
     nanosleep(&wait, NULL);
     printf_debug("%s\n\n", gps_packet);
-    IvySendMsg("%s", gps_packet);
+    if(svin_converged) IvySendMsg("%s", gps_packet);
     offset += (packet_size-6);
 
     if (logger == TRUE) {
-      pFile = fopen("./RTCM3_log.txt", "a");
+      pFile = fopen(logfilename , "a");
       fprintf(pFile, "%s\n", gps_packet);
       fclose(pFile);
     }
@@ -164,7 +167,7 @@ static void rtcm3_1005_callback(uint8_t len, uint8_t msg[])
       IvySendMsg("%s %s %s %i %i %i %i %i %i %f %f %f", "ground", "UBX_RTK_GROUNDSTATION", "GCS", StaId, ItRef, indGPS,
                  indGlonass, indGalileo, indRefS, posLla.lat / (2 * M_PI) * 360, posLla.lon / (2 * M_PI) * 360, posLla.alt);
     } else {
-      printf("Skipping 1005 message (CRC check failed)\n");
+      printf_debug("Skipping 1005 message (CRC check failed)\n");
     }
   }
   printf_debug("Parsed 1005 callback\n");
@@ -181,7 +184,7 @@ static void rtcm3_1077_callback(uint8_t len, uint8_t msg[])
       msg_cnt++;
     } else {
       ivy_send_message(RTCM3_MSG_1077, len, msg);
-      printf("Skipping 1077 message (CRC check failed)\n");
+      printf_debug("Skipping 1077 message (CRC check failed)\n");
     }
   }
   printf_debug("Parsed 1077 callback\n");
@@ -197,7 +200,7 @@ static void rtcm3_1087_callback(uint8_t len, uint8_t msg[])
       ivy_send_message(RTCM3_MSG_1087, len, msg);
       msg_cnt++;
     } else {
-      printf("Skipping 1087 message (CRC check failed)\n");
+      printf_debug("Skipping 1087 message (CRC check failed)\n");
     }
   }
   printf_debug("Parsed 1087 callback\n");
@@ -214,7 +217,7 @@ static void rtcm3_4072_callback(uint8_t len, uint8_t msg[])
       msg_cnt++;
     } else {
       ivy_send_message(RTCM3_MSG_4072, len, msg);
-      printf("Skipping 4072 message (CRC check failed)\n");
+      printf_debug("Skipping 4072 message (CRC check failed)\n");
     }
   }
   printf_debug("Parsed 4072 callback\n");
@@ -231,7 +234,7 @@ static void rtcm3_1230_callback(uint8_t len, uint8_t msg[])
       msg_cnt++;
     } else {
       ivy_send_message(RTCM3_MSG_1230, len, msg);
-      printf("Skipping 1230 message (CRC check failed)\n");
+      printf_debug("Skipping 1230 message (CRC check failed)\n");
     }
   }
   printf_debug("Parsed 1230 callback\n");
@@ -243,13 +246,26 @@ static void rtcm3_1230_callback(uint8_t len, uint8_t msg[])
  */
 static void ubx_navsvin_callback(uint8_t len, uint8_t msg[])
 {
+  char str[255];
+
   if (len > 0) {
     u32 iTow      = UBX_NAV_SVIN_ITOW(msg);
     u32 dur       = UBX_NAV_SVIN_dur(msg);
     float meanAcc = (float) 0.1 * UBX_NAV_SVIN_meanACC(msg);
     u8 valid      = UBX_NAV_SVIN_Valid(msg);
     u8 active     = UBX_NAV_SVIN_Active(msg);
-    printf("iTow: %u \t dur: %u \t meaAcc: %f \t valid: %u \t active: %u \n", iTow, dur, meanAcc, valid, active);
+
+//    printf_debug("iTow: %u \t dur: %u \t meaAcc: %f \t valid: %u \t active: %u \n", iTow, dur, meanAcc, valid, active);
+    sprintf(str,"\nUBX_NAV_SVIN iTow: %u \t dur: %u \t meaAcc: %f \t valid: %u \t active: %u \n", iTow, dur, meanAcc, valid, active);
+//    printf_debug(str);
+
+    if(valid) svin_converged = TRUE; 
+   
+    if (logger == TRUE) {
+      pFile = fopen(logfilename , "a");
+      fprintf(pFile, "%s\n", str);
+      fclose(pFile);
+    }
   }
 }
 /**
@@ -284,8 +300,9 @@ void print_usage(int argc __attribute__((unused)), char **argv)
     " Options :\n"
     "   -h, --help                Display this help\n"
     "   -v, --verbose             Verbosity enabled\n"
-    "   -l, --logger              Save RTCM3 messages to log\n\n"
-
+    "   -l, --logger              Save RTCM3 messages to log\n"
+    "                             and converging status progression\n"
+    "                             ex: tail -f 10 /tmp/RTCM3_log.txt\n\n"
     "   -d <device>               The GPS device(default: /dev/ttyACM0)\n"
     "   -b <baud_rate>            The device baud rate(default: B9600)\n"
     "   -p <packet_size>          The payload size (default:100, max:4146))\n\n";
@@ -365,7 +382,6 @@ int main(int argc, char **argv)
   rtcm3_register_callback(&msg_state, RTCM3_MSG_1077, &rtcm3_1077_callback, &rtcm3_1077_node);
   rtcm3_register_callback(&msg_state, RTCM3_MSG_1087, &rtcm3_1087_callback, &rtcm3_1087_node);
   rtcm3_register_callback(&msg_state, UBX_NAV_SVIN, &ubx_navsvin_callback, &ubx_nav_svin_node);
-
 
   // Add IO watch for tty connection
   printf_debug("Adding IO watch...\n");
