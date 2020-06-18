@@ -313,28 +313,30 @@ let () =
               ) ap_f f.Airframe.Firmware.targets in
               ap_t @ lf
             ) af.Airframe.autopilots af.Airframe.firmwares in
-            let autopilots = List.map (fun af_ap ->
-              let filename = af_ap.Airframe.Autopilot.name in
-              let filename = if Filename.extension filename = ".xml"
-                             then filename
-                             else filename^".xml" in
-              let filename = paparazzi_conf // "autopilot" // filename in
-              let ap = Autopilot.from_file filename in
-              (* extract modules from autopilot *)
-              Hashtbl.iter (fun target conf ->
-                let conf = List.fold_left (fun c m ->
-                    let c = { c with
-                              GM.configures = c.GM.configures @ m.Module.configures;
-                              defines = c.GM.defines @ m.Module.defines } in
-                    target_conf_add_module c target "" m.Module.name m.Module.mtype GM.UserLoad
-                ) conf ap.Autopilot.modules in
-                Hashtbl.replace config_by_target target conf
-              ) config_by_target;
-              (af_ap.Airframe.Autopilot.freq, ap)
-            ) autopilots in
-            let c = Hashtbl.find config_by_target target in
-            Hashtbl.replace config_by_target target { c with GM.autopilot = true };
-            Some autopilots
+            if List.length autopilots = 0 then None
+            else
+              let autopilots = List.map (fun af_ap ->
+                let filename = af_ap.Airframe.Autopilot.name in
+                let filename = if Filename.extension filename = ".xml"
+                               then filename
+                               else filename^".xml" in
+                let filename = paparazzi_conf // "autopilot" // filename in
+                let ap = Autopilot.from_file filename in
+                (* extract modules from autopilot *)
+                Hashtbl.iter (fun target conf ->
+                  let conf = List.fold_left (fun c m ->
+                      let c = { c with
+                                GM.configures = c.GM.configures @ m.Module.configures;
+                                defines = c.GM.defines @ m.Module.defines } in
+                      target_conf_add_module c target "" m.Module.name m.Module.mtype GM.UserLoad
+                  ) conf ap.Autopilot.modules in
+                  Hashtbl.replace config_by_target target conf
+                ) config_by_target;
+                (af_ap.Airframe.Autopilot.freq, ap)
+              ) autopilots in
+              let c = Hashtbl.find config_by_target target in
+              Hashtbl.replace config_by_target target { c with GM.autopilot = true };
+              Some autopilots
       end
     else None in
     let conf_aircraft = conf_aircraft @ (match autopilots with None -> [] | Some lx -> List.map (fun (_, x) -> x.Autopilot.xml) lx) in
