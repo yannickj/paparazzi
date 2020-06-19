@@ -91,9 +91,6 @@ let rec target_conf_add_module = fun conf target firmware name mtype load_type -
               ) cm mk.Module.configures
           else
             cm) conf.GM.configures_default  m.Module.makefiles;
-      defines = List.fold_left (fun dm mk ->
-          if Module.check_mk target firmware mk then dm @ mk.Module.defines else dm
-        ) conf.GM.defines  m.Module.makefiles;
       modules = conf.GM.modules @ add_module }
   else begin
     (* add "unloaded" module for reference *)
