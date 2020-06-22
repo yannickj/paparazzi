@@ -183,31 +183,6 @@ let parse_periodic = fun xml ->
       | Some "LOCK" | Some "lock" -> Lock
       | Some _ -> failwith "Module.parse_periodic: unreachable" }
 
-(*let fprint_period_freq = fun ch max_freq p ->
-  let period, freq = match p.period_freq with
-    | Unset -> 1. /. max_freq, max_freq
-    | Set (p, f) -> p, f in
-  let cap_fname = Compat.uppercase_ascii p.fname in
-  Printf.fprintf ch "#define %s_PERIOD %f\n" cap_fname period;
-  Printf.fprintf ch "#define %s_FREQ %f\n" cap_fname freq*)
-
-let status_name = fun mod_name p -> mod_name ^ "_" ^ p.fname ^ "_status"
-
-(*let fprint_status = fun ch mod_name p ->
-  match p.autorun with
-  | True | False ->
-    Printf.fprintf ch "EXTERN_MODULES uint8_t %s;\n" (status_name mod_name p)
-  | Lock -> ()
-
-let fprint_periodic_init = fun ch mod_name p ->
-  match p.autorun with
-  | True -> Printf.fprintf ch "%s = %s;" (status_name mod_name p) "MODULES_START"
-  | False -> Printf.fprintf ch "%s = %s;" (status_name mod_name p) "MODULES_IDLE"
-  | Lock -> ()
-
-let fprint_init = fun ch init -> Printf.fprintf ch "%s;\n" init
-*)
-
 type event = { ev: string; handlers: string list }
 
 let make_event = fun f handlers ->
@@ -362,11 +337,3 @@ let check_mk = fun target firmware mk ->
 let check_loading = fun target firmware m ->
   List.exists (check_mk target firmware) m.makefiles
 
-(** move to generators *)
-(*let fprint_headers = fun ch m ->
-  let dirname = match m.dir with None -> m.name | Some d -> d in
-  List.iter
-    (fun h ->
-      let dir = match h.directory with None -> dirname | Some d -> d in
-      Printf.fprintf ch "#include \"%s/%s\"\n" dir h.filename
-    ) m.headers*)

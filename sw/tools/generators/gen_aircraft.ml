@@ -296,10 +296,11 @@ let () =
      *  Parse file if needed
      *)
 
-    let conf_aircraft = [] in (* accumulate aircraft confif *)
+    let conf_aircraft = [] in (* accumulate aircraft config *)
 
     Printf.printf "Parsing airframe%!";
     let airframe = get_config_element (!gen_af || !gen_all) aircraft_xml "airframe" Airframe.from_file in
+    Printf.printf " '%s'%!" (match airframe with None -> "None" | Some a -> a.Airframe.filename);
     let conf_aircraft = conf_aircraft @ (match airframe with None -> [] | Some x -> [x.Airframe.xml]) in
     Printf.printf ", sorting by target%!";
     sort_airframe_by_target airframe;
@@ -350,6 +351,7 @@ let () =
     
     Printf.printf "Parsing flight plan%!";
     let flight_plan = get_config_element (!gen_fp || !gen_all) aircraft_xml "flight_plan" Flight_plan.from_file in
+    Printf.printf " '%s'%!" (match flight_plan with None -> "None" | Some fp -> fp.Flight_plan.filename);
     Printf.printf ", extracting modules...%!";
     begin match flight_plan with
       | None -> ()
@@ -367,13 +369,15 @@ let () =
     let conf_aircraft = conf_aircraft @ (match flight_plan with None -> [] | Some x -> [x.Flight_plan.xml]) in
     Printf.printf " done\n%!";
 
-    Printf.printf "Parsing radio...%!";
+    Printf.printf "Parsing radio%!";
     let radio = get_config_element (!gen_rc || !gen_all) aircraft_xml "radio" Radio.from_file in
+    Printf.printf " '%s'...%!" (match radio with None -> "None" | Some rc -> rc.Radio.filename);
     let conf_aircraft = conf_aircraft @ (match radio with None -> [] | Some x -> [x.Radio.xml]) in
     Printf.printf " done\n%!";
 
-    Printf.printf "Parsing telemetry...%!";
+    Printf.printf "Parsing telemetry%!";
     let telemetry = get_config_element (!gen_tl || !gen_all) aircraft_xml "telemetry" Telemetry.from_file in
+    Printf.printf " '%s'...%!" (match telemetry with None -> "None" | Some tl -> tl.Telemetry.filename);
     let conf_aircraft = conf_aircraft @ (match telemetry with None -> [] | Some x -> [x.Telemetry.xml]) in
     Printf.printf " done\n%!";
 

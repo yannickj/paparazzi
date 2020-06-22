@@ -56,6 +56,24 @@ let get_status_shortname = fun f ->
   let func = (Xml.attrib f "fun") in
   String.sub func 0 (try String.index func '(' with _ -> (String.length func))
 
+(* TODO  merge *)
+let status_name = fun mod_name p -> mod_name ^ "_" ^ p.Module.fname ^ "_status"
+
+(*let fprint_status = fun ch mod_name p ->
+  match p.autorun with
+  | True | False ->
+    Printf.fprintf ch "EXTERN_MODULES uint8_t %s;\n" (status_name mod_name p)
+  | Lock -> ()
+
+let fprint_periodic_init = fun ch mod_name p ->
+  match p.autorun with
+  | True -> Printf.fprintf ch "%s = %s;" (status_name mod_name p) "MODULES_START"
+  | False -> Printf.fprintf ch "%s = %s;" (status_name mod_name p) "MODULES_IDLE"
+  | Lock -> ()
+
+let fprint_init = fun ch init -> Printf.fprintf ch "%s;\n" init
+*)
+
 let get_period_and_freq = fun f max_freq ->
   let period = try Some (float_of_string (Xml.attrib f "period")) with _ -> None
   and freq = try Some (float_of_string (Xml.attrib f "freq")) with _ -> None in
@@ -66,6 +84,14 @@ let get_period_and_freq = fun f max_freq ->
     | Some _p, Some _ ->
       fprintf stderr "Warning: both period and freq are defined but only period is used for function %s\n" (ExtXml.attrib f "fun");
       (_p, 1. /. _p)
+
+(*let fprint_period_freq = fun ch max_freq p ->
+  let period, freq = match p.period_freq with
+    | Unset -> 1. /. max_freq, max_freq
+    | Set (p, f) -> p, f in
+  let cap_fname = Compat.uppercase_ascii p.fname in
+  Printf.fprintf ch "#define %s_PERIOD %f\n" cap_fname period;
+  Printf.fprintf ch "#define %s_FREQ %f\n" cap_fname freq*)
 
 (* Extract function name and return in capital letters *)
 let get_cap_name = fun f ->
@@ -393,7 +419,7 @@ let get_sys_modules_settings = fun modules ->
                     [("min","2");
                     ("max","3");
                     ("step","1");
-                    ("var", Module.status_name m.Module.name p);
+                    ("var", status_name m.Module.name p);
                     ("shortname", p.Module.fname);
                     ("values","START|STOP")],[])]
       else lp
