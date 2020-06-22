@@ -8,6 +8,7 @@
 
 *~
 *.swp
+*.swo
 
 *.pyc
 
@@ -42,7 +43,7 @@ paparazzi.sublime-workspace
 
 # QtCreator IDE
 *.creator
-*.creator.user
+*.creator.user*
 *.config
 *.files
 *.includes
@@ -52,8 +53,6 @@ paparazzi.sublime-workspace
 
 /var
 /dox
-
-/paparazzi
 
 # /conf/
 /conf/conf.xml

@@ -105,7 +105,7 @@ let rec string_from_type = fun name v t ->
   let sprint_array = fun v t ->
     let vs = Str.split array_sep v in
     let sl = List.map (fun vl -> string_from_type name vl t) vs in
-    "{ "^(Compat.bytes_concat " , " sl)^" }"
+    "{ "^(String.concat " , " sl)^" }"
   in
   let rm_leading_trailing_spaces = fun s ->
     let s = Str.global_replace (Str.regexp "^ *") "" s in
@@ -156,7 +156,7 @@ let parse_element = fun prefix s ->
 
 
 let print_reverse_servo_table = fun driver servos ->
-  let d = match driver with "Default" -> "" | _ -> "_"^(String.uppercase driver) in
+  let d = match driver with "Default" -> "" | _ -> "_"^(Compat.uppercase_ascii driver) in
   printf "static inline int get_servo_min%s(int _idx) {\n" d;
   printf "  switch (_idx) {\n";
   List.iter (fun c ->
@@ -183,12 +183,12 @@ let parse_servo = fun driver c ->
 
   define name (string_of_int no_servo);
 
-  let min = fos (ExtXml.attrib c "min" )
+  let s_min = fos (ExtXml.attrib c "min" )
   and neutral = fos (ExtXml.attrib c "neutral")
-  and max = fos (ExtXml.attrib c "max" ) in
+  and s_max = fos (ExtXml.attrib c "max" ) in
 
-  let travel_up = (max-.neutral) /. max_pprz
-  and travel_down = (neutral-.min) /. max_pprz in
+  let travel_up = (s_max-.neutral) /. max_pprz
+  and travel_down = (neutral-.s_min) /. max_pprz in
 
   define (name^"_NEUTRAL") (sof neutral);
   define (name^"_TRAVEL_UP") (sof travel_up);
@@ -196,11 +196,11 @@ let parse_servo = fun driver c ->
   define (name^"_TRAVEL_DOWN") (sof travel_down);
   define_integer (name^"_TRAVEL_DOWN") travel_down 16;
 
-  let min = Pervasives.min min max
-  and max = Pervasives.max min max in
+  let s_min = min s_min s_max
+  and s_max = max s_min s_max in
 
-  define (name^"_MAX") (sof max);
-  define (name^"_MIN") (sof min);
+  define (name^"_MAX") (sof s_max);
+  define (name^"_MIN") (sof s_min);
   nl ();
 
   (* Memorize the associated driver (if any) and global index (insertion order) *)
@@ -220,7 +220,7 @@ let print_actuators_idx = fun () ->
     printf "#define SERVO_%s_IDX %d\n" s i;
     (* Set servo macro *)
     printf "#define Set_%s_Servo(_v) { \\\n" s;
-    printf "  actuators[SERVO_%s_IDX] = Chop(_v, SERVO_%s_MIN, SERVO_%s_MAX); \\\n" s s s;
+    printf "  actuators[SERVO_%s_IDX] = Clip(_v, SERVO_%s_MIN, SERVO_%s_MAX); \\\n" s s s;
     printf "  Actuator%sSet(SERVO_%s, actuators[SERVO_%s_IDX]); \\\n" d s s;
     printf "}\n\n"
   ) servos_drivers;
@@ -253,7 +253,7 @@ let parse_command_laws = fun command ->
       and rate_min = a "rate_min"
       and rate_max = a "rate_max" in
       let v = preprocess_value value "values" "COMMAND" in
-      printf "  static int32_t _var_%s = 0; _var_%s += Chop((%s) - (_var_%s), (%s), (%s)); \\\n" var var v var rate_min rate_max
+      printf "  static int32_t _var_%s = 0; _var_%s += Clip((%s) - (_var_%s), (%s), (%s)); \\\n" var var v var rate_min rate_max
     | "define" ->
       parse_element "" command
     | _ -> xml_error "set|let"
@@ -289,14 +289,28 @@ let parse_command = fun command no ->
   let failsafe_value = int_of_string (ExtXml.attrib command "failsafe_value") in
   { failsafe_value = failsafe_value; foo = 0}
 
-let parse_heli_curves = fun heli_surves ->
-  let a = fun s -> ExtXml.attrib heli_surves s in
-  match Xml.tag heli_surves with
+let parse_heli_curves = fun heli_curves ->
+  let a = fun s -> ExtXml.attrib heli_curves s in
+  match Xml.tag heli_curves with
       "curve" ->
         let throttle = a "throttle" in
+        let rpm = ExtXml.attrib_or_default heli_curves "rpm" "" in
         let collective = a "collective" in
-        printf "  {.nb_points = %i, \\\n" (List.length (Str.split (Str.regexp ",") throttle));
+        let nb_throttle = List.length (Str.split (Str.regexp ",") throttle) in
+        let nb_rpm = List.length (Str.split (Str.regexp ",") rpm) in
+        let nb_collective = List.length (Str.split (Str.regexp ",") collective) in
+        if nb_throttle < 1 then
+          failwith (Printf.sprintf "Need at least one value in throttle curve for a throttle ('%s', '%s')" throttle collective);
+        if nb_throttle <> nb_collective then
+          failwith (Printf.sprintf "Amount of throttle points not the same as collective in throttle curve ('%s', '%s')" throttle collective);
+        if nb_throttle <> nb_rpm && nb_rpm <> 0 then
+          failwith (Printf.sprintf "Amount of throttle points not the same as rpm in throttle curve ('%s', '%s', '%s')" throttle collective rpm);
+        printf "  {.nb_points = %i, \\\n" nb_throttle;
         printf "   .throttle = {%s}, \\\n" throttle;
+        if nb_rpm <> 0 then
+          printf "   .rpm = {%s}, \\\n" rpm
+        else
+          printf "   .rpm = {0xFFFF}, \\\n";
         printf "   .collective = {%s}}, \\\n" collective
     | _ -> xml_error "mixer"
 
@@ -310,10 +324,10 @@ let rec parse_section = fun ac_id s ->
     | "servos" ->
       let driver = ExtXml.attrib_or_default s "driver" "Default" in
       let servos = Xml.children s in
-      let nb_servos = List.fold_right (fun s m -> Pervasives.max (int_of_string (ExtXml.attrib s "no")) m) servos min_int + 1 in
+      let nb_servos = List.fold_right (fun s m -> max (int_of_string (ExtXml.attrib s "no")) m) servos min_int + 1 in
 
-      define (sprintf "SERVOS_%s_NB" (Compat.bytes_uppercase driver)) (string_of_int nb_servos);
-      printf "#include \"subsystems/actuators/actuators_%s.h\"\n" (Compat.bytes_lowercase driver);
+      define (sprintf "SERVOS_%s_NB" (Compat.uppercase_ascii driver)) (string_of_int nb_servos);
+      printf "#include \"subsystems/actuators/actuators_%s.h\"\n" (Compat.lowercase_ascii driver);
       nl ();
       List.iter (parse_servo driver) servos;
       print_reverse_servo_table driver servos;
@@ -357,7 +371,7 @@ let rec parse_section = fun ac_id s ->
     | "heli_curves" ->
       let default = ExtXml.attrib_or_default s "default" "0" in
       let curves = Xml.children s in
-      let nb_points = List.fold_right (fun s m -> Pervasives.max (List.length (Str.split (Str.regexp ",") (ExtXml.attrib s "throttle"))) m) curves 0 in
+      let nb_points = List.fold_right (fun s m -> max (List.length (Str.split (Str.regexp ",") (ExtXml.attrib s "throttle"))) m) curves 0 in
       define "THROTTLE_CURVE_MODE_INIT" default;
       define "THROTTLE_CURVES_NB" (string_of_int (List.length curves));
       define "THROTTLE_POINTS_NB" (string_of_int nb_points);
@@ -379,16 +393,16 @@ let rec parse_section = fun ac_id s ->
 let h_name = "AIRFRAME_H"
 
 let hex_to_bin = fun s ->
-  let n = Compat.bytes_length s in
+  let n = String.length s in
   assert(n mod 2 = 0);
-  let b = Compat.bytes_make (2*n) 'x' in
+  let b = Bytes.make (2*n) 'x' in
   for i = 0 to n/2 - 1 do
-    Compat.bytes_set b (4*i) '\\';
-    Scanf.sscanf (Compat.bytes_sub s (2*i) 2) "%2x"
+    Bytes.set b (4*i) '\\';
+    Scanf.sscanf (String.sub s (2*i) 2) "%2x"
       (fun x ->
-        Compat.bytes_blit (sprintf "%03o" x) 0 b (4*i+1) 3)
+        Bytes.blit_string (sprintf "%03o" x) 0 b (4*i+1) 3)
   done;
-  b
+  Bytes.to_string b
 
 let _ =
   if Array.length Sys.argv <> 5 then

@@ -7,7 +7,7 @@ AggieAir RP3 Minion
 <airframe name="Minion PR3">
 
   <firmware name="fixedwing">
-    <target name="ap" board="lisa_mx_2.1_chibios">
+    <target name="ap" board="lisa_mx_2.1">
       <module name="radio_control" type="sbus">
         <configure name="SBUS_PORT" value="UART5"/>
       </module>
@@ -52,14 +52,13 @@ AggieAir RP3 Minion
     <define name="AGR_CLIMB" />
     <define name="POLY_OSAM_HALF_SWEEP_ENABLED" value="FALSE"/>
     <define name="GEOFENCE_DATALINK_LOST_TIME" value="45"/>
-  </firmware>
 
-  <modules>
     <module name="nav" type="line"/>
     <module name="nav" type="flower"/>
     <module name="nav" type="survey_poly_osam"/>
     <module name="nav" type="launcher"/>
     <module name="nav" type="skid_landing"/>
+
     <module name="sys_mon"/>
     <module name="copilot"/>
     <module name="extra_dl">
@@ -78,7 +77,7 @@ AggieAir RP3 Minion
       <define name="BATMON_TEMP_OFFSET" value="250"/>
       <define name="BATMON_TEMP_SENSITIVITY" value="10"/>
     </module>
-  </modules>
+  </firmware>
 
   <!-- commands section -->
   <!-- Servo Configuration -->

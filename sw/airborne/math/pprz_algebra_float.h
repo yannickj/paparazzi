@@ -101,6 +101,20 @@ struct FloatRates {
     while (_a < -M_PI) _a += (2.*M_PI);             \
   }
 
+/*
+ * Returns the real part of the log of v in base of n
+ */
+static inline float float_log_n(float v, float n)
+{
+  if (fabsf(v) < 1e-4) { // avoid inf
+    return - 1.0E+30;
+  }
+  if (fabsf(n) < 1e-4) { // avoid nan
+    return 0;
+  }
+  return logf(fabsf(v)) / logf(n);
+}
+
 //
 //
 // Vector algebra
@@ -275,6 +289,18 @@ extern void float_rmat_vmult(struct FloatVect3 *vb, struct FloatRMat *m_a2b,
 extern void float_rmat_transp_vmult(struct FloatVect3 *vb, struct FloatRMat *m_b2a,
                                     struct FloatVect3 *va);
 
+/** rotate angle by rotation matrix.
+ * rb = m_a2b * ra
+ */
+extern void float_rmat_mult(struct FloatEulers *rb, struct FloatRMat *m_a2b,
+                            struct FloatEulers *ra);
+
+/** rotate angle by transposed rotation matrix.
+ * rb = m_b2a^T * ra
+ */
+extern void float_rmat_transp_mult(struct FloatEulers *rb, struct FloatRMat *m_b2a,
+                                   struct FloatEulers *ra);
+
 /** rotate anglular rates by rotation matrix.
  * rb = m_a2b * ra
  */
@@ -438,8 +464,13 @@ extern void float_quat_vmult(struct FloatVect3 *v_out, struct FloatQuat *q, cons
 
 /// Quaternion from Euler angles.
 extern void float_quat_of_eulers(struct FloatQuat *q, struct FloatEulers *e);
+extern void float_quat_of_eulers_zxy(struct FloatQuat *q, struct FloatEulers *e);
+extern void float_quat_of_eulers_yxz(struct FloatQuat *q, struct FloatEulers *e);
 
-/// Quaternion from unit vector and angle.
+/** Quaternion from unit vector and angle.
+ * Output quaternion is not normalized.
+ * It will be a unit quaternion only if the input vector is also unitary.
+ */
 extern void float_quat_of_axis_angle(struct FloatQuat *q, const struct FloatVect3 *uv, float angle);
 
 /** Quaternion from orientation vector.
@@ -490,6 +521,8 @@ static inline float float_eulers_norm(struct FloatEulers *e)
 }
 extern void float_eulers_of_rmat(struct FloatEulers *e, struct FloatRMat *rm);
 extern void float_eulers_of_quat(struct FloatEulers *e, struct FloatQuat *q);
+extern void float_eulers_of_quat_zxy(struct FloatEulers *e, struct FloatQuat *q);
+extern void float_eulers_of_quat_yxz(struct FloatEulers *e, struct FloatQuat *q);
 
 /* defines for backwards compatibility */
 #define FLOAT_EULERS_OF_RMAT(_e, _rm) WARNING("FLOAT_EULERS_OF_RMAT macro is deprecated, use the lower case function instead") float_eulers_of_rmat(&(_e), &(_rm))
@@ -606,6 +639,10 @@ static inline float float_vect_dot_product(const float *a, const float *b, const
     for (__i = 0; __i < _rows; __i++) { _ptr[__i] = &_mat[__i][0]; } \
   }
 
+extern void float_mat_invert(float **o, float **mat, int n);
+extern void float_mat_exp(float **a, float **o, int n);
+extern float float_mat_norm_li(float **o, int m, int n);
+
 /** a = 0 */
 static inline void float_mat_zero(float **a, int m, int n)
 {
@@ -623,6 +660,8 @@ static inline void float_mat_copy(float **a, float **b, int m, int n)
     for (j = 0; j < n; j++) { a[i][j] = b[i][j]; }
   }
 }
+
+
 
 /** o = a + b */
 static inline void float_mat_sum(float **o, float **a, float **b, int m, int n)
@@ -643,7 +682,7 @@ static inline void float_mat_diff(float **o, float **a, float **b, int m, int n)
 }
 
 /** transpose square matrix */
-static inline void float_mat_transpose(float **a, int n)
+static inline void float_mat_transpose_square(float **a, int n)
 {
   int i, j;
   for (i = 0; i < n; i++) {
@@ -651,6 +690,18 @@ static inline void float_mat_transpose(float **a, int n)
       float t = a[i][j];
       a[i][j] = a[j][i];
       a[j][i] = t;
+    }
+  }
+}
+
+
+/** transpose non-square matrix */
+static inline void float_mat_transpose(float **o, float **a, int n, int m)
+{
+  int i, j;
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < m; j++) {
+      o[j][i] = a[i][j];
     }
   }
 }
@@ -673,6 +724,84 @@ static inline void float_mat_mul(float **o, float **a, float **b, int m, int n, 
     }
   }
 }
+
+/** o = a * b
+ *
+ * a: [m x n]
+ * b: [n x l]
+ * o: [m x l]
+ *
+ * Multiply two matrices with eachother.
+ * By using a temporary array to store result. The resulting matrix can be stored in one
+ * of the input matrices when this function is used, which is useful for consecutive multiplications
+ * (e.g. when doing matrix exponentiation), at the cost of some copy overhead.
+ */
+static inline void float_mat_mul_copy(float **o, float **a, float **b, int m, int n, int l)
+{
+  float temp[m][l];
+  int i, j, k;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < l; j++) {
+      temp[i][j] = 0.;
+      for (k = 0; k < n; k++) {
+        temp[i][j] += a[i][k] * b[k][j];
+      }
+    }
+  }
+  MAKE_MATRIX_PTR(_o,  o,  m);
+  MAKE_MATRIX_PTR(_temp,  temp,  m);
+  float_mat_copy(_o, _temp, m, l);
+}
+
+
+/** o = a * b
+ *
+ * a: [m x n]
+ * b: [n x 1]
+ * o: [m x 1]
+ */
+static inline void float_mat_vect_mul(float *o, float **a, float *b, int m, int n)
+{
+  int i, j;
+  for (i = 0; i < m; i++) {
+    o[i] = 0;
+    for (j = 0; j < n; j++) {
+      o[i] += a[i][j] * b[j];
+    }
+  }
+}
+
+/** a *= k, where k is a scalar value
+ *
+ * a: [m x n]
+ * k: [1 x 1]
+ */
+static inline void float_mat_scale(float **a, float k, int m, int n)
+{
+  int i, j;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      a[i][j] *= k;
+    }
+  }
+}
+
+/** a += k*b, where k is a scalar value
+ *
+ * a: [m x n]
+ * b: [m x n]
+ * k: [1 x 1]
+ */
+static inline void float_mat_sum_scaled(float **a, float **b, float k, int m, int n)
+{
+  int i, j;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      a[i][j] += k * b[i][j];
+    }
+  }
+}
+
 
 /** matrix minor
  *
@@ -715,7 +844,24 @@ static inline void float_mat_col(float *o, float **a, int m, int c)
   }
 }
 
-extern void float_mat_inv_4d(float invOut[16], float mat_in[16]);
+/** Make an n x n identity matrix (for matrix passed as array) */
+static inline void float_mat_diagonal_scal(float **o, float v, int n)
+{
+  int i, j;
+  for (i = 0 ; i < n; i++) {
+    for (j = 0 ; j < n; j++) {
+      if (i == j) {
+        o[i][j] = v;
+      } else {
+        o[i][j] = 0.0;
+      }
+    }
+  }
+}
+
+extern bool float_mat_inv_2d(float inv_out[4], float mat_in[4]);
+extern void float_mat2_mult(struct FloatVect2 *vect_out, float mat[4], struct FloatVect2 vect_in);
+extern bool float_mat_inv_4d(float invOut[16], float mat_in[16]);
 
 #ifdef __cplusplus
 } /* extern "C" */

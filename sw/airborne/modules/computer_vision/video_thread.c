@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015
+* Copyright (C) 2015 The Paparazzi Team
 *
 * This file is part of Paparazzi.
 *
@@ -26,13 +26,11 @@
 // Own header
 #include "modules/computer_vision/video_thread.h"
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/time.h>
 #include <math.h>
 
 // Video
@@ -42,12 +40,12 @@
 
 #include "mcu_periph/sys_time.h"
 
-// include board for bottom_camera and front_camera on ARDrone2 and Bebop
+// include board for bottom_camera and front_camera on ARDrone2, Bebop and Disco
 #include BOARD_CONFIG
 
-// Bebop uses ISP
-#ifdef BOARD_BEBOP
-#include "lib/isp/libisp.h"
+// Bebop and Disco can use the ISP (Image Signal Processors) to speed up things
+#if defined(BOARD_BEBOP) || defined(BOARD_DISCO)
+#include "boards/bebop/isp/libisp.h"
 #endif
 
 // Threaded computer vision
@@ -66,6 +64,12 @@ PRINT_CONFIG_VAR(VIDEO_THREAD_NICE_LEVEL)
 #endif
 PRINT_CONFIG_VAR(VIDEO_THREAD_MAX_CAMERAS)
 
+#ifndef VIDEO_THREAD_VERBOSE
+#define VIDEO_THREAD_VERBOSE 0
+#endif
+
+#define printf_debug    if(VIDEO_THREAD_VERBOSE > 0) printf
+
 static struct video_config_t *cameras[VIDEO_THREAD_MAX_CAMERAS] = {NULL};
 
 // Main thread
@@ -78,7 +82,6 @@ void video_thread_periodic(void)
 {
   /* currently no direct periodic functionality */
 }
-
 
 /**
  * Handles all the video streaming and saving of the image shots
@@ -95,7 +98,7 @@ static void *video_thread_function(void *data)
 
   // create the images
   if (vid->filters & VIDEO_FILTER_DEBAYER) {
-    // fixme: don't hardcode size, works for bebop front camera for now
+    // fixme: don't hardcode size, works for Bebop front camera for now
 #define IMG_FLT_SIZE 272
     image_create(&img_color, IMG_FLT_SIZE, IMG_FLT_SIZE, IMAGE_YUV422);
   }
@@ -106,49 +109,36 @@ static void *video_thread_function(void *data)
     return 0;
   }
 
-#ifdef BOARD_BEBOP
+#if defined(BOARD_BEBOP) || defined(BOARD_DISCO)
   // Configure ISP if needed
   if (vid->filters & VIDEO_FILTER_ISP) {
     configure_isp(vid->thread.dev);
   }
 #endif
 
-  // be nice to the more important stuff
+  // Be nice to the more important stuff
   set_nice_level(VIDEO_THREAD_NICE_LEVEL);
   fprintf(stdout, "[%s] Set nice level to %i.\n", print_tag, VIDEO_THREAD_NICE_LEVEL);
 
   // Initialize timing
-  struct timespec time_now;
-  struct timespec time_prev;
-  clock_gettime(CLOCK_MONOTONIC, &time_prev);
+  uint32_t time_begin = get_sys_time_usec();
+  uint32_t frame_dt_us, computation_dt_us;
 
   // Start streaming
   vid->thread.is_running = true;
+  struct image_t img;
   while (vid->thread.is_running) {
-
-    // get time in us since last run
-    clock_gettime(CLOCK_MONOTONIC, &time_now);
-    uint32_t dt_us = sys_time_elapsed_us(&time_prev, &time_now);
-    time_prev = time_now;
-
-    // sleep remaining time to limit to specified fps
-    if (vid->fps != 0) {
-      uint32_t fps_period_us = 1000000 / vid->fps;
-      if (dt_us < fps_period_us) {
-        usleep(fps_period_us - dt_us);
-      } else {
-        fprintf(stderr, "[%s] desired %i fps, only managing %.1f fps\n", print_tag, vid->fps, 1000000.f / dt_us);
-      }
-    }
-
     // Wait for a new frame (blocking)
-    struct image_t img;
     v4l2_image_get(vid->thread.dev, &img);
+    frame_dt_us = get_sys_time_usec() - time_begin;
 
-    // pointer to the final image to pass for saving and further processing
+    // Get computation/frame start time
+    time_begin = get_sys_time_usec();
+
+    // Pointer to the final image to pass for saving and further processing
     struct image_t *img_final = &img;
 
-    // run selected filters
+    // Run selected filters
     if (vid->filters & VIDEO_FILTER_DEBAYER) {
       BayerToYUV(&img, &img_color, 0, 0);
       // use color image for further processing
@@ -160,6 +150,18 @@ static void *video_thread_function(void *data)
 
     // Free the image
     v4l2_image_free(vid->thread.dev, &img);
+
+    // sleep (most of the) remaining time to limit to specified fps
+    if (vid->fps > 0) {
+      uint32_t fps_period_us = 1000000 / vid->fps;
+      if (frame_dt_us > fps_period_us + 10000) {
+        fprintf(stderr, "[%s] desired %i fps, only managing %.1f fps\n", print_tag, vid->fps, 1000000.f / frame_dt_us);
+      }
+      computation_dt_us = get_sys_time_usec() - time_begin;
+      if (computation_dt_us + 1000 < fps_period_us) {
+        sys_time_usleep(fps_period_us - computation_dt_us - 1000);
+      }
+    }
   }
 
   image_free(&img_color);
@@ -171,9 +173,9 @@ static bool initialize_camera(struct video_config_t *camera)
 {
   // Initialize the V4L2 subdevice if needed
   if (camera->subdev_name != NULL) {
-    // FIXME! add subdev format to config, only needed on bebop front camera so far
+    // FIXME! add subdev format to config, only needed on Bebop/Disco(?) front camera so far
     if (!v4l2_init_subdev(camera->subdev_name, 0, camera->subdev_format, camera->sensor_size)) {
-      printf("[video_thread] Could not initialize the %s subdevice.\n", camera->subdev_name);
+      fprintf(stderr, "[video_thread] Could not initialize the %s subdevice.\n", camera->subdev_name);
       return false;
     }
   }
@@ -181,11 +183,11 @@ static bool initialize_camera(struct video_config_t *camera)
   // Initialize the V4L2 device
   camera->thread.dev = v4l2_init(camera->dev_name, camera->output_size, camera->crop, camera->buf_cnt, camera->format);
   if (camera->thread.dev == NULL) {
-    printf("[video_thread] Could not initialize the %s V4L2 device.\n", camera->dev_name);
+    fprintf(stderr, "[video_thread] Could not initialize the %s V4L2 device.\n", camera->dev_name);
     return false;
   }
 
-  // Initialize OK
+  // Initialized just fine
   return true;
 }
 
@@ -215,7 +217,7 @@ bool add_video_device(struct video_config_t *device)
     cameras[i] = device;
 
     // Debug statement
-    printf("[video_thread] Added %s to camera array.\n", device->dev_name);
+    printf_debug("[video_thread] Added %s to camera array.\n", device->dev_name);
 
     // Successfully initialized
     return true;
@@ -234,9 +236,12 @@ static void start_video_thread(struct video_config_t *camera)
     // Start the streaming thread for a camera
     pthread_t tid;
     if (pthread_create(&tid, NULL, video_thread_function, (void *)(camera)) != 0) {
-      printf("[viewvideo] Could not create streaming thread for camera %s: Reason: %d.\n", camera->dev_name, errno);
+      fprintf(stderr, "[viewvideo] Could not create streaming thread for camera %s: Reason: %d.\n", camera->dev_name, errno);
       return;
     }
+#ifndef __APPLE__
+    pthread_setname_np(tid, "camera");
+#endif
   }
 }
 
@@ -251,7 +256,7 @@ static void stop_video_thread(struct video_config_t *device)
 
     // Stop the capturing
     if (!v4l2_stop_capture(device->thread.dev)) {
-      printf("[video_thread] Could not stop capture of %s.\n", device->thread.dev->name);
+      fprintf(stderr, "[video_thread] Could not stop capture of %s.\n", device->thread.dev->name);
       return;
     }
   }
@@ -263,6 +268,10 @@ static void stop_video_thread(struct video_config_t *device)
  */
 void video_thread_init(void)
 {
+  // Initialise all camera pointers to be NULL
+  for (int indexCameras = 0; indexCameras < VIDEO_THREAD_MAX_CAMERAS; indexCameras++) {
+    cameras[indexCameras] = NULL;
+  }
 }
 
 /**
@@ -277,7 +286,6 @@ void video_thread_start()
     }
   }
 }
-
 
 /**
  * Stops the streaming of all cameras

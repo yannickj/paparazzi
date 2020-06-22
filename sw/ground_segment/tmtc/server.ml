@@ -32,6 +32,7 @@ open Printf
 open Latlong
 open Server_globals
 open Aircraft
+open Quaternion
 (*open Intruder*)
 module U = Unix
 module LL = Latlong
@@ -61,7 +62,7 @@ let wind_msg_period = 5000 (* ms *)
 let aircraft_alerts_period = 1000 (* ms *)
 let send_aircrafts_msg = fun _asker _values ->
   assert(_values = []);
-  let names = Compat.bytes_concat "," (Hashtbl.fold (fun k _v r -> k::r) aircrafts []) ^ "," in
+  let names = String.concat "," (Hashtbl.fold (fun k _v r -> k::r) aircrafts []) ^ "," in
   ["ac_list", PprzLink.String names]
 
 
@@ -147,8 +148,7 @@ let ac_msg = fun messages_xml logging ac_name ac ->
       let (msg_id, values) = Tele_Pprz.values_of_string m in
       let msg = Tele_Pprz.message_of_id msg_id in
       log ?timestamp logging ac_name msg.PprzLink.name values;
-      Fw_server.log_and_parse ac_name ac msg values;
-      Rotorcraft_server.log_and_parse ac_name ac msg values
+      Parse_messages_v1.log_and_parse ac_name ac msg values
     with
         Telemetry_error (ac_name, msg) ->
           Ground_Pprz.message_send my_id "TELEMETRY_ERROR" ["ac_id", PprzLink.String ac_name;"message", PprzLink.String msg];
@@ -167,25 +167,50 @@ let send_cam_status = fun a ->
     match a.nav_ref with
         None -> () (* No geo ref for camera target *)
       | Some nav_ref ->
-        let h = a.agl in
-        let phi_absolute = a.cam.phi -. a.roll
-        and theta_absolute = a.cam.theta +. a.pitch in
-        if phi_absolute > -. cam_max_angle && phi_absolute < cam_max_angle &&
-          theta_absolute > -. cam_max_angle && theta_absolute < cam_max_angle then
-          let dx = h *. tan phi_absolute
-          and dy = h *. tan theta_absolute in
-          let alpha = -. a.course in
-          let east = dx *. cos alpha -. dy *. sin alpha
-          and north = dx *. sin alpha +. dy *. cos alpha in
-          let wgs84 = Aircraft.add_pos_to_nav_ref (Geo a.pos) (east, north) in
-          let twgs84 = Aircraft.add_pos_to_nav_ref nav_ref a.cam.target in
-          let values = ["ac_id", PprzLink.String a.id;
-                        "cam_lat", PprzLink.Float ((Rad>>Deg)wgs84.posn_lat);
-                        "cam_long", PprzLink.Float ((Rad>>Deg)wgs84.posn_long);
-                        "cam_target_lat", PprzLink.Float ((Rad>>Deg)twgs84.posn_lat);
-                        "cam_target_long", PprzLink.Float ((Rad>>Deg)twgs84.posn_long)] in
-          Ground_Pprz.message_send my_id "CAM_STATUS" values
+        let (hfv, vfv) = a.camaov in
 
+        let tr = quaternion_from_angle (hfv /. -2.0) (vfv /.  2.0) 0.0
+        and tl = quaternion_from_angle (hfv /.  2.0) (vfv /.  2.0) 0.0
+        and br = quaternion_from_angle (hfv /. -2.0) (vfv /. -2.0) 0.0
+        and bl = quaternion_from_angle (hfv /.  2.0) (vfv /. -2.0) 0.0 in
+
+        let gimRot = quaternion_from_angle 0.0 (-. (a.cam.tilt -. (Deg>>Rad) 90.)) (-.a.cam.pan)
+        and acRot = quaternion_from_angle a.roll a.pitch (-.a.heading) in
+
+        let tr_rotated = multiply_quaternion acRot (multiply_quaternion gimRot tr)
+        and tl_rotated = multiply_quaternion acRot (multiply_quaternion gimRot tl) 
+        and br_rotated = multiply_quaternion acRot (multiply_quaternion gimRot br) 
+        and bl_rotated = multiply_quaternion acRot (multiply_quaternion gimRot bl) in
+        
+        let bind_max_angles a =
+          if abs_float a > cam_max_angle then copysign cam_max_angle a else a in
+        
+        let find_point_on_ground q =
+          let angles = quaternion_to_angle q in
+          let dx = a.agl *. tan(bind_max_angles angles.r) 
+          and dy = a.agl *. tan(bind_max_angles angles.p) in
+
+          let utmx = dx *. cos angles.y -. dy *. sin angles.y
+          and utmy = dx *. sin angles.y +. dy *. cos angles.y in
+            
+          Aircraft.add_pos_to_nav_ref (Geo a.pos) (utmx, utmy) in
+    
+        let geo_1 = find_point_on_ground tr_rotated
+        and geo_2 = find_point_on_ground tl_rotated
+        and geo_3 = find_point_on_ground bl_rotated
+        and geo_4 = find_point_on_ground br_rotated in
+        
+        let lats = sprintf "%f,%f,%f,%f," ((Rad>>Deg)geo_1.posn_lat) ((Rad>>Deg)geo_2.posn_lat) ((Rad>>Deg)geo_3.posn_lat) ((Rad>>Deg)geo_4.posn_lat) in  
+        let longs = sprintf "%f,%f,%f,%f," ((Rad>>Deg)geo_1.posn_long) ((Rad>>Deg)geo_2.posn_long) ((Rad>>Deg)geo_3.posn_long) ((Rad>>Deg)geo_4.posn_long) in 
+        
+        let twgs84 = Aircraft.add_pos_to_nav_ref nav_ref a.cam.target in
+        let values = ["ac_id", PprzLink.String a.id;
+                      "lats", PprzLink.String lats;
+                      "longs", PprzLink.String longs;
+                      "cam_target_lat", PprzLink.Float ((Rad>>Deg)twgs84.posn_lat);
+                      "cam_target_long", PprzLink.Float ((Rad>>Deg)twgs84.posn_long)] in
+        Ground_Pprz.message_send my_id "CAM_STATUS" values
+          
 let send_if_calib = fun a ->
   let if_mode = get_indexed_value if_modes a.inflight_calib.if_mode in
   let values = ["ac_id", PprzLink.String a.id;
@@ -330,9 +355,6 @@ let send_moved_waypoints = fun a ->
     a.waypoints
 
 
-
-
-
 let send_aircraft_msg = fun ac ->
   try
     let a = Hashtbl.find aircrafts ac in
@@ -413,7 +435,7 @@ let send_aircraft_msg = fun ac ->
                   "temp", f a.temp;
                   "bat", f a.bat;
                   "amp", f a.amp;
-                  "energy", PprzLink.Int a.energy] in
+                  "charge", f a.charge] in
     Ground_Pprz.message_send my_id "ENGINE_STATUS" values;
 
     let ap_mode = get_indexed_value ~text:(if a.ap_mode = -2 then "FAIL" else "UNK") (modes_of_aircraft a) a.ap_mode in
@@ -457,9 +479,9 @@ let send_aircraft_msg = fun ac ->
 
 (** Check if it is a replayed A/C (c.f. sw/logalizer/play.ml) *)
 let replayed = fun ac_id ->
-  let n = Compat.bytes_length ac_id in
-  if n > 6 && Compat.bytes_sub ac_id 0 6 = "replay" then
-    (true, Compat.bytes_sub ac_id 6 (n - 6), "/var/replay/", ExtXml.parse_file (Env.paparazzi_home // "var/replay/conf/conf.xml"))
+  let n = String.length ac_id in
+  if n > 6 && String.sub ac_id 0 6 = "replay" then
+    (true, String.sub ac_id 6 (n - 6), "/var/replay/", ExtXml.parse_file (Env.paparazzi_home // "var/replay/conf/conf.xml"))
   else
     (false, ac_id, "", conf_xml)
 
@@ -487,7 +509,7 @@ let check_md5sum = fun ac_name alive_md5sum aircraft_conf_dir ->
     match alive_md5sum with
         PprzLink.Array array ->
           let n = Array.length array in
-          assert(n = Compat.bytes_length md5sum / 2);
+          assert(n = String.length md5sum / 2);
           for i = 0 to n - 1 do
             let x = int_of_string (sprintf "0x%c%c" md5sum.[2*i] md5sum.[2*i+1]) in
             assert (x = PprzLink.int_of_value array.(i))
@@ -498,7 +520,7 @@ let check_md5sum = fun ac_name alive_md5sum aircraft_conf_dir ->
       match alive_md5sum with
           PprzLink.Array array ->
             let n = Array.length array in
-            assert(n = Compat.bytes_length md5sum / 2);
+            assert(n = String.length md5sum / 2);
             for i = 0 to n - 1 do
               let x = 0 in
               assert (x = PprzLink.int_of_value array.(i))
@@ -808,11 +830,11 @@ let jump_block = fun logging _sender vs ->
 (** Got a RAW_DATALINK, send its contents *)
 let raw_datalink = fun logging _sender vs ->
   let ac_id = PprzLink.string_assoc "ac_id" vs
-  and m = PprzLink.string_assoc "message" vs in
-  for i = 0 to Compat.bytes_length m - 1 do
-    if m.[i] = ';' then Compat.bytes_set m i ' '
+  and m = Bytes.of_string (PprzLink.string_assoc "message" vs) in
+  for i = 0 to Bytes.length m - 1 do
+    if Bytes.get m i = ';' then Bytes.set m i ' '
   done;
-  let msg_id, vs = Dl_Pprz.values_of_string m in
+  let msg_id, vs = Dl_Pprz.values_of_string (Bytes.to_string m) in
   let msg = Dl_Pprz.message_of_id msg_id in
   Dl_Pprz.message_send dl_id msg.PprzLink.name vs;
   log logging ac_id msg.PprzLink.name vs

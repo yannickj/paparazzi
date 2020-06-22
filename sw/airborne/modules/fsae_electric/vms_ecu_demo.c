@@ -121,11 +121,11 @@ static const struct can_instance can2 = {&CAND2, 12};
  * from abort mode.
  * See section 22.7.7 on the STM32 reference manual.
  */
-static const CANConfig cancfg_lb = {
-    CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP,
-    CAN_BTR_LBKM | CAN_BTR_SJW(0) | CAN_BTR_TS2(1) |
-    CAN_BTR_TS1(8) | CAN_BTR_BRP(6)
-};
+// static const CANConfig cancfg_lb = {
+//     CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP,
+//     CAN_BTR_LBKM | CAN_BTR_SJW(0) | CAN_BTR_TS2(1) |
+//     CAN_BTR_TS1(8) | CAN_BTR_BRP(6)
+// };
 
 /*
  * Normal mode, see if we can ping each other
@@ -150,7 +150,7 @@ static THD_FUNCTION(can_rx, p) {
   chRegSetThreadName("receiver");
   chEvtRegister(&cip->canp->rxfull_event, &el, 0);
   while(!chThdShouldTerminateX()) {
-    if (chEvtWaitAnyTimeout(ALL_EVENTS, MS2ST(100)) == 0)
+    if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_MS2I(100)) == 0)
       continue;
     while (canReceive(cip->canp, CAN_ANY_MAILBOX,
         &rxmsg, TIME_IMMEDIATE) == MSG_OK) {
@@ -180,8 +180,8 @@ static THD_FUNCTION(can_tx, p) {
   txmsg.data32[1] = 0x00FF00FF;
 
   while (!chThdShouldTerminateX()) {
-    //canTransmit(&CAND1, CAN_ANY_MAILBOX, &txmsg, MS2ST(100));
-    canTransmit(&CAND2, CAN_ANY_MAILBOX, &txmsg, MS2ST(100));
+    //canTransmit(&CAND1, CAN_ANY_MAILBOX, &txmsg, TIME_MS2I(100));
+    canTransmit(&CAND2, CAN_ANY_MAILBOX, &txmsg, TIME_MS2I(100));
     chThdSleepMilliseconds(500);
   }
 }

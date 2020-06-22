@@ -45,7 +45,7 @@ let transport_of_string = function
 
 
 type ground_device = {
-  fd : Unix.file_descr; transport : transport ; baud_rate : int
+  fd : Unix.file_descr; transport : transport ; baud_rate : int ; channel : int option
 }
 
 (* We assume here a single modem is used *)
@@ -195,7 +195,7 @@ let update_ms_since_last_msg =
       statuss
 
 let use_tele_message = fun ?udp_peername ?raw_data_size payload ->
-  let raw_data_size = match raw_data_size with None -> Compat.bytes_length (Protocol.string_of_payload payload) | Some d -> d in
+  let raw_data_size = match raw_data_size with None -> String.length (Protocol.string_of_payload payload) | Some d -> d in
   let buf = Protocol.string_of_payload payload in
   Debug.call 'l' (fun f ->  fprintf f "pprz receiving: %s\n" (Debug.xprint buf));
   try
@@ -223,6 +223,11 @@ module XB = struct (** XBee module *)
     let o = Unix.out_channel_of_descr device.fd in
     Debug.trace 'x' "config xbee";
     fprintf o "%s%!" (Xbee_transport.at_set_my !my_addr);
+    begin
+      match device.channel with
+          None -> ()
+        | Some ch ->  fprintf o "%s%!" (Xbee_transport.at_set_channel ch);
+    end;
     fprintf o "%s%!" Xbee_transport.at_api_enable;
     fprintf o "%s%!" Xbee_transport.at_exit;
     Debug.trace 'x' "end init xbee"
@@ -273,18 +278,18 @@ module XB = struct (** XBee module *)
 
       | Xbee_transport.RX_Packet_64 (addr64, rssi, options, data) ->
         Debug.trace 'x' (sprintf "getting XBee RX64: %Lx %d %d %s" addr64 rssi options (Debug.xprint data));
-        use_tele_message ~raw_data_size:(Compat.bytes_length frame_data + oversize_packet) (Protocol.payload_of_string data)
+        use_tele_message ~raw_data_size:(String.length frame_data + oversize_packet) (Protocol.payload_of_string data)
       | Xbee_transport.RX868_Packet (addr64, options, data) ->
         Debug.trace 'x' (sprintf "getting XBee868 RX: %Lx %d %s" addr64 options (Debug.xprint data));
-        use_tele_message ~raw_data_size:(Compat.bytes_length frame_data + oversize_packet) (Protocol.payload_of_string data)
+        use_tele_message ~raw_data_size:(String.length frame_data + oversize_packet) (Protocol.payload_of_string data)
       | Xbee_transport.RX_Packet_16 (addr16, rssi, options, data) ->
         Debug.trace 'x' (sprintf "getting XBee RX16: from=%x %d %d %s" addr16 rssi options (Debug.xprint data));
-        use_tele_message ~raw_data_size:(Compat.bytes_length frame_data + oversize_packet) (Protocol.payload_of_string data)
+        use_tele_message ~raw_data_size:(String.length frame_data + oversize_packet) (Protocol.payload_of_string data)
 
 
   let send = fun ?ac_id device rf_data ->
     let ac_id = match ac_id with None -> 0xffff | Some a -> a in
-    let rf_data = Protocol.string_of_payload rf_data in
+    let rf_data = Protocol.bytes_of_payload rf_data in
     let frame_id = gen_frame_id () in
     let frame_data =
       if !Xbee_transport.mode868 then
@@ -298,7 +303,7 @@ module XB = struct (** XBee module *)
 
     let o = Unix.out_channel_of_descr device.fd in
     fprintf o "%s%!" packet;
-    Debug.call 'y' (fun f -> fprintf f "link sending (%d): (%s) %s\n" frame_id (Debug.xprint rf_data) (Debug.xprint packet));
+    Debug.call 'y' (fun f -> fprintf f "link sending (%d): (%s) %s\n" frame_id (Debug.xprint (Bytes.to_string rf_data)) (Debug.xprint packet));
 end (** XBee module *)
 
 
@@ -310,11 +315,11 @@ let local_broadcast_address =
 
 let udp_send = fun fd payload peername ->
   let buf = Pprz_transport.Transport.packet payload in
-  let len = Compat.bytes_length buf in
+  let len = String.length buf in
   let addr = if !udp_broadcast then (Unix.inet_addr_of_string !udp_broadcast_addr) else peername in
   Debug.call 'u' (fun f -> fprintf f "udp_send to %s port %i\n" (Unix.string_of_inet_addr addr) !udp_uplink_port);
   let sockaddr = Unix.ADDR_INET (addr, !udp_uplink_port) in
-  let n = Unix.sendto fd buf 0 len [] sockaddr in
+  let n = Unix.sendto fd (Bytes.of_string buf) 0 len [] sockaddr in
   assert (n = len)
 
 let send = fun ac_id device payload _priority ->
@@ -365,7 +370,7 @@ let parser_of_device = fun device ->
   match device.transport with
     | Pprz ->
         let use = fun s ->
-          let raw_data_size = Compat.bytes_length (Protocol.string_of_payload s) + 4 (*stx,len,ck_a, ck_b*) in
+          let raw_data_size = String.length (Protocol.string_of_payload s) + 4 (*stx,len,ck_a, ck_b*) in
           let udp_peername =
             if !udp then
               Some !last_udp_peername
@@ -427,6 +432,7 @@ let () =
   let ivy_bus = ref Defivybus.default_ivy_bus
   and port = ref "/dev/ttyUSB0"
   and baudrate = ref "9600"
+  and channel = ref None
   and hw_flow_control = ref false
   and transport = ref "pprz"
   and uplink = ref true
@@ -440,6 +446,7 @@ let () =
       "-noac_info", Arg.Clear ac_info, (sprintf "Disables AC traffic info (uplink).");
       "-nouplink", Arg.Clear uplink, (sprintf "Disables the uplink (from the ground to the aircraft).");
       "-s", Arg.Set_string baudrate, (sprintf "<baudrate>  Default is %s" !baudrate);
+      "-ch", Arg.String (fun channel_string -> channel := Some (int_of_string channel_string)), "<channel>  Default does not change configuration.";
       "-hfc",  Arg.Set hw_flow_control, "Enable UART hardware flow control (CTS/RTS)";
       "-local_timestamp", Arg.Unit (fun () -> add_timestamp := Some (Unix.gettimeofday ())), "Add local timestamp to messages sent over ivy";
       "-transport", Arg.Set_string transport, (sprintf "<transport> Available protocols are modem,pprz,pprz2 and xbee. Default is %s" !transport);
@@ -472,7 +479,7 @@ let () =
 
     (** Listen on a udp port or a serial device or on pipe *)
     let on_serial_device =
-      Compat.bytes_length !port >= 4 && Compat.bytes_sub !port 0 4 = "/dev" in (* FIXME *)
+      String.length !port >= 4 && String.sub !port 0 4 = "/dev" in (* FIXME *)
     let fd =
       if !udp then
         begin
@@ -491,13 +498,13 @@ let () =
 
     (* Create the device object *)
     let baudrate = int_of_string !baudrate in
-    let device = { fd=fd; transport=transport; baud_rate=baudrate } in
+    let device = { fd=fd; transport=transport; baud_rate=baudrate; channel= !channel } in
 
     (* The function to be called when data is available *)
     let read_fd =
       let buffered_parser =
         (* Get the specific parser for the given transport protocol *)
-        let parser = parser_of_device device in
+        let parser = fun b -> parser_of_device device (Bytes.to_string b) in
         let read = if !udp then udp_read else Unix.read in
         (* Wrap the parser into the buffered bytes reader *)
         match Serial.input ~read parser with Serial.Closure f -> f in

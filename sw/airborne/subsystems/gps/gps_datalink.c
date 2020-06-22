@@ -173,32 +173,100 @@ static void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, in
   AbiSendMsgGPS(GPS_DATALINK_ID, now_ts, &gps_datalink);
 }
 
-
-void gps_datalink_parse_REMOTE_GPS(void)
+/** Parse the REMOTE_GPS_LOCAL datalink packet */
+static void parse_gps_datalink_local(float enu_x, float enu_y, float enu_z,
+                                     float enu_xd, float enu_yd, float enu_zd,
+                                     uint32_t tow, float course)
 {
-  if (DL_REMOTE_GPS_ac_id(dl_buffer) != AC_ID) { return; } // not for this aircraft
 
-  parse_gps_datalink(DL_REMOTE_GPS_numsv(dl_buffer),
-                     DL_REMOTE_GPS_ecef_x(dl_buffer),
-                     DL_REMOTE_GPS_ecef_y(dl_buffer),
-                     DL_REMOTE_GPS_ecef_z(dl_buffer),
-                     DL_REMOTE_GPS_lat(dl_buffer),
-                     DL_REMOTE_GPS_lon(dl_buffer),
-                     DL_REMOTE_GPS_alt(dl_buffer),
-                     DL_REMOTE_GPS_hmsl(dl_buffer),
-                     DL_REMOTE_GPS_ecef_xd(dl_buffer),
-                     DL_REMOTE_GPS_ecef_yd(dl_buffer),
-                     DL_REMOTE_GPS_ecef_zd(dl_buffer),
-                     DL_REMOTE_GPS_tow(dl_buffer),
-                     DL_REMOTE_GPS_course(dl_buffer));
+  struct EnuCoor_i enu_pos, enu_speed;
+
+  // Position in ENU coordinates
+  enu_pos.x = (int32_t)CM_OF_M(enu_x);
+  enu_pos.y = (int32_t)CM_OF_M(enu_y);
+  enu_pos.z = (int32_t)CM_OF_M(enu_z);
+
+  // Convert the ENU coordinates to ECEF
+  ecef_of_enu_point_i(&gps_datalink.ecef_pos, &ltp_def, &enu_pos);
+  SetBit(gps_datalink.valid_fields, GPS_VALID_POS_ECEF_BIT);
+
+  lla_of_ecef_i(&gps_datalink.lla_pos, &gps_datalink.ecef_pos);
+  SetBit(gps_datalink.valid_fields, GPS_VALID_POS_LLA_BIT);
+
+  enu_speed.x = (int32_t)CM_OF_M(enu_xd);
+  enu_speed.y = (int32_t)CM_OF_M(enu_yd);
+  enu_speed.z = (int32_t)CM_OF_M(enu_zd);
+
+  VECT3_NED_OF_ENU(gps_datalink.ned_vel, enu_speed);
+  SetBit(gps_datalink.valid_fields, GPS_VALID_VEL_NED_BIT);
+
+  ecef_of_enu_vect_i(&gps_datalink.ecef_vel , &ltp_def , &enu_speed);
+  SetBit(gps_datalink.valid_fields, GPS_VALID_VEL_ECEF_BIT);
+
+  gps_datalink.gspeed = (int16_t)FLOAT_VECT2_NORM(enu_speed);
+  gps_datalink.speed_3d = (int16_t)FLOAT_VECT3_NORM(enu_speed);
+
+  gps_datalink.hmsl = ltp_def.hmsl + enu_pos.z * 10;
+  SetBit(gps_datalink.valid_fields, GPS_VALID_HMSL_BIT);
+
+  gps_datalink.course = (int32_t)(RadOfDeg(course)*1e7);
+  SetBit(gps_datalink.valid_fields, GPS_VALID_COURSE_BIT);
+
+  gps_datalink.num_sv = 7;
+  gps_datalink.tow = tow;
+  gps_datalink.fix = GPS_FIX_3D; // set 3D fix to true
+
+  // set gps msg time
+  gps_datalink.last_msg_ticks = sys_time.nb_sec_rem;
+  gps_datalink.last_msg_time = sys_time.nb_sec;
+
+  gps_datalink.last_3dfix_ticks = sys_time.nb_sec_rem;
+  gps_datalink.last_3dfix_time = sys_time.nb_sec;
+
+  // publish new GPS data
+  uint32_t now_ts = get_sys_time_usec();
+  AbiSendMsgGPS(GPS_DATALINK_ID, now_ts, &gps_datalink);
 }
 
-void gps_datalink_parse_REMOTE_GPS_SMALL(void)
+void gps_datalink_parse_REMOTE_GPS(uint8_t *buf)
 {
-  if (DL_REMOTE_GPS_SMALL_ac_id(dl_buffer) != AC_ID) { return; } // not for this aircraft
+  if (DL_REMOTE_GPS_ac_id(buf) != AC_ID) { return; } // not for this aircraft
 
-  parse_gps_datalink_small(DL_REMOTE_GPS_SMALL_heading(dl_buffer),
-                           DL_REMOTE_GPS_SMALL_pos_xyz(dl_buffer),
-                           DL_REMOTE_GPS_SMALL_speed_xyz(dl_buffer),
-                           DL_REMOTE_GPS_SMALL_tow(dl_buffer));
+  parse_gps_datalink(DL_REMOTE_GPS_numsv(buf),
+                     DL_REMOTE_GPS_ecef_x(buf),
+                     DL_REMOTE_GPS_ecef_y(buf),
+                     DL_REMOTE_GPS_ecef_z(buf),
+                     DL_REMOTE_GPS_lat(buf),
+                     DL_REMOTE_GPS_lon(buf),
+                     DL_REMOTE_GPS_alt(buf),
+                     DL_REMOTE_GPS_hmsl(buf),
+                     DL_REMOTE_GPS_ecef_xd(buf),
+                     DL_REMOTE_GPS_ecef_yd(buf),
+                     DL_REMOTE_GPS_ecef_zd(buf),
+                     DL_REMOTE_GPS_tow(buf),
+                     DL_REMOTE_GPS_course(buf));
+}
+
+void gps_datalink_parse_REMOTE_GPS_SMALL(uint8_t *buf)
+{
+  if (DL_REMOTE_GPS_SMALL_ac_id(buf) != AC_ID) { return; } // not for this aircraft
+
+  parse_gps_datalink_small(DL_REMOTE_GPS_SMALL_heading(buf),
+                           DL_REMOTE_GPS_SMALL_pos_xyz(buf),
+                           DL_REMOTE_GPS_SMALL_speed_xyz(buf),
+                           DL_REMOTE_GPS_SMALL_tow(buf));
+}
+
+void gps_datalink_parse_REMOTE_GPS_LOCAL(uint8_t *buf)
+{
+  if (DL_REMOTE_GPS_LOCAL_ac_id(buf) != AC_ID) { return; } // not for this aircraft
+
+  parse_gps_datalink_local(DL_REMOTE_GPS_LOCAL_enu_x(buf),
+                           DL_REMOTE_GPS_LOCAL_enu_y(buf),
+                           DL_REMOTE_GPS_LOCAL_enu_z(buf),
+                           DL_REMOTE_GPS_LOCAL_enu_xd(buf),
+                           DL_REMOTE_GPS_LOCAL_enu_yd(buf),
+                           DL_REMOTE_GPS_LOCAL_enu_zd(buf),
+                           DL_REMOTE_GPS_LOCAL_tow(buf),
+                           DL_REMOTE_GPS_LOCAL_course(buf));
 }

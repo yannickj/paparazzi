@@ -23,8 +23,8 @@
 (** State of an A/C handled by the server *)
 
 type ac_cam = {
-    mutable phi : float; (* Rad, right = >0 *)
-    mutable theta : float; (* Rad, front = >0 *)
+    mutable pan : float; (* Rad, right = >0 *)
+    mutable tilt : float; (* Rad, front = >0 *)
     mutable target : (float * float) (* meter*meter relative *)
   }
 
@@ -79,6 +79,7 @@ type nav_ref =
 type vehicle_type =
     FixedWing
   | Rotorcraft
+  | Rover
   | UnknownVehicleType
 
 val add_pos_to_nav_ref : nav_ref -> ?z:float -> (float * float) -> Latlong.geographic
@@ -119,13 +120,16 @@ type aircraft = {
     mutable temp : float;
     mutable bat : float;
     mutable amp : float;
-    mutable energy : int;
+    mutable power  : float;
+    mutable charge : float;
+    mutable energy : float;
     mutable ap_mode : int;
     mutable gaz_mode : int;
     mutable lateral_mode : int;
     mutable horizontal_mode : int;
     mutable periodic_callbacks : Glib.Timeout.id list;
     cam : ac_cam;
+    camaov : (float * float);
     mutable gps_mode : int;
     mutable gps_Pacc : int;
     mutable state_filter_mode : int;

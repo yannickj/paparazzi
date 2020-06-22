@@ -40,13 +40,22 @@
 #include "mcu_periph/gpio.h"
 #include BOARD_CONFIG
 
+// Default stack size
+#ifndef UART_THREAD_STACK_SIZE
+#define UART_THREAD_STACK_SIZE 512
+#endif
+
 struct SerialInit {
   SerialConfig *conf;
   semaphore_t *rx_sem;
   semaphore_t *tx_sem;
   mutex_t *rx_mtx;
   mutex_t *tx_mtx;
+  ioportid_t cts_port;
+  uint16_t cts_pin;
 };
+
+#define SERIAL_INIT_NULL { NULL, NULL, NULL, NULL, NULL, 0, 0 }
 
 /**
  * RX handler
@@ -54,9 +63,9 @@ struct SerialInit {
 static void handle_uart_rx(struct uart_periph *p)
 {
   // wait for next incoming byte
-  uint8_t c = sdGet((SerialDriver*)(p->reg_addr));
+  uint8_t c = sdGet((SerialDriver *)(p->reg_addr));
 
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   chMtxLock(init_struct->rx_mtx);
   uint16_t temp = (p->rx_insert_idx + 1) % UART_RX_BUFFER_SIZE;;
   // insert new byte
@@ -75,19 +84,32 @@ static void handle_uart_rx(struct uart_periph *p)
 static void handle_uart_tx(struct uart_periph *p)
 {
   // check if more data to send
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
-  chSemWait (init_struct->tx_sem);
+  // TODO send by block with sdWrite (be careful with circular buffer)
+  // not compatible with soft flow control
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
+  chSemWait(init_struct->tx_sem);
+  p->tx_running = true;
   while (p->tx_insert_idx != p->tx_extract_idx) {
+#if USE_UART_SOFT_FLOW_CONTROL
+    if (init_struct->cts_port != 0) {
+      // wait for CTS line to be set to send next byte
+      while (gpio_get(init_struct->cts_port, init_struct->cts_pin) == 1) ;
+    }
+#endif
     uint8_t data = p->tx_buf[p->tx_extract_idx];
-    p->tx_running = true;
-    sdWrite((SerialDriver *)p->reg_addr, &data, sizeof(data));
-    p->tx_running = false;
-    // TODO send by block (be careful with circular buffer)
+    sdPut((SerialDriver *)p->reg_addr, data);
     chMtxLock(init_struct->tx_mtx);
     p->tx_extract_idx++;
     p->tx_extract_idx %= UART_TX_BUFFER_SIZE;
     chMtxUnlock(init_struct->tx_mtx);
+#if USE_UART_SOFT_FLOW_CONTROL
+    if (init_struct->cts_port != 0) {
+      // wait for physical transfer to be completed
+      while ((((SerialDriver *)p->reg_addr)->usart->SR & USART_SR_TC) == 0) ;
+    }
+#endif
   }
+  p->tx_running = false;
 }
 
 #if USE_UART1
@@ -111,7 +133,7 @@ static SerialConfig usart1_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart1_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart1_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART1_RX
@@ -128,7 +150,7 @@ static __attribute__((noreturn)) void thd_uart1_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart1_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart1_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART1_TX
@@ -144,7 +166,7 @@ static __attribute__((noreturn)) void thd_uart1_tx(void *arg)
     handle_uart_tx(&uart1);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart1_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart1_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart1_init(void)
@@ -170,13 +192,13 @@ void uart1_init(void)
   uart1_init_struct.rx_mtx = &uart1_rx_mtx;
   uart1_init_struct.rx_sem = &uart1_rx_sem;
   chThdCreateStatic(wa_thd_uart1_rx, sizeof(wa_thd_uart1_rx),
-      NORMALPRIO+1, thd_uart1_rx, NULL);
+                    NORMALPRIO + 1, thd_uart1_rx, NULL);
 #endif
 #if USE_UART1_TX
   uart1_init_struct.tx_mtx = &uart1_tx_mtx;
   uart1_init_struct.tx_sem = &uart1_tx_sem;
   chThdCreateStatic(wa_thd_uart1_tx, sizeof(wa_thd_uart1_tx),
-      NORMALPRIO+1, thd_uart1_tx, NULL);
+                    NORMALPRIO + 1, thd_uart1_tx, NULL);
 #endif
 }
 
@@ -213,7 +235,7 @@ static SerialConfig usart2_config = {
 #endif
 };
 
-static struct SerialInit uart2_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart2_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART2_RX
@@ -230,7 +252,7 @@ static __attribute__((noreturn)) void thd_uart2_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart2_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart2_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART2_TX
@@ -246,7 +268,7 @@ static __attribute__((noreturn)) void thd_uart2_tx(void *arg)
     handle_uart_tx(&uart2);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart2_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart2_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart2_init(void)
@@ -272,13 +294,13 @@ void uart2_init(void)
   uart2_init_struct.rx_mtx = &uart2_rx_mtx;
   uart2_init_struct.rx_sem = &uart2_rx_sem;
   chThdCreateStatic(wa_thd_uart2_rx, sizeof(wa_thd_uart2_rx),
-      NORMALPRIO, thd_uart2_rx, NULL);
+                    NORMALPRIO + 1, thd_uart2_rx, NULL);
 #endif
 #if USE_UART2_TX
   uart2_init_struct.tx_mtx = &uart2_tx_mtx;
   uart2_init_struct.tx_sem = &uart2_tx_sem;
   chThdCreateStatic(wa_thd_uart2_tx, sizeof(wa_thd_uart2_tx),
-      NORMALPRIO, thd_uart2_tx, NULL);
+                    NORMALPRIO + 1, thd_uart2_tx, NULL);
 #endif
 }
 
@@ -305,7 +327,7 @@ static SerialConfig usart3_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart3_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart3_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART3_RX
@@ -322,7 +344,7 @@ static __attribute__((noreturn)) void thd_uart3_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart3_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart3_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART3_TX
@@ -338,7 +360,7 @@ static __attribute__((noreturn)) void thd_uart3_tx(void *arg)
     handle_uart_tx(&uart3);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart3_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart3_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart3_init(void)
@@ -364,13 +386,13 @@ void uart3_init(void)
   uart3_init_struct.rx_mtx = &uart3_rx_mtx;
   uart3_init_struct.rx_sem = &uart3_rx_sem;
   chThdCreateStatic(wa_thd_uart3_rx, sizeof(wa_thd_uart3_rx),
-      NORMALPRIO, thd_uart3_rx, NULL);
+                    NORMALPRIO + 1, thd_uart3_rx, NULL);
 #endif
 #if USE_UART3_TX
   uart3_init_struct.tx_mtx = &uart3_tx_mtx;
   uart3_init_struct.tx_sem = &uart3_tx_sem;
   chThdCreateStatic(wa_thd_uart3_tx, sizeof(wa_thd_uart3_tx),
-      NORMALPRIO, thd_uart3_tx, NULL);
+                    NORMALPRIO + 1, thd_uart3_tx, NULL);
 #endif
 }
 
@@ -397,7 +419,7 @@ static SerialConfig usart4_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart4_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart4_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART4_RX
@@ -414,7 +436,7 @@ static __attribute__((noreturn)) void thd_uart4_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart4_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart4_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART4_TX
@@ -430,7 +452,7 @@ static __attribute__((noreturn)) void thd_uart4_tx(void *arg)
     handle_uart_tx(&uart4);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart4_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart4_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart4_init(void)
@@ -456,13 +478,13 @@ void uart4_init(void)
   uart4_init_struct.rx_mtx = &uart4_rx_mtx;
   uart4_init_struct.rx_sem = &uart4_rx_sem;
   chThdCreateStatic(wa_thd_uart4_rx, sizeof(wa_thd_uart4_rx),
-      NORMALPRIO, thd_uart4_rx, NULL);
+                    NORMALPRIO + 1, thd_uart4_rx, NULL);
 #endif
 #if USE_UART4_TX
   uart4_init_struct.tx_mtx = &uart4_tx_mtx;
   uart4_init_struct.tx_sem = &uart4_tx_sem;
   chThdCreateStatic(wa_thd_uart4_tx, sizeof(wa_thd_uart4_tx),
-      NORMALPRIO, thd_uart4_tx, NULL);
+                    NORMALPRIO + 1, thd_uart4_tx, NULL);
 #endif
 }
 
@@ -489,7 +511,7 @@ static SerialConfig usart5_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart5_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart5_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART5_RX
@@ -506,7 +528,7 @@ static __attribute__((noreturn)) void thd_uart5_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart5_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart5_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART5_TX
@@ -522,7 +544,7 @@ static __attribute__((noreturn)) void thd_uart5_tx(void *arg)
     handle_uart_tx(&uart5);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart5_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart5_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart5_init(void)
@@ -548,13 +570,13 @@ void uart5_init(void)
   uart5_init_struct.rx_mtx = &uart5_rx_mtx;
   uart5_init_struct.rx_sem = &uart5_rx_sem;
   chThdCreateStatic(wa_thd_uart5_rx, sizeof(wa_thd_uart5_rx),
-      NORMALPRIO, thd_uart5_rx, NULL);
+                    NORMALPRIO + 1, thd_uart5_rx, NULL);
 #endif
 #if USE_UART5_TX
   uart5_init_struct.tx_mtx = &uart5_tx_mtx;
   uart5_init_struct.tx_sem = &uart5_tx_sem;
   chThdCreateStatic(wa_thd_uart5_tx, sizeof(wa_thd_uart5_tx),
-      NORMALPRIO, thd_uart5_tx, NULL);
+                    NORMALPRIO + 1, thd_uart5_tx, NULL);
 #endif
 }
 
@@ -581,7 +603,7 @@ static SerialConfig usart6_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart6_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart6_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART6_RX
@@ -598,7 +620,7 @@ static __attribute__((noreturn)) void thd_uart6_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart6_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart6_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART6_TX
@@ -614,7 +636,7 @@ static __attribute__((noreturn)) void thd_uart6_tx(void *arg)
     handle_uart_tx(&uart6);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart6_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart6_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart6_init(void)
@@ -640,13 +662,18 @@ void uart6_init(void)
   uart6_init_struct.rx_mtx = &uart6_rx_mtx;
   uart6_init_struct.rx_sem = &uart6_rx_sem;
   chThdCreateStatic(wa_thd_uart6_rx, sizeof(wa_thd_uart6_rx),
-      NORMALPRIO, thd_uart6_rx, NULL);
+                    NORMALPRIO + 1, thd_uart6_rx, NULL);
 #endif
 #if USE_UART6_TX
   uart6_init_struct.tx_mtx = &uart6_tx_mtx;
   uart6_init_struct.tx_sem = &uart6_tx_sem;
   chThdCreateStatic(wa_thd_uart6_tx, sizeof(wa_thd_uart6_tx),
-      NORMALPRIO, thd_uart6_tx, NULL);
+                    NORMALPRIO + 1, thd_uart6_tx, NULL);
+#endif
+
+#if defined UART6_GPIO_CTS && defined UART6_GPIO_PORT_CTS
+  uart6_init_struct.cts_pin = UART6_GPIO_CTS;
+  uart6_init_struct.cts_port = UART6_GPIO_PORT_CTS;
 #endif
 }
 
@@ -673,7 +700,7 @@ static SerialConfig usart7_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart7_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart7_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART7_RX
@@ -690,7 +717,7 @@ static __attribute__((noreturn)) void thd_uart7_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart7_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart7_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART7_TX
@@ -706,7 +733,7 @@ static __attribute__((noreturn)) void thd_uart7_tx(void *arg)
     handle_uart_tx(&uart7);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart7_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart7_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart7_init(void)
@@ -732,13 +759,13 @@ void uart7_init(void)
   uart7_init_struct.rx_mtx = &uart7_rx_mtx;
   uart7_init_struct.rx_sem = &uart7_rx_sem;
   chThdCreateStatic(wa_thd_uart7_rx, sizeof(wa_thd_uart7_rx),
-      NORMALPRIO, thd_uart7_rx, NULL);
+                    NORMALPRIO + 1, thd_uart7_rx, NULL);
 #endif
 #if USE_UART7_TX
   uart7_init_struct.tx_mtx = &uart7_tx_mtx;
   uart7_init_struct.tx_sem = &uart7_tx_sem;
   chThdCreateStatic(wa_thd_uart7_tx, sizeof(wa_thd_uart7_tx),
-      NORMALPRIO, thd_uart7_tx, NULL);
+                    NORMALPRIO + 1, thd_uart7_tx, NULL);
 #endif
 }
 
@@ -765,7 +792,7 @@ static SerialConfig usart8_config = {
   0                                                       /*    USART CR3   */
 };
 
-static struct SerialInit uart8_init_struct = { NULL, NULL, NULL, NULL, NULL };
+static struct SerialInit uart8_init_struct = SERIAL_INIT_NULL;
 
 // Threads RX and TX
 #if USE_UART8_RX
@@ -782,7 +809,7 @@ static __attribute__((noreturn)) void thd_uart8_rx(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_uart8_rx, 1024);
+static THD_WORKING_AREA(wa_thd_uart8_rx, UART_THREAD_STACK_SIZE);
 #endif
 
 #if USE_UART8_TX
@@ -798,7 +825,7 @@ static __attribute__((noreturn)) void thd_uart8_tx(void *arg)
     handle_uart_tx(&uart8);
   }
 }
-static THD_WORKING_AREA(wa_thd_uart8_tx, 1024);
+static THD_WORKING_AREA(wa_thd_uart8_tx, UART_THREAD_STACK_SIZE);
 #endif
 
 void uart8_init(void)
@@ -824,13 +851,13 @@ void uart8_init(void)
   uart8_init_struct.rx_mtx = &uart8_rx_mtx;
   uart8_init_struct.rx_sem = &uart8_rx_sem;
   chThdCreateStatic(wa_thd_uart8_rx, sizeof(wa_thd_uart8_rx),
-      NORMALPRIO, thd_uart8_rx, NULL);
+                    NORMALPRIO + 1, thd_uart8_rx, NULL);
 #endif
 #if USE_UART8_TX
   uart8_init_struct.tx_mtx = &uart8_tx_mtx;
   uart8_init_struct.tx_sem = &uart8_tx_sem;
   chThdCreateStatic(wa_thd_uart8_tx, sizeof(wa_thd_uart8_tx),
-      NORMALPRIO, thd_uart8_tx, NULL);
+                    NORMALPRIO + 1, thd_uart8_tx, NULL);
 #endif
 }
 
@@ -842,7 +869,7 @@ uint8_t uart_getch(struct uart_periph *p)
   //to keep compatibility with loop oriented paparazzi architecture, read is not blocking
   //struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
   //chSemWait (init_struct->rx_sem);
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   chMtxLock(init_struct->rx_mtx);
   uint8_t ret = p->rx_buf[p->rx_extract_idx];
   p->rx_extract_idx = (p->rx_extract_idx + 1) % UART_RX_BUFFER_SIZE;
@@ -853,16 +880,16 @@ uint8_t uart_getch(struct uart_periph *p)
 /**
  * Set baudrate
  */
-void uart_periph_set_baudrate(struct uart_periph *p, uint32_t baud )
+void uart_periph_set_baudrate(struct uart_periph *p, uint32_t baud)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   SerialConfig *conf = init_struct->conf;
   // set new baudrate
   conf->speed = baud;
   p->baudrate = baud;
   // restart periph
-  sdStop((SerialDriver*)(p->reg_addr));
-  sdStart((SerialDriver*)(p->reg_addr), conf);
+  sdStop((SerialDriver *)(p->reg_addr));
+  sdStart((SerialDriver *)(p->reg_addr), conf);
 }
 
 /**
@@ -873,7 +900,7 @@ void uart_periph_set_mode(struct uart_periph *p __attribute__((unused)), bool tx
 
 #if defined STM32F7
 #define __USART_CR1_M USART_CR1_M_0
-#elif defined STM32F1 || defined STM32F4
+#elif defined STM32F1 || defined STM32F4 || defined STM32F3
 #define __USART_CR1_M USART_CR1_M
 #else
 #error unsupported board
@@ -885,7 +912,7 @@ void uart_periph_set_mode(struct uart_periph *p __attribute__((unused)), bool tx
 void uart_periph_set_bits_stop_parity(struct uart_periph *p,
                                       uint8_t bits, uint8_t stop, uint8_t parity)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   SerialConfig *conf = init_struct->conf;
 
   /* Configure USART parity and data bits */
@@ -917,8 +944,8 @@ void uart_periph_set_bits_stop_parity(struct uart_periph *p,
     conf-> cr2 |= USART_CR2_STOP1_BITS; // set bits for 1 stop
   }
 
-  sdStop((SerialDriver*)(p->reg_addr));
-  sdStart((SerialDriver*)(p->reg_addr), conf);
+  sdStop((SerialDriver *)(p->reg_addr));
+  sdStart((SerialDriver *)(p->reg_addr), conf);
 }
 
 #ifdef STM32F7
@@ -927,7 +954,7 @@ void uart_periph_set_bits_stop_parity(struct uart_periph *p,
  */
 void uart_periph_invert_data_logic(struct uart_periph *p, bool invert_rx, bool invert_tx)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   SerialConfig *conf = init_struct->conf;
   if (invert_rx) {
     conf->cr2 |= USART_CR2_RXINV; // set rxinv bit
@@ -939,26 +966,26 @@ void uart_periph_invert_data_logic(struct uart_periph *p, bool invert_rx, bool i
   } else {
     conf->cr2 &= ~USART_CR2_TXINV; // clear txinv bit
   }
-  sdStop((SerialDriver*)(p->reg_addr));
-  sdStart((SerialDriver*)(p->reg_addr), conf);
+  sdStop((SerialDriver *)(p->reg_addr));
+  sdStart((SerialDriver *)(p->reg_addr), conf);
 }
 #endif
 
 // Check free space and set a positive value for fd if valid
 // and lock driver with mutex
-bool uart_check_free_space(struct uart_periph *p, long *fd, uint16_t len)
+int uart_check_free_space(struct uart_periph *p, long *fd, uint16_t len)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
-  int16_t space = p->tx_extract_idx - p->tx_insert_idx;
-  if (space <= 0) {
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
+  int space = p->tx_extract_idx - p->tx_insert_idx - 1;
+  if (space < 0) {
     space += UART_TX_BUFFER_SIZE;
   }
-  if ((uint16_t)(space - 1) >= len) {
+  if (space >= len) {
     *fd = 1;
     chMtxLock(init_struct->tx_mtx);
-    return true;
+    return space;
   }
-  return false;
+  return 0;
 }
 
 /**
@@ -966,7 +993,7 @@ bool uart_check_free_space(struct uart_periph *p, long *fd, uint16_t len)
 */
 void uart_put_byte(struct uart_periph *p, long fd, uint8_t data)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   if (fd == 0) {
     // if fd is zero, assume the driver is not already locked
     chMtxLock(init_struct->tx_mtx);
@@ -980,9 +1007,8 @@ void uart_put_byte(struct uart_periph *p, long fd, uint8_t data)
 
     chMtxUnlock(init_struct->tx_mtx);
     // send signal to start transmission
-    chSemSignal (init_struct->tx_sem);
-  }
-  else {
+    chSemSignal(init_struct->tx_sem);
+  } else {
     // assume driver is locked and available space have been checked
     p->tx_buf[p->tx_insert_idx] = data;
     p->tx_insert_idx = (p->tx_insert_idx + 1) % UART_TX_BUFFER_SIZE;
@@ -994,7 +1020,7 @@ void uart_put_byte(struct uart_periph *p, long fd, uint8_t data)
  */
 void uart_put_buffer(struct uart_periph *p, long fd, const uint8_t *data, uint16_t len)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   if (fd == 0) {
     // if fd is zero, assume the driver is not already locked
     // and available space should be checked
@@ -1018,18 +1044,18 @@ void uart_put_buffer(struct uart_periph *p, long fd, const uint8_t *data, uint16
   if (fd == 0) {
     chMtxUnlock(init_struct->tx_mtx);
     // send signal to start transmission
-    chSemSignal (init_struct->tx_sem);
+    chSemSignal(init_struct->tx_sem);
   }
 }
 
 void uart_send_message(struct uart_periph *p, long fd)
 {
-  struct SerialInit *init_struct = (struct SerialInit*)(p->init_struct);
+  struct SerialInit *init_struct = (struct SerialInit *)(p->init_struct);
   // unlock driver in case it is not done (fd > 0)
   if (fd != 0) {
     chMtxUnlock(init_struct->tx_mtx);
   }
   // send signal to start transmission
-  chSemSignal (init_struct->tx_sem);
+  chSemSignal(init_struct->tx_sem);
 }
 

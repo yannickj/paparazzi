@@ -64,7 +64,7 @@ void lidar_lite_init(void)
   lidar_lite.distance = 0;
   lidar_lite.distance_raw = 0;
 
-  init_median_filter(&lidar_lite_filter);
+  init_median_filter_i(&lidar_lite_filter, LIDAR_LITE_MEDIAN_LENGTH);
 }
 
 /**
@@ -137,9 +137,10 @@ void lidar_lite_periodic(void)
         }
       }
       break;
-    case LIDAR_LITE_PARSE:
+    case LIDAR_LITE_PARSE: {
       // filter data
-      lidar_lite.distance_raw = update_median_filter(
+      uint32_t now_ts = get_sys_time_usec();
+      lidar_lite.distance_raw = update_median_filter_i(
                                   &lidar_lite_filter,
                                   (uint32_t)((lidar_lite.trans.buf[0] << 8) | lidar_lite.trans.buf[1]));
       lidar_lite.distance = ((float)lidar_lite.distance_raw)/100.0;
@@ -154,12 +155,13 @@ void lidar_lite_periodic(void)
 
       // send message (if requested)
       if (lidar_lite.update_agl) {
-        AbiSendMsgAGL(AGL_LIDAR_LITE_ID, lidar_lite.distance);
+        AbiSendMsgAGL(AGL_LIDAR_LITE_ID, now_ts, lidar_lite.distance);
       }
 
       // increment status
       lidar_lite.status = LIDAR_LITE_INIT_RANGING;
       break;
+    }
     default:
       break;
   }

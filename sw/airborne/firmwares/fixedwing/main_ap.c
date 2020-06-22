@@ -50,9 +50,6 @@
 #if USE_AHRS
 #include "subsystems/ahrs.h"
 #endif
-#if USE_AHRS_ALIGNER
-#include "subsystems/ahrs/ahrs_aligner.h"
-#endif
 #if USE_BARO_BOARD
 #include "subsystems/sensors/baro.h"
 PRINT_CONFIG_MSG_VALUE("USE_BARO_BOARD is TRUE, reading onboard baro: ", BARO_BOARD)
@@ -118,10 +115,10 @@ PRINT_CONFIG_VAR(TELEMETRY_FREQUENCY)
  */
 PRINT_CONFIG_VAR(MODULES_FREQUENCY)
 
+/* BARO_PERIODIC_FREQUENCY is defined in baro_board.makefile
+ * defaults to 50Hz or set by BARO_PERIODIC_FREQUENCY configure option in airframe file
+ */
 #if USE_BARO_BOARD
-#ifndef BARO_PERIODIC_FREQUENCY
-#define BARO_PERIODIC_FREQUENCY 50
-#endif
 PRINT_CONFIG_VAR(BARO_PERIODIC_FREQUENCY)
 #endif
 
@@ -155,6 +152,9 @@ void init_ap(void)
   mcu_init();
 #endif /* SINGLE_MCU */
 
+  /** - start interrupt task */
+  mcu_int_enable();
+
 #if defined(PPRZ_TRIG_INT_COMPR_FLASH)
   pprz_trig_int_init();
 #endif
@@ -164,10 +164,6 @@ void init_ap(void)
   stateInit();
 
   /************* Sensors initialization ***************/
-
-#if USE_AHRS_ALIGNER
-  ahrs_aligner_init();
-#endif
 
 #if USE_AHRS
   ahrs_init();
@@ -209,9 +205,6 @@ void init_ap(void)
 #if USE_BARO_BOARD
   baro_tid = sys_time_register_timer(1. / BARO_PERIODIC_FREQUENCY, NULL);
 #endif
-
-  /** - start interrupt task */
-  mcu_int_enable();
 
 #if DOWNLINK
   downlink_init();
@@ -348,7 +341,7 @@ void monitor_task(void)
 #endif
 
   static uint8_t t = 0;
-  if (vsupply < CATASTROPHIC_BAT_LEVEL * 10) {
+  if (ap_electrical.vsupply < CATASTROPHIC_BAT_LEVEL) {
     t++;
   } else {
     t = 0;

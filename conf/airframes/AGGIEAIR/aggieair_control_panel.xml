@@ -7,11 +7,24 @@
     <program name="Altitude Update" command="altitude_update.sh"/>
     <program name="uGear Sim" command="start_ugear_sim.sh"/>
     <program name="ADS-B" command="start_adsb.sh"/>
+    <program name="Payload Config" command="../AggieAir-Sidekick/payloadMonitor.py" />
+    <program name="AggieCap3 Sidekick" command="../AggieAir-Sidekick/payloadMonitor.py"/>
 
     <!-- default programs -->
     <program name="Server" command="sw/ground_segment/tmtc/server"/>
     <program name="Data Link" command="sw/ground_segment/tmtc/link">
       <arg flag="-d" constant="/dev/ttyUSB0"/>
+    </program>
+    <program name="RustLink" command="sw/ext/rustlink/link">
+      <arg flag="-d" constant="/dev/ttyUSB0"/>
+      <arg flag="-a" constant="@AC_ID"/>
+    </program>
+    <program name="Secure Link" command="sw/ext/rustlink/link">
+      <arg flag="-d" constant="/dev/ttyUSB0"/>
+      <arg flag="-a" constant="@AC_ID"/>
+      <arg flag="-n" constant="@AIRCRAFT"/>
+      <arg flag="-c" />
+      <arg flag="-v" constant="2.0"/>
     </program>
     <program name="Link Combiner" command="sw/ground_segment/python/redundant_link/link_combiner.py"/>
     <program name="GCS" command="sw/ground_segment/cockpit/gcs"/>
@@ -94,7 +107,82 @@
       <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
      </program>
      <program name="Messages"/>
+     <program name="Real-time Plotter">
+       <arg flag="-c" constant="*:telemetry:CAMERA_SNAPSHOT:array_temp"/>
+       <arg flag="-t" constant="Thermal FPA temperature"/>
+     </program>
+     <program name="AggieCap3 Sidekick"/>
+   </session>
+
+   <session name="Secure Flight v1.0 USB-serial@57600">
+     <program name="Secure Link">
+       <arg flag="-d" constant="/dev/ttyUSB0"/>
+       <arg flag="-s" constant="57600"/>
+       <arg flag="-a" constant="@AC_ID"/>
+       <arg flag="-n" constant="@AIRCRAFT"/>
+       <arg flag="-c" />
+       <arg flag="-v" constant="1.0"/>
+       <arg flag="--ping_period" constant="1000"/>
+     </program>
+     <program name="Server"/>
+     <program name="GCS">
+       <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
+     </program>
+     <program name="Messages">
+       <arg flag="-c" constant="telemetry:*"/>
+     </program>
+     <program name="Real-time Plotter">
+       <arg flag="-c" constant="*:telemetry:CAMERA_SNAPSHOT:array_temp"/>
+       <arg flag="-t" constant="Thermal FPA temperature"/>
+     </program>
+     <program name="AggieCap3 Sidekick"/>
+   </session>
+
+   <session name="Secure Flight v2.0 USB-serial@57600">
+     <program name="Secure Link">
+       <arg flag="-d" constant="/dev/ttyUSB0"/>
+       <arg flag="-s" constant="57600"/>
+       <arg flag="-a" constant="@AC_ID"/>
+       <arg flag="-n" constant="@AIRCRAFT"/>
+       <arg flag="-c" />
+       <arg flag="-v" constant="2.0"/>
+     </program>
+     <program name="Server"/>
+     <program name="GCS">
+      <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
+     </program>
+     <program name="Messages"/>
      <program name="Real-time Plotter"/>
+     <program name="AggieCap3 Sidekick"/>
+   </session>
+
+   <session name="Secure Simulation">
+     <program name="Secure Link">
+       <arg flag="--udp"/>
+       <arg flag="-a" constant="@AC_ID"/>
+       <arg flag="-n" constant="@AIRCRAFT"/>
+       <arg flag="-c" />
+       <arg flag="-v" constant="2.0"/>
+     </program>
+     <program name="Server">
+      <arg flag="-n"/>
+     </program>
+     <program name="GCS">
+      <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
+     </program>
+     <program name="Simulator">
+      <arg flag="-a" constant="@AIRCRAFT"/>
+      <arg flag="-f" constant="127.0.0.1"/>
+      <arg flag="-b" constant="127.255.255.255"/>
+      <arg flag="--fg_fdm"/>
+      <arg flag="--nodisplay"/>
+     </program>
+     <program name="Messages"/>
+     <program name="Environment Simulator"/>
+   </session>
+
+   <session name="AggieCap3 Configuration">
+     <program name="Payload Config" />
    </session>
 
    <session name="Flight USB-serial@115200">
@@ -123,7 +211,63 @@
       <arg flag="-f" constant="127.0.0.1"/>
       <arg flag="-b" constant="127.255.255.255"/>
       <arg flag="--fg_fdm" constant=""/>
+      <arg flag="-t" constant="hitl"/>
      </program>
+     <program name="AggieCap3 Sidekick"/>
+   </session>
+
+   <session name="Secure HITL v2.0 USB-serial@57600">
+     <program name="Secure Link">
+       <arg flag="-d" constant="/dev/ttyUSB0"/>
+       <arg flag="-s" constant="57600"/>
+       <arg flag="-a" constant="@AC_ID"/>
+       <arg flag="-n" constant="@AIRCRAFT"/>
+       <arg flag="-c" />
+       <arg flag="-v" constant="2.0"/>
+     </program>
+     <program name="Server">
+      <arg flag="" constant="-no_md5_check"/>
+     </program>
+     <program name="GCS">
+      <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
+     </program>
+     <program name="Messages"/>
+     <program name="Simulator">
+      <arg flag="-a" constant="@AIRCRAFT"/>
+      <arg flag="-f" constant="127.0.0.1"/>
+      <arg flag="-b" constant="127.255.255.255"/>
+      <arg flag="--fg_fdm"/>
+      <arg flag="-t" constant="hitl"/>
+      <arg flag="--nodisplay"/>
+     </program>
+     <program name="AggieCap3 Sidekick"/>
+   </session>
+
+   <session name="Secure HITL v1.0 USB-serial@57600">
+     <program name="Secure Link">
+       <arg flag="-d" constant="/dev/ttyUSB0"/>
+       <arg flag="-s" constant="57600"/>
+       <arg flag="-a" constant="@AC_ID"/>
+       <arg flag="-n" constant="@AIRCRAFT"/>
+       <arg flag="-c" />
+       <arg flag="-v" constant="1.0"/>
+     </program>
+     <program name="Server">
+      <arg flag="" constant="-no_md5_check"/>
+     </program>
+     <program name="GCS">
+      <arg flag="-layout" constant="AGGIEAIR/vertical.xml"/>
+     </program>
+     <program name="Messages"/>
+     <program name="Simulator">
+      <arg flag="-a" constant="@AIRCRAFT"/>
+      <arg flag="-f" constant="127.0.0.1"/>
+      <arg flag="-b" constant="127.255.255.255"/>
+      <arg flag="--fg_fdm"/>
+      <arg flag="-t" constant="hitl"/>
+      <arg flag="--nodisplay"/>
+     </program>
+     <program name="AggieCap3 Sidekick"/>
    </session>
 
    <session name="HITL USB-serial@115200">
@@ -141,6 +285,7 @@
       <arg flag="-f" constant="127.0.0.1"/>
       <arg flag="-b" constant="127.255.255.255"/>
       <arg flag="--fg_fdm" constant=""/>
+      <arg flag="-t" constant="hitl"/>
      </program>
    </session>
 
@@ -163,6 +308,7 @@
      </program>
      <program name="Messages"/>
      <program name="Environment Simulator"/>
+     <program name="AggieCap3 Sidekick"/>
    </session>
 
    <session name="HITL+SBUS USB-serial@57600">
@@ -292,6 +438,7 @@
       </program>
       <program name="Real-time Plotter"/>
       <program name="Environment Simulator"/>
+      <program name="AggieCap3 Sidekick"/>
     </session>
 
 

@@ -99,7 +99,10 @@ void nps_update_launch_from_dl(uint8_t value)
 void nps_main_run_sim_step(void)
 {
   nps_atmosphere_update(SIM_DT);
+
   nps_fdm_run_step(nps_autopilot.launch, nps_autopilot.commands, NPS_COMMANDS_NB);
+
+  nps_sensors_run_step(nps_main.sim_time);
 }
 
 void *nps_ins_data_loop(void *data __attribute__((unused)))
@@ -211,9 +214,24 @@ void *nps_ap_data_loop(void *data __attribute__((unused)))
   struct pprz_transport pprz_tp_logger;
 
   pprz_transport_init(&pprz_tp_logger);
+  uint32_t rx_msgs = 0;
+  uint32_t rx_commands = 0;
+  uint32_t rx_motor_mixing = 0;
+  uint8_t show_stats = 1;
 
   while (TRUE) {
+    if ((rx_msgs % 100 == 0) && show_stats && (rx_msgs > 0) ) {
+      printf("AP data loop received %i messages.\n", rx_msgs);
+      printf("From those, %i were COMMANDS messages, and %i were MOTOR_MIXING messages.\n",
+          rx_commands, rx_motor_mixing);
+      show_stats = 0;
+    }
+
     // receive messages from the autopilot
+    // Note: read function might wait until the buffer is full, in which case
+    // it could contain several messages. That might lead to delay in processing,
+    // for example if we send COMMANDS at 100Hz, and each read() will hold 10 COMMANDS
+    // it means a delay of 100ms before the message is processed.
     rdlen = read(fd, buf, sizeof(buf) - 1);
 
     for (int i = 0; i < rdlen; i++) {
@@ -222,6 +240,7 @@ void *nps_ap_data_loop(void *data __attribute__((unused)))
 
       // if msg_available then read
       if (pprz_tp_logger.trans_rx.msg_received) {
+        rx_msgs++;
         for (int k = 0; k < pprz_tp_logger.trans_rx.payload_len; k++) {
           buf[k] = pprz_tp_logger.trans_rx.payload[k];
         }
@@ -241,6 +260,7 @@ void *nps_ap_data_loop(void *data __attribute__((unused)))
           switch (msg_id) {
             case DL_COMMANDS:
               // parse commands message
+              rx_commands++;
               cmd_len = DL_COMMANDS_values_length(buf);
               memcpy(&cmd_buf, DL_COMMANDS_values(buf), cmd_len * sizeof(int16_t));
               pthread_mutex_lock(&fdm_mutex);
@@ -254,6 +274,7 @@ void *nps_ap_data_loop(void *data __attribute__((unused)))
               break;
             case DL_MOTOR_MIXING:
               // parse actuarors message
+              rx_motor_mixing++;
               cmd_len = DL_MOTOR_MIXING_values_length(buf);
               // check for out-of-bounds access
               if (cmd_len > NPS_COMMANDS_NB) {
@@ -312,6 +333,7 @@ void *nps_main_loop(void *data __attribute__((unused)))
     guard = 0;
     while ((real_time - fdm.time) > SIM_DT) {
       nps_main_run_sim_step();
+      nps_main.sim_time = fdm.time;
       guard++;
       if (guard > 2) {
         //If we are too much behind, catch up incrementaly

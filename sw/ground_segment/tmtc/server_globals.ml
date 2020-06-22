@@ -19,12 +19,12 @@ let horiz_modes = [|"WAYPOINT";"ROUTE";"CIRCLE";"ATTITUDE";"MANUAL"|]
 let if_modes = [|"OFF";"DOWN";"UP"|]
 
 let string_of_values = fun values ->
-  Compat.bytes_concat " " (List.map (fun (_, v) -> PprzLink.string_of_value v) values)
+  String.concat " " (List.map (fun (_, v) -> PprzLink.string_of_value v) values)
 
 (** get modes from autopilot xml file *)
 let modes_from_autopilot = fun ap_xml ->
   let ap = ExtXml.child ap_xml
-    ~select:(fun x -> String.uppercase (ExtXml.attrib_or_default x "gcs_mode" "") = "TRUE")
+    ~select:(fun x -> Compat.uppercase_ascii (ExtXml.attrib_or_default x "gcs_mode" "") = "TRUE")
     "state_machine"
   in
   let modes = List.filter (fun x -> Xml.tag x = "mode") (Xml.children ap) in

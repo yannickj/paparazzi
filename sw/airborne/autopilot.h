@@ -32,6 +32,10 @@
 #ifndef AUTOPILOT_H
 #define AUTOPILOT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "std.h"
 #include "paparazzi.h"
 #include "generated/airframe.h"
@@ -59,6 +63,8 @@ struct pprz_autopilot {
   uint8_t mode;             ///< current autopilot mode
   uint8_t mode_auto2;       ///< FIXME hide this in a private part ?
   uint16_t flight_time;     ///< flight time in seconds
+  pprz_t throttle;          ///< throttle level as will be displayed in GCS
+  uint8_t arming_status;    ///< arming status
   bool motors_on;           ///< motor status
   bool kill_throttle;       ///< allow autopilot to use throttle
   bool in_flight;           ///< in flight status
@@ -158,6 +164,11 @@ extern void autopilot_set_in_flight(bool in_flight);
  */
 extern bool autopilot_in_flight(void);
 
+/** reset in_flight counter
+ *  actual implementation is firmware dependent
+ */
+extern void autopilot_reset_in_flight_counter(void);
+
 /** Set power switch state
  *  This will actually enable the switch if POWER_SWITCH_GPIO is defined
  *  Also provide macro for dl_setting backward compatibility
@@ -188,6 +199,10 @@ extern void autopilot_send_version(void);
 /** Report autopilot mode on default downlink channel
  */
 extern void autopilot_send_mode(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* AUTOPILOT_H */
 

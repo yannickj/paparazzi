@@ -236,6 +236,7 @@ bool navdata_init()
     printf("[navdata] Could not create navdata reading thread!\n");
     return false;
   }
+  pthread_setname_np(navdata_thread, "pprz_navdata_thread");
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ARDRONE_NAVDATA, send_navdata);
@@ -387,8 +388,9 @@ void navdata_update()
 #ifdef USE_SONAR
     /* Check if there is a new sonar measurement and update the sonar */
     if (navdata.measure.ultrasound >> 15) {
+      uint32_t now_ts = get_sys_time_usec();
       float sonar_meas = (float)((navdata.measure.ultrasound & 0x7FFF) - SONAR_OFFSET) * SONAR_SCALE;
-      AbiSendMsgAGL(AGL_SONAR_ARDRONE2_ID, sonar_meas);
+      AbiSendMsgAGL(AGL_SONAR_ARDRONE2_ID, now_ts, sonar_meas);
     }
 #endif
 

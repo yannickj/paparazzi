@@ -29,12 +29,13 @@
 #include "std.h"
 
 #ifdef PERIPHERALS_AUTO_INIT
+#include "mcu_periph/gpio.h"
 #include "mcu_periph/sys_time.h"
 #ifdef USE_LED
 #include "led.h"
 #endif
 #if defined RADIO_CONTROL
-#if defined RADIO_CONTROL_LINK  || defined RADIO_CONTROL_SPEKTRUM_PRIMARY_PORT
+#if defined RADIO_CONTROL_BIND_IMPL_FUNC & defined SPEKTRUM_BIND_PIN_PORT
 #include "subsystems/radio_control.h"
 #endif
 #endif
@@ -42,9 +43,13 @@
 #define USING_UART 1
 #include "mcu_periph/uart.h"
 #endif
-#if USE_I2C0 || USE_I2C1 || USE_I2C2 || USE_I2C3
+#if USE_I2C0 || USE_I2C1 || USE_I2C2 || USE_I2C3 || USE_I2C4 || USE_SOFTI2C0 || USE_SOFTI2C1
 #define USING_I2C 1
 #include "mcu_periph/i2c.h"
+#endif
+#if USE_SOFTI2C0 || USE_SOFTI2C1
+#define USING_SOFTI2C 1
+#include "mcu_periph/softi2c.h"
 #endif
 #if USE_ADC
 #include "mcu_periph/adc.h"
@@ -60,6 +65,12 @@
 #endif
 #ifdef USE_DAC
 #include "mcu_periph/dac.h"
+#endif
+#ifdef USE_RNG
+#include "mcu_periph/rng.h"
+#endif
+#ifdef USE_PIPE
+#include "mcu_periph/pipe.h"
 #endif
 #endif /* PERIPHERALS_AUTO_INIT */
 
@@ -121,7 +132,7 @@ void mcu_init(void)
   PERIPHERAL3V3_ENABLE_ON(PERIPHERAL3V3_ENABLE_PORT, PERIPHERAL3V3_ENABLE_PIN);
 #endif
   /* for now this means using spektrum */
-#if defined RADIO_CONTROL & defined RADIO_CONTROL_SPEKTRUM_PRIMARY_PORT & defined RADIO_CONTROL_BIND_IMPL_FUNC & defined SPEKTRUM_BIND_PIN_PORT
+#if defined RADIO_CONTROL & defined RADIO_CONTROL_BIND_IMPL_FUNC & defined SPEKTRUM_BIND_PIN_PORT
   RADIO_CONTROL_BIND_IMPL_FUNC();
 #endif
 #if USE_UART0
@@ -166,6 +177,15 @@ void mcu_init(void)
 #ifdef USE_I2C3
   i2c3_init();
 #endif
+#ifdef USE_I2C4
+  i2c4_init();
+#endif
+#ifdef USE_SOFTI2C0
+  softi2c0_init();
+#endif
+#ifdef USE_SOFTI2C1
+  softi2c1_init();
+#endif
 #if USE_ADC
   adc_init();
 #endif
@@ -187,6 +207,9 @@ void mcu_init(void)
 #endif
 #if USE_SPI3
   spi3_init();
+#endif
+#if USE_SPI4
+  spi4_init();
 #endif
   spi_init_slaves();
 #endif // SPI_MASTER
@@ -219,6 +242,10 @@ void mcu_init(void)
   udp_arch_init();
 #endif
 
+#ifdef USE_RNG
+  rng_init();
+#endif
+
 #else
   INFO("PERIPHERALS_AUTO_INIT not enabled! Peripherals (including sys_time) need explicit initialization.")
 #endif /* PERIPHERALS_AUTO_INIT */
@@ -232,6 +259,9 @@ void mcu_event(void)
 {
 #if USING_I2C
   i2c_event();
+#endif
+#if USING_SOFTI2C
+  softi2c_event();
 #endif
 
 #if USE_USB_SERIAL

@@ -105,7 +105,7 @@ let string_of_attribs = fun attribs ->
   match attribs with
       ["PCData", data] -> data
     | _ ->
-      Compat.bytes_concat " " (List.map (fun (a,v) -> sprintf "%s=\"%s\"" a v) attribs)
+      String.concat " " (List.map (fun (a,v) -> sprintf "%s=\"%s\"" a v) attribs)
 
 type id = int
 let gen_id =
@@ -132,18 +132,18 @@ let encode_crs =
 *)
 
 let recode_crs = fun s ->
-  let n = Compat.bytes_length s in
-  let s' = Compat.bytes_create n in
+  let n = String.length s in
+  let s' = Bytes.create n in
   let i = ref 0 and j = ref 0 in
   while !i < n do
     if !i < n-1 && s.[!i] == '\\' && s.[!i+1] == 'n' then begin
-      Compat.bytes_set s' (!j)  '\n';
+      Bytes.set s' (!j)  '\n';
       incr i
     end else
-      Compat.bytes_set s' (!j) s.[!i];
+      Bytes.set s' (!j) s.[!i];
     incr i; incr j
   done;
-  Compat.bytes_sub s' 0 !j
+  Bytes.to_string (Bytes.sub s' 0 !j)
 
 
 
@@ -352,21 +352,21 @@ let set_attribs = fun ((model, path):node) attribs ->
 let rec replace_assoc a v = function
 [] -> [(a, v)]
   | (a', v')::l ->
-    if a = Compat.bytes_uppercase a'
+    if a = Compat.uppercase_ascii a'
     then (a, v)::l
     else (a', v')::replace_assoc a v l
 
 let set_attrib = fun node (a, v) ->
   let atbs = attribs node in
-  set_attribs node (replace_assoc (Compat.bytes_uppercase a) v atbs)
+  set_attribs node (replace_assoc (Compat.uppercase_ascii a) v atbs)
 
 let attrib = fun node at ->
-  let at = Compat.bytes_uppercase at in
+  let at = Compat.uppercase_ascii at in
   let ats = attribs node in
   let rec loop = function
   [] -> raise Not_found
     | (a,v)::avs ->
-      if Compat.bytes_uppercase a = at then v else loop avs in
+      if Compat.uppercase_ascii a = at then v else loop avs in
   loop ats
 
 let tag = fun ((model, path):node) ->

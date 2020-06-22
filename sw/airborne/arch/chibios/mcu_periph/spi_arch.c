@@ -30,6 +30,7 @@
  */
 #include "mcu_periph/spi.h"
 #include "mcu_periph/gpio.h"
+#include BOARD_CONFIG
 
 #include <string.h>
 #include "mcu_periph/ram_arch.h"
@@ -40,6 +41,11 @@
 
 #if USE_SPI0
 #error "ChibiOS architectures don't have SPI0"
+#endif
+
+// Default stack size
+#ifndef SPI_THREAD_STACK_SIZE
+#define SPI_THREAD_STACK_SIZE 512
 #endif
 
 // private SPI init structure
@@ -161,10 +167,12 @@ static inline uint16_t spi_resolve_slave_pin(uint8_t slave)
 static inline uint16_t spi_resolve_CR1(struct spi_transaction *t __attribute__((unused)))
 {
   uint16_t CR1 = 0;
-#if defined(STM32F1) || defined(STM32F4) || defined(STM32F7)
+#if defined(STM32F1) || defined(STM32F4)
   if (t->dss == SPIDss16bit) {
-    CR1 |= SPI_CR1_DFF;
+    CR1 |= SPI_CR1_DFF; // FIXME for F7
   }
+#endif
+#if defined(STM32F1) || defined(STM32F4) || defined(STM32F7)
   if (t->bitorder == SPILSBFirst) {
     CR1 |= SPI_CR1_LSBFIRST;
   }
@@ -224,8 +232,7 @@ static inline uint16_t spi_resolve_CR2(struct spi_transaction *t __attribute__((
 #if defined(STM32F7)
   if (t->dss == SPIDss16bit) {
     CR2 |= SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2 | SPI_CR2_DS_3;
-  }
-  else {
+  } else {
     CR2 |= SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2;
   }
 #endif /* STM32F7 */
@@ -242,7 +249,7 @@ static void handle_spi_thd(struct spi_periph *p)
   struct spi_init *i = (struct spi_init *) p->init_struct;
 
   // wait for a transaction to be pushed in the queue
-  chSemWait (i->sem);
+  chSemWait(i->sem);
 
   if ((p->trans_insert_idx == p->trans_extract_idx) || p->suspend) {
     p->status = SPIIdle;
@@ -256,6 +263,7 @@ static void handle_spi_thd(struct spi_periph *p)
   p->status = SPIRunning;
 
   SPIConfig spi_cfg = {
+    false, // no circular buffer
     NULL, // no callback
     spi_resolve_slave_port(t->slave_idx),
     spi_resolve_slave_pin(t->slave_idx),
@@ -273,7 +281,10 @@ static void handle_spi_thd(struct spi_periph *p)
 
   // Configure SPI bus with the current slave select pin
   spiStart((SPIDriver *)p->reg_addr, &spi_cfg);
-  spiSelect((SPIDriver *)p->reg_addr);
+  // Select the slave after reconfiguration of the peripheral
+  if (t->select == SPISelectUnselect || t->select == SPISelect) {
+    spiSelect((SPIDriver *)p->reg_addr);
+  }
 
   // Run the callback after selecting the slave
   // FIXME warning: done in spi thread
@@ -284,15 +295,17 @@ static void handle_spi_thd(struct spi_periph *p)
   // Start synchronous data transfer
 #if defined STM32F7
   // we do stupid mem copy because F7 needs a special RAM for DMA operation
-  memcpy(i->dma_buf_out, (void*)t->output_buf, (size_t)t->output_length);
+  memcpy(i->dma_buf_out, (void *)t->output_buf, (size_t)t->output_length);
   spiExchange((SPIDriver *)p->reg_addr, t_length, i->dma_buf_out, i->dma_buf_in);
-  memcpy((void*)t->input_buf, i->dma_buf_in, (size_t)t->input_length);
+  memcpy((void *)t->input_buf, i->dma_buf_in, (size_t)t->input_length);
 #else
-  spiExchange((SPIDriver *)p->reg_addr, t_length, (uint8_t*)t->output_buf, (uint8_t*)t->input_buf);
+  spiExchange((SPIDriver *)p->reg_addr, t_length, (uint8_t *)t->output_buf, (uint8_t *)t->input_buf);
 #endif
 
   // Unselect the slave
-  spiUnselect((SPIDriver *)p->reg_addr);
+  if (t->select == SPISelectUnselect || t->select == SPIUnselect) {
+    spiUnselect((SPIDriver *)p->reg_addr);
+  }
 
   chSysLock();
   // end of transaction, handle fifo
@@ -314,6 +327,7 @@ static void handle_spi_thd(struct spi_periph *p)
   if (t->after_cb != 0) {
     t->after_cb(t);
   }
+
 }
 
 /**
@@ -347,7 +361,7 @@ static __attribute__((noreturn)) void thd_spi1(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_spi1, 1024);
+static THD_WORKING_AREA(wa_thd_spi1, SPI_THREAD_STACK_SIZE);
 
 void spi1_arch_init(void)
 {
@@ -355,7 +369,7 @@ void spi1_arch_init(void)
   spi1.init_struct = &spi1_init_s;
   // Create thread
   chThdCreateStatic(wa_thd_spi1, sizeof(wa_thd_spi1),
-      NORMALPRIO+1, thd_spi1, NULL);
+                    NORMALPRIO + 1, thd_spi1, NULL);
 }
 #endif
 
@@ -386,7 +400,7 @@ static __attribute__((noreturn)) void thd_spi2(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_spi2, 1024);
+static THD_WORKING_AREA(wa_thd_spi2, SPI_THREAD_STACK_SIZE);
 
 void spi2_arch_init(void)
 {
@@ -394,7 +408,7 @@ void spi2_arch_init(void)
   spi2.init_struct = &spi2_init_s;
   // Create thread
   chThdCreateStatic(wa_thd_spi2, sizeof(wa_thd_spi2),
-      NORMALPRIO+1, thd_spi2, NULL);
+                    NORMALPRIO + 1, thd_spi2, NULL);
 }
 #endif
 
@@ -425,7 +439,7 @@ static __attribute__((noreturn)) void thd_spi3(void *arg)
   }
 }
 
-static THD_WORKING_AREA(wa_thd_spi3, 1024);
+static THD_WORKING_AREA(wa_thd_spi3, SPI_THREAD_STACK_SIZE);
 
 void spi3_arch_init(void)
 {
@@ -433,7 +447,46 @@ void spi3_arch_init(void)
   spi3.init_struct = &spi3_init_s;
   // Create thread
   chThdCreateStatic(wa_thd_spi3, sizeof(wa_thd_spi3),
-      NORMALPRIO+1, thd_spi3, NULL);
+                    NORMALPRIO + 1, thd_spi3, NULL);
+}
+#endif
+
+#if USE_SPI4
+static SEMAPHORE_DECL(spi4_sem, 0);
+#if defined STM32F7
+// We need a special buffer for DMA operations
+static IN_DMA_SECTION(uint8_t spi4_dma_buf_out[SPI_DMA_BUF_LEN]);
+static IN_DMA_SECTION(uint8_t spi4_dma_buf_in[SPI_DMA_BUF_LEN]);
+static struct spi_init spi4_init_s = {
+  .sem = &spi4_sem,
+  .dma_buf_out = spi4_dma_buf_out,
+  .dma_buf_in = spi4_dma_buf_in
+};
+#else
+static struct spi_init spi4_init_s = {
+  .sem = &spi4_sem,
+};
+#endif
+
+static __attribute__((noreturn)) void thd_spi4(void *arg)
+{
+  (void) arg;
+  chRegSetThreadName("spi4");
+
+  while (TRUE) {
+    handle_spi_thd(&spi4);
+  }
+}
+
+static THD_WORKING_AREA(wa_thd_spi4, 256);
+
+void spi4_arch_init(void)
+{
+  spi4.reg_addr = &SPID4;
+  spi4.init_struct = &spi4_init_s;
+  // Create thread
+  chThdCreateStatic(wa_thd_spi4, sizeof(wa_thd_spi4),
+                    NORMALPRIO + 1, thd_spi4, NULL);
 }
 #endif
 
@@ -477,7 +530,7 @@ bool spi_submit(struct spi_periph *p, struct spi_transaction *t)
   p->trans_insert_idx = idx;
 
   chSysUnlock();
-  chSemSignal (((struct spi_init *)p->init_struct)->sem);
+  chSemSignal(((struct spi_init *)p->init_struct)->sem);
   // transaction submitted
   return TRUE;
 }

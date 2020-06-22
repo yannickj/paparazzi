@@ -55,7 +55,7 @@ object
           let v = float_of_string s in
           last_known_value <- Some v;
           set_default v
-        with Failure "float_of_string" -> ()
+        with Failure _ -> ()
       end
 end
 
@@ -91,7 +91,7 @@ let one_setting = fun (i:int) (do_change:int -> float -> unit) ac_id packing dl_
       1.
   in
   (* get number of digits after decimal dot *)
-  let digits = try Compat.bytes_length (ExtXml.attrib dl_setting "step") - Compat.bytes_index (ExtXml.attrib dl_setting "step") '.' - 1 with _ -> 0 in
+  let digits = try String.length (ExtXml.attrib dl_setting "step") - String.index (ExtXml.attrib dl_setting "step") '.' - 1 with _ -> 0 in
   let page_incr = step_incr
   and page_size = step_incr
   and show_auto = try ExtXml.attrib dl_setting "auto" = "true" with _ -> false in
@@ -231,6 +231,7 @@ let one_setting = fun (i:int) (do_change:int -> float -> unit) ac_id packing dl_
   ignore (commit_but#connect#clicked ~callback);
   tooltips#set_tip commit_but#coerce ~text:"Commit";
   tooltips#set_tip current_value#coerce ~text:"Current value, click to request update.";
+  tooltips#set_tip _l#coerce ~text:text;
 
   (* Undo button *)
   let undo_but = GButton.button ~packing:hbox#pack () in
@@ -249,7 +250,7 @@ let one_setting = fun (i:int) (do_change:int -> float -> unit) ac_id packing dl_
 
   (** Insert the related buttons in the strip and prepare the papgets DnD *)
   List.iter (fun x ->
-    match Compat.bytes_lowercase (Xml.tag x) with
+    match Compat.lowercase_ascii (Xml.tag x) with
         "strip_button" ->
           let label = ExtXml.attrib x "name"
           and sp_value = ExtXml.float_attrib x "value"
@@ -293,7 +294,7 @@ let same_tag_for_all = function
   | x::xs ->
     let tag_first = Xml.tag x in
     List.iter (fun y -> assert(ExtXml.tag_is y tag_first)) xs;
-    Compat.bytes_lowercase tag_first
+    Compat.lowercase_ascii tag_first
 
 
 (** Build the tree of settings *)

@@ -94,6 +94,7 @@ void autopilot_init(void)
   autopilot.mode_auto2 = MODE_AUTO2; // FIXME
 #endif
   autopilot.flight_time = 0;
+  autopilot.throttle = 0;
   autopilot.motors_on = false;
   autopilot.kill_throttle = true;
   autopilot.in_flight = false;
@@ -103,7 +104,11 @@ void autopilot_init(void)
   autopilot.power_switch = false;
 #ifdef POWER_SWITCH_GPIO
   gpio_setup_output(POWER_SWITCH_GPIO);
-  gpio_clear(POWER_SWITCH_GPIO); // POWER OFF
+#ifdef POWER_SWITCH_ENABLE
+  autopilot_set_power_switch(POWER_SWITCH_ENABLE); // set initial status
+#else
+  gpio_clear(POWER_SWITCH_GPIO); // by default POWER OFF
+#endif
 #endif
 
   // call firmware specific init
@@ -235,7 +240,6 @@ void WEAK autopilot_check_in_flight(bool motors_on __attribute__((unused))) {}
 /** reset in_flight counter
  *  actual implementation is firmware dependent
  */
-void autopilot_reset_in_flight_counter(void);
 void WEAK autopilot_reset_in_flight_counter(void) {}
 
 /** set in_flight flag

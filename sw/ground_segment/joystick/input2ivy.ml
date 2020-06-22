@@ -34,7 +34,6 @@
 *)
 
 open Printf
-open Unix
 open Random
 
 
@@ -135,7 +134,10 @@ let ac_id_of_name = fun ac_name ->
     ExtXml.int_attrib aircraft "ac_id"
   with
       Not_found ->
-        failwith (sprintf "A/C '%s' not found" ac_name)
+        if ac_name = "GCS" then
+          0 (* return GCS id *)
+        else
+          failwith (sprintf "A/C '%s' not found" ac_name)
 
 (** Fill the index_of_settings table from var/AC/settings.xml *)
 let hash_index_of_settings = fun ac_name ->
@@ -554,7 +556,7 @@ let execute_actions = fun actions ac_id ->
 (**   this capability is mostly for bench-time trimming when a joystick does not have adequate buttons *)
 (**   it is not a very complete capability  *)
 let execute_kb_action = fun actions conditions ->
-  let ch = input_byte Pervasives.stdin in
+  let ch = input_byte stdin in
   (** esdx for left stick
       ijkm for right  *)
 
@@ -602,8 +604,11 @@ let () =
 
   let ac_id = ac_id_of_name !ac_name in
 
-  hash_index_of_settings !ac_name;
-  hash_index_of_blocks !ac_name;
+  if ac_id > 0 then begin
+    (* build hash only for real AC, not for GCS *)
+    hash_index_of_settings !ac_name;
+    hash_index_of_blocks !ac_name;
+  end;
 
   Printf.printf "Joystick ID (option -id): %u\n" !joystick_id;
   Printf.printf "Joystick SDL device index (option -d): %u\n" !device_index;

@@ -22,56 +22,18 @@
  *
  *)
 
- IFDEF HAS_BYTES_MODULE THEN
- module BYTES = Bytes
- ELSE
- module BYTES = String
- END
+IFDEF OCAML_V404 THEN
+let lowercase_ascii = String.lowercase_ascii
 
-let bytes_create = fun len ->
-  BYTES.create len
+let uppercase_ascii = String.uppercase_ascii
 
-let bytes_contains = fun c s ->
-  BYTES.contains c s
+let capitalize_ascii = String.capitalize_ascii
 
-let bytes_length = fun len ->
-  BYTES.length len
+ELSE
+let lowercase_ascii = String.lowercase
 
-let bytes_make = fun n c->
-  BYTES.make n c
+let uppercase_ascii = String.uppercase
 
-let bytes_copy = fun s->
-  BYTES.copy s
+let capitalize_ascii = String.capitalize
 
-let bytes_lowercase = fun s->
-  BYTES.lowercase s
-
-let bytes_uppercase = fun s->
-  BYTES.uppercase s
-
-let bytes_blit = fun src srcoff dst dstoff len->
-  BYTES.blit src srcoff dst dstoff len
-
-let bytes_sub = fun s start len->
-  BYTES.sub s start len
-
-let bytes_index = fun c s ->
-  BYTES.index c s
-
-let bytes_concat = fun sep sl->
-  BYTES.concat sep sl
-
-let bytes_index_from = fun s i c ->
-  BYTES.index_from s i c
-
-let bytes_get = fun s n->
-  BYTES.get s n
-
-let bytes_compare = fun s1 s2->
-  BYTES.compare s1 s2
-
-let bytes_set = fun s n c->
-  BYTES.set s n c
-
-let bytes_iter = fun f s->
-  BYTES.iter f s
+END

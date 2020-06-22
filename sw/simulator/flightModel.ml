@@ -22,7 +22,7 @@
  *
  *)
 
-open Stdlib
+open Simlib
 open Printf
 
 let ios = fun x ->
@@ -54,7 +54,7 @@ type state = {
 module type SIG =
   sig
     val init : radian -> state
-    val do_commands : state -> Stdlib.pprz_t array -> unit
+    val do_commands : state -> Simlib.pprz_t array -> unit
     val nb_commands : int
     val nominal_airspeed : float (* m/s *)
     val max_bat_level : float (* V *)
@@ -101,7 +101,7 @@ module Make(A:Data.MISSION) = struct
 
   let float_value = fun section s ->
     let x = (defined_value section s) in
-    try float_of_string x with Failure "float_of_string" ->
+    try float_of_string x with Failure _ ->
       failwith (sprintf "float_of_string: %s" x)
 
   (* FIXME: refactor code_unit_scale of tag to pprz.ml *)
