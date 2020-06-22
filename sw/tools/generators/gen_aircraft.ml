@@ -134,6 +134,15 @@ let sort_airframe_by_target = fun airframe ->
                       defines = c.GM.defines @ m_af.Module.defines } in
             target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype GM.UserLoad
           ) conf f.AfF.modules in
+        (* iter on deprecated 'modules' node *)
+        let conf = List.fold_left (fun c m ->
+          List.fold_left (fun c m_af ->
+            let c = { c with
+                      GM.configures = c.GM.configures @ m_af.Module.configures;
+                      defines = c.GM.defines @ m_af.Module.defines } in
+            target_conf_add_module c name f.AfF.name m_af.Module.name m_af.Module.mtype GM.UserLoad
+            ) c m.Airframe.OldModules.modules
+          ) conf a.Airframe.modules in
         Hashtbl.add config_by_target name conf
       ) l
 
