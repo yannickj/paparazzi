@@ -562,8 +562,11 @@ let new_aircraft = fun get_alive_md5sum real_id ->
     done in
 
   ignore (ac.ap_modes <- try
-    let (ap_file, _) = Gen_common.get_autopilot_of_airframe airframe_xml in
-    Some (modes_from_autopilot (ExtXml.parse_file ap_file))
+    let ac = Aircraft.parse_aircraft "" airframe_xml in
+    match ac.Aircraft.autopilots with
+    | None -> None
+    | Some [(_, ap)] -> Some (modes_from_autopilot ap.Autopilot.xml)
+    | _ -> None (* more than one *)
   with _ -> None);
 
   ignore (Glib.Timeout.add 1000 (fun _ -> update (); true));

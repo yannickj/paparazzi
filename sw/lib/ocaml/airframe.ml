@@ -137,3 +137,24 @@ let from_xml = function
 let from_file = fun filename ->
   let af = from_xml (Xml.parse_file filename) in
   { af with filename }
+
+
+(** [expand_includes ac_id xml]
+ * Get expanded xml airframe if it contains 'include' nodes
+ *)
+let expand_includes = fun ac_id xml ->
+  match xml with
+  | Xml.PCData d -> Xml.PCData d
+  | Xml.Element (tag, attrs, children) ->
+      Xml.Element (tag, attrs,
+      List.fold_left (fun x c ->
+        if Xml.tag c = "include" then begin
+          let filename = Str.global_replace (Str.regexp "\\$AC_ID") ac_id (ExtXml.attrib c "href") in
+          let filename =
+            if Filename.is_relative filename then Filename.concat Env.paparazzi_home filename
+            else filename in
+          let subxml = ExtXml.parse_file filename in
+          x @ (Xml.children subxml)
+        end
+        else x @ [c]
+      ) [] children)

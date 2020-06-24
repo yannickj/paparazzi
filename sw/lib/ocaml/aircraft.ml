@@ -160,16 +160,16 @@ let sort_airframe_by_target = fun config_by_target airframe ->
 let get_config_element = fun flag ac_xml elt f ->
   if not flag then None
   else
-    (* try *) (* TODO: uncomment? *)
+    try
       let file = Xml.attrib ac_xml elt in
       let abs_file = Env.paparazzi_conf // file in
       Some (f abs_file)
-    (* with Xml.No_attribute _ -> None (\* no attribute elt in conf file *\) *)
+    with Xml.No_attribute _ -> None (* no attribute elt in conf file *)
 
 let get_element_relative_path = fun flag ac_xml elt ->
   if not flag then None
   else
-    try (* TODO: uncomment? *)
+    try
       Some (Xml.attrib ac_xml elt)
     with Xml.No_attribute _ -> None (* no attribute elt in conf file *)
 
@@ -183,6 +183,20 @@ let get_loaded_modules = fun config_by_target target ->
     (List.fold_left (fun l (t, m) -> if t <> Unloaded then l @ [m] else l) [] modules)
   with Not_found -> [] (* nothing for this target *)
 
+(** Extract all modules
+ *  if a modules is not in any target, it will not appear in the list
+ *  returns an alphabetically sorted list
+ *)
+let get_all_modules = fun config_by_target ->
+  let modules = ref [] in
+  Hashtbl.iter (fun _ conf ->
+    List.iter (fun (_, m) ->
+      if not (List.exists (fun n -> m.Module.name = n.Module.name) !modules) then
+        modules := m :: !modules (* add module to list *)
+    ) conf.modules
+  ) config_by_target;
+  List.sort (fun m1 m2 -> compare m1.Module.name m2.Module.name) !modules
+    
 
 
 let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_rc=false) ?(gen_tl=false) ?(gen_set=false) ?(gen_all=false) ?(verbose=false) target aircraft_xml ->
@@ -292,6 +306,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
 
   (* TODO resolve modules dep *)
   let loaded_modules = get_loaded_modules config_by_target target in
+  let all_modules = get_all_modules config_by_target in
 
   if verbose then
     Printf.printf "Parsing settings...%!";
@@ -356,7 +371,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
   end;
 
   (* return aircraft conf *)
-  { name; config_by_target; all_modules = [] (* TODO *);
+  { name; config_by_target; all_modules;
     airframe; autopilots; flight_plan; radio; telemetry; settings;
     xml = conf_aircraft }
 
