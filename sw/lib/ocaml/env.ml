@@ -41,12 +41,13 @@ let paparazzi_home =
   with
       _ -> Filename.concat (Sys.getenv "HOME") "paparazzi"
 
+let paparazzi_conf = paparazzi_home // "conf"
 
-let flight_plans_path = paparazzi_home // "conf" // "flight_plans"
+let flight_plans_path = paparazzi_conf // "flight_plans"
 let flight_plan_dtd = flight_plans_path // "flight_plan.dtd"
 
 let modules_paths =
-  let default_path = paparazzi_home // "conf" // "modules" in
+  let default_path = paparazzi_conf // "modules" in
   try
     let path = Sys.getenv "PAPRAZZI_MODULES_PATH" in
     (Str.split (Str.regexp ":") path) @ [default_path]

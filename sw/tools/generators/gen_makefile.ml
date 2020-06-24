@@ -26,20 +26,9 @@
 open Printf
 open Gen_common
 
+module AC = Aircraft
+
 (* TODO: add condition in xml syntax ? *)
-
-(* type of loading (user, auto) *)
-type load_type = UserLoad | AutoLoad | Unloaded
-
-type target_conf = {
-  configures: Module.configure list; (* configure variables *)
-  configures_default: Module.configure list; (* default configure options *)
-  defines: Module.define list; (* define flags *)
-  firmware_name: string;
-  board_type: string;
-  modules: (load_type * Module.t) list; (* list of modules *)
-  autopilot: bool; (* autopilot if any *)
-}
 
 let get_string_opt = fun x -> match x with Some s -> s | None -> ""
 
@@ -135,26 +124,26 @@ let module2mk = fun f target firmware m ->
 
 let dump_target_conf = fun out target conf ->
   fprintf out "\n####################################################\n";
-  fprintf out   "# makefile target '%s' for firmware '%s'\n" target conf.firmware_name;
+  fprintf out   "# makefile target '%s' for firmware '%s'\n" target conf.AC.firmware_name;
   fprintf out   "####################################################\n\n";
   fprintf out "ifeq ($(TARGET), %s)\n\n" target;
   let dir_list = singletonize (List.fold_left (fun l (_, m) -> match m.Module.dir with
-    | None -> m.Module.name::l | Some d -> d::l) [] conf.modules) in
+    | None -> m.Module.name::l | Some d -> d::l) [] conf.AC.modules) in
   List.iter (fun d -> fprintf out "%s_DIR = modules/%s\n" (Compat.uppercase_ascii d) d) dir_list;
   fprintf out "\n";
-  if conf.autopilot then
+  if conf.AC.autopilot then
     fprintf out "USE_GENERATED_AUTOPILOT = TRUE\n";
-  List.iter (configure2mk out) conf.configures;
-  fprintf out "\ninclude $(PAPARAZZI_SRC)/conf/boards/%s.makefile\n" conf.board_type;
-  fprintf out "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n\n" conf.firmware_name;
-  List.iter (configure2mk ~default_configure:true out) conf.configures_default;
+  List.iter (configure2mk out) conf.AC.configures;
+  fprintf out "\ninclude $(PAPARAZZI_SRC)/conf/boards/%s.makefile\n" conf.AC.board_type;
+  fprintf out "include $(PAPARAZZI_SRC)/conf/firmwares/%s.makefile\n\n" conf.AC.firmware_name;
+  List.iter (configure2mk ~default_configure:true out) conf.AC.configures_default;
   fprintf out "\n";
-  List.iter (define2mk out) conf.defines;
+  List.iter (define2mk out) conf.AC.defines;
   fprintf out "\n";
   List.iter (fun (l, m) -> match l with
-              | UserLoad | AutoLoad -> module2mk out target conf.firmware_name m
+              | AC.UserLoad | AC.AutoLoad -> module2mk out target conf.AC.firmware_name m
               | _ -> ()
-  ) conf.modules;
+  ) conf.AC.modules;
   fprintf out "\nendif # end of target '%s'\n\n" target
   
 

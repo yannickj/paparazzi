@@ -104,3 +104,42 @@ let from_xml = function
 let from_file = fun filename ->
   let t = from_xml (Xml.parse_file filename) in
   { t with filename }
+
+
+(* return a Settings object from telemetry process and modes *)
+let get_sys_telemetry_settings = fun telemetry ->
+  match telemetry with
+  | None -> None
+  | Some telemetry ->
+    (* build a XML node corresponding to the settings *)
+    let tl_settings = List.fold_left (fun lp p ->
+      if List.length p.Process.modes > 1 then begin
+        (* only if more than one mode *)
+        let p_name = p.Process.name in
+        let modes = List.map (fun m -> m.Mode.name) p.Process.modes in
+        let nb_modes = List.length modes in
+        match nb_modes with
+          | 0 | 1 -> lp (* Nothing to do if 1 or zero mode *)
+          | _ -> (* add settings with all modes *)
+              let (key, _) = List.fold_left (fun (lk, i) m ->
+                match m.Mode.key_press with
+                | None -> (lk, i+1)
+                | Some k -> ((Xml.Element ("key_press", [("key", k); ("value", string_of_int i)], [])) :: lk, i+1)
+              ) ([], 0) p.Process.modes in
+              lp @ [Xml.Element ("dl_setting",
+                    [("min", "0");
+                    ("step", "1");
+                    ("max", string_of_int (nb_modes-1));
+                    ("var", "telemetry_mode_"^p_name);
+                    ("shortname", p_name);
+                    ("values", String.concat "|" modes);
+                    ("header", "generated/periodic_telemetry")], key)]
+      end
+      else lp
+    ) [] telemetry.processes in
+    if List.length tl_settings > 0 then
+      let xml = Xml.Element("dl_settings",[("name","Telemetry")],tl_settings) in
+      Some (Settings.from_xml (Xml.Element("settings",[],[xml])))
+    else
+      None
+

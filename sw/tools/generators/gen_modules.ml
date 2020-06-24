@@ -56,9 +56,6 @@ let get_status_shortname = fun f ->
   let func = (Xml.attrib f "fun") in
   String.sub func 0 (try String.index func '(' with _ -> (String.length func))
 
-(* TODO  merge *)
-let status_name = fun mod_name p -> mod_name ^ "_" ^ p.Module.fname ^ "_status"
-
 (*let fprint_status = fun ch mod_name p ->
   match p.autorun with
   | True | False ->
@@ -408,29 +405,6 @@ let check_dependencies = fun modules names ->
         conflict_l
     with _ -> ()
   ) modules
-
-(* return a Settings object from modules *)
-let get_sys_modules_settings = fun modules ->
-  (* build a XML node corresponding to the settings *)
-  let mod_settings = List.fold_left (fun lm m ->
-    let periodic_settings = List.fold_left (fun lp p ->
-      if not (p.Module.autorun = Module.Lock) then
-        lp @ [Xml.Element("dl_setting",
-                    [("min","2");
-                    ("max","3");
-                    ("step","1");
-                    ("var", status_name m.Module.name p);
-                    ("shortname", p.Module.fname);
-                    ("values","START|STOP")],[])]
-      else lp
-    ) [] m.Module.periodics in
-    lm @ periodic_settings
-  ) [] modules in
-  let xml = Xml.Element("dl_settings",[("name","Modules")],mod_settings) in
-  if List.length mod_settings > 0 then
-    Some (Settings.from_xml (Xml.Element("settings",[],[xml])))
-  else
-    None
 
 
 let h_name = "MODULES_H"

@@ -223,25 +223,13 @@ let print_persistent_settings = fun out settings settings_xml ->
   lprintf out "}\n"
 (*  end *)
 
-(* Get settings as a single XML node *)
-let get_settings_xml = fun settings ->
-  let settings_xml = List.fold_left (fun l s ->
-    if List.length s.Settings.dl_settings > 0
-    then (Xml.children (ExtXml.child s.Settings.xml "dl_settings")) @ l
-    else l
-  ) [] settings
-  in
-  let settings_xml = List.rev settings_xml in (* list in correct order *)
-  let dl_settings = Xml.Element("dl_settings", [], settings_xml) in
-  Xml.Element ("settings", [], [dl_settings])
-
 let h_name = "SETTINGS_H"
 
 let generate = fun settings xml_files out_xml out_file ->
   let out = open_out out_file in
 
   (* generate XML concatenated file *)
-  let xml = get_settings_xml settings in
+  let xml = Settings.get_settings_xml settings in
   let f = open_out out_xml in
   fprintf f "%s\n" (ExtXml.to_string_fmt xml);
   close_out f;

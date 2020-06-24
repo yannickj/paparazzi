@@ -1110,28 +1110,6 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   close_out out
 
 
-(* return a Settings object from flight plan *)
-let get_sys_fp_settings = fun flight_plan ->
-  match flight_plan with
-  | None -> None
-  | Some fp ->
-      let dl_settings = fp.Flight_plan.settings in
-      if List.length dl_settings = 0 then None
-      else
-        let dl_settings_xml = Xml.Element ("dl_settings", [ ("name", "Flight Plan") ],
-          List.map (fun x -> x.Settings.Dl_setting.xml) dl_settings)
-        in
-        let dl_settings =
-          { Settings.Dl_settings.name = Some "Flight Plan";
-            dl_settings = []; dl_setting = dl_settings;
-            headers = ["generated/flight_plan"]; xml = dl_settings_xml }
-        in
-        let dl_settings_xml = Xml.Element ("dl_settings", [], [dl_settings_xml]) in
-        let xml = Xml.Element ("settings", [], [dl_settings_xml]) in
-        Some { Settings.filename = ""; name = None; target = None; dl_settings = [dl_settings]; xml }
-
-
-
 (**
  * Dump expanded version of the flight plan
  *)

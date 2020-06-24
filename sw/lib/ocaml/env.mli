@@ -28,6 +28,8 @@ val paparazzi_home : string
 val paparazzi_src : string
 (** Installation's files directory *)
 
+val paparazzi_conf : string
+
 val flight_plans_path : string
 val flight_plan_dtd : string
 

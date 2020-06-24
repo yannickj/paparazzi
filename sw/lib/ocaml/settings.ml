@@ -120,3 +120,17 @@ let get_headers = fun settings ->
     headers
   in
   List.fold_left iter [] settings.dl_settings
+
+
+(* Get settings as a single XML node *)
+let get_settings_xml = fun settings ->
+  let settings_xml = List.fold_left (fun l s ->
+    if List.length s.dl_settings > 0
+    then (Xml.children (ExtXml.child s.xml "dl_settings")) @ l
+    else l
+  ) [] settings
+  in
+  let settings_xml = List.rev settings_xml in (* list in correct order *)
+  let dl_settings = Xml.Element("dl_settings", [], settings_xml) in
+  Xml.Element ("settings", [], [dl_settings])
+
