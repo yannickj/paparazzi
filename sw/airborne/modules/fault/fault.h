@@ -23,8 +23,14 @@
  * Generates faults on the actuators
  */
 
+#include "std.h"
+#include "math/pprz_geodetic_float.h"
+#include "math/pprz_geodetic_int.h"
+
+
 #ifndef FAULT_H
 #define FAULT_H
+
 extern float fault_right;
 extern float fault_left;
 extern float fault_offset_left;
@@ -34,7 +40,12 @@ extern void fault_Set_Right(float _v);
 extern void fault_Set_Left(float _v);
 extern void fault_Set_Offset_Right(float _v);
 extern void fault_Set_Offset_Left(float _v);
-// extern void fault_event();
+
+
+extern void fault_parse_FAULT_INFO(uint8_t *buf);
+
+extern void fault_status_report(void);
+// extern void fault_periodic();
 // extern void fault_datalink_callback();
 
 #endif

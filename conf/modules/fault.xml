@@ -19,6 +19,9 @@
     <file name="fault.h"/>
   </header>
   <init fun="fault_init()"/>
+  <periodic fun="fault_status_report()" freq="4" autorun="TRUE"/>
+  
+  <datalink message="FAULT_INFO" fun="fault_parse_FAULT_INFO(buf)"/>
   <!--periodic fun="fault_periodic()" freq="60" autorun="TRUE"/-->
   <!--event fun="fault_event()"/>
   <datalink message="fault_datalink_event()" fun="fault_datalink_callback()"/-->

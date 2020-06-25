@@ -31,16 +31,32 @@
 #include "modules/loggers/sdlog_chibios.h"
 #endif
 
+// #include "modules/datalink/extra_pprz_dl.h"
+// #include "subsystems/datalink/telemetry.h"
+#include <string.h>
+#include "generated/airframe.h"
+#include "subsystems/datalink/datalink.h"
+#include "subsystems/datalink/downlink.h"
+
 float fault_right;
 float fault_left;
 float fault_offset_right;
 float fault_offset_left;
+
+
+static void fault_downlink(struct transport_tx *trans, struct link_device *dev){
+  pprz_msg_send_FAULT_TELEMETRY(trans, dev, AC_ID, &flight_status);
+}
 
 void fault_init(void) {
 fault_right = 1.0;
 fault_left  = 1.0; 
 fault_offset_left  = 0.0; 
 fault_offset_right  = 0.0; 
+
+#if PERIODIC_TELEMETRY
+  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FAULT_TELEMETRY, fault_downlink);
+#endif
 }
 
 void fault_Set_Right(float _v)
@@ -87,8 +103,18 @@ void fault_Set_Offset_Left(float _v)
 #endif
 }
 
+void fault_parse_FAULT_INFO(uint8_t *buf)
+{
+  int flight_status =  DL_FAULT_INFO_info(buf);
+}
 
-// void fault_event() {}
+void fault_status_report(void)
+{
+  // DOWNLINK_SEND_FAULT_TELEMETRY()
+  fault_downlink(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
+}
+
+// void fault_periodic() {}
 // void fault_datalink_callback() {}
 
 

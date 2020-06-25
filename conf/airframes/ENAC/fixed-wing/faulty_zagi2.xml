@@ -47,7 +47,12 @@
     <module name="takeoff_detect"/>
 
     <module name="fault" />
-    <module name="fault_prediction" />
+    <!-- <module name="fault_prediction" /> -->
+
+    <module name="extra_dl">
+      <configure name="EXTRA_DL_PORT" value="UART6"/>
+      <configure name="EXTRA_DL_BAUD" value="B115200"/>
+    </module>
 
     <module name="tlsf"/>
     <module name="pprzlog"/>
