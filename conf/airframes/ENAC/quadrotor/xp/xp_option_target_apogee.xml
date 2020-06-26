@@ -1,6 +1,6 @@
 <airframe>
 
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_common_target_flying.xml"/>
+
 
   <!--Info: Tawaki: Auxa1, Apogee: PPMin -->
   <module name="light_scheduler">

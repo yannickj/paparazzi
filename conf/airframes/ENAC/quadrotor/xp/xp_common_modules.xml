@@ -2,6 +2,8 @@
 
   <module name="telemetry" type="xbee_api"/>
 
+  <module name="ahrs" type="int_cmpl_quat" />
+
   <module name="stabilization" type="int_quat"/>
   <module name="motor_mixing"/>
   <module name="air_data"/>
