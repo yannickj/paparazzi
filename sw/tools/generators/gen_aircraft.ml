@@ -188,7 +188,6 @@ let () =
      *  Expands the configuration of the A/C into one single file
      *)
 
-    (*let conf_aircraft = Env.expand_ac_xml aircraft_xml in*)
     let configuration =
       make_element
         "configuration" []
