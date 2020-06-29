@@ -69,7 +69,7 @@ let send_aircrafts_msg = fun _asker _values ->
 let expand_aicraft x =
   let ac_name = ExtXml.attrib x "name" in
   try
-    let ac = Aircraft.parse_aircraft ~verbose:true ~parse_all:true "" x in
+    let ac = Aircraft.parse_aircraft ~parse_all:true "" x in
     if List.length ac.Aircraft.xml > 0 then Xml.Element (Xml.tag x, Xml.attribs x, ac.Aircraft.xml)
     else failwith "Nothing to parse"
   with Failure msg ->
