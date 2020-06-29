@@ -44,7 +44,6 @@ let print_headers = fun out modules ->
     List.iter (fun h ->
       let dir = match h.Module.directory with None -> dirname | Some d -> d in
       Printf.fprintf out "#include \"%s/%s\"\n" dir h.Module.filename
-      (* TODO: Filename.concat? *)
     ) m.Module.headers
   ) modules
 

@@ -192,7 +192,7 @@ type selected_t = Selected | Unselected | Unknown
 (* Get the settings (string list) with current modules *)
 let get_settings_modules = fun ac_id aircraft_xml settings_modules ->
   (* get modules *)
-  let ac = Aircraft.parse_aircraft ~gen_af:true ~gen_ap:true ~gen_fp:true "" aircraft_xml in
+  let ac = Aircraft.parse_aircraft ~parse_af:true ~parse_ap:true ~parse_fp:true "" aircraft_xml in
   let modules = List.map (fun m -> (m.Module.xml, m.Module.xml_filename)) ac.Aircraft.all_modules in
   (* get list of settings files *)
   let settings = List.fold_left (fun l (m, f) ->

@@ -46,14 +46,45 @@ let paparazzi_conf = paparazzi_home // "conf"
 let flight_plans_path = paparazzi_conf // "flight_plans"
 let flight_plan_dtd = flight_plans_path // "flight_plan.dtd"
 
+(** Returns the list of directories where to look for modules
+ * Default PAPARAZZI_HOME/conf/modules is always returned
+ * Extra directories can be added with PAPARAZZI_MODULES_PATH
+ * where where items are ':' separated and modules are in subfolders
+ * of a 'modules' folder
+ * ex:
+ *   PAPARAZZI_MODULES_PATH=/home/me/pprz_modules
+ *   - pprz_modules/modules
+ *   -- module1
+ *   --- module1.xml
+ *   --- module1.c
+ *   --- module1.h
+ *   -- module2
+ *   --- module2.xml
+ *   --- module2.c
+ *   --- module2.h
+ *)
 let modules_paths =
   let default_path = paparazzi_conf // "modules" in
   try
-    let path = Sys.getenv "PAPRAZZI_MODULES_PATH" in
-    (Str.split (Str.regexp ":") path) @ [default_path]
+    let path = Sys.getenv "PAPARAZZI_MODULES_PATH" in
+    let dirs = Str.split (Str.regexp ":") path in
+    let paths = List.fold_left (fun dl dir ->
+      let sub_dirs = List.fold_left (fun sdl sdir ->
+        let d = dir // "modules" // sdir in
+        if Sys.is_directory d then d :: sdl else sdl
+      ) [] (Array.to_list (Sys.readdir (dir // "modules"))) in
+      dl @ sub_dirs) [] dirs
+    in
+    paths @ [default_path]
   with
-  | Not_found -> [default_path]
+  | Sys_error _ | Not_found -> [default_path]
 
+(** Returns the list of directories in PAPARAZZI_MODULES_PATH *)
+let modules_ext_paths =
+  try
+    let path = Sys.getenv "PAPARAZZI_MODULES_PATH" in
+    Str.split (Str.regexp ":") path
+  with _ -> []
 
 let icon_file = paparazzi_home // "data/pictures/penguin_icon.png"
 let icon_gcs_file = paparazzi_home // "data/pictures/penguin_icon_gcs.png"

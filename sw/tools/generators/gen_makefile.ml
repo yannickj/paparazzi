@@ -130,6 +130,10 @@ let dump_target_conf = fun out target conf ->
   let dir_list = singletonize (List.fold_left (fun l (_, m) -> match m.Module.dir with
     | None -> m.Module.name::l | Some d -> d::l) [] conf.AC.modules) in
   List.iter (fun d -> fprintf out "%s_DIR = modules/%s\n" (Compat.uppercase_ascii d) d) dir_list;
+  List.iter (fun p ->
+    fprintf out "VPATH += %s\n" p;
+    fprintf out "$(TARGET).CFLAGS += -I%s/modules\n" p
+  ) Env.modules_ext_paths;
   fprintf out "\n";
   if conf.AC.autopilot then
     fprintf out "USE_GENERATED_AUTOPILOT = TRUE\n";

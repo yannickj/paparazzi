@@ -199,7 +199,7 @@ let get_all_modules = fun config_by_target ->
     
 
 
-let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_rc=false) ?(gen_tl=false) ?(gen_set=false) ?(gen_all=false) ?(verbose=false) target aircraft_xml ->
+let parse_aircraft = fun ?(parse_af=false) ?(parse_ap=false) ?(parse_fp=false) ?(parse_rc=false) ?(parse_tl=false) ?(parse_set=false) ?(parse_all=false) ?(verbose=false) target aircraft_xml ->
 
   let name = Xml.attrib aircraft_xml "name" in
   let conf_aircraft = [] in (* accumulate aircraft XML config *)
@@ -208,7 +208,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
 
   if verbose then
     Printf.printf "Parsing airframe%!";
-  let airframe = get_config_element (gen_af || gen_all) aircraft_xml "airframe" Airframe.from_file in
+  let airframe = get_config_element (parse_af || parse_all) aircraft_xml "airframe" Airframe.from_file in
   if verbose then
     Printf.printf " '%s'%!" (match airframe with None -> "None" | Some a -> a.Airframe.filename);
   let conf_aircraft = conf_aircraft @ (match airframe with None -> [] | Some x -> [x.Airframe.xml]) in
@@ -217,7 +217,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
   sort_airframe_by_target config_by_target airframe;
   if verbose then
     Printf.printf ", extracting and parsing autopilot...%!";
-  let autopilots = if gen_ap || gen_all then
+  let autopilots = if parse_ap || parse_all then
     begin
       match airframe with
       | None -> None
@@ -264,7 +264,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
   
   if verbose then
     Printf.printf "Parsing flight plan%!";
-  let flight_plan = get_config_element (gen_fp || gen_all) aircraft_xml "flight_plan" Flight_plan.from_file in
+  let flight_plan = get_config_element (parse_fp || parse_all) aircraft_xml "flight_plan" Flight_plan.from_file in
   if verbose then begin
     Printf.printf " '%s'%!" (match flight_plan with None -> "None" | Some fp -> fp.Flight_plan.filename);
     Printf.printf ", extracting modules...%!"
@@ -288,7 +288,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
 
   if verbose then
     Printf.printf "Parsing radio%!";
-  let radio = get_config_element (gen_rc || gen_all) aircraft_xml "radio" Radio.from_file in
+  let radio = get_config_element (parse_rc || parse_all) aircraft_xml "radio" Radio.from_file in
   if verbose then
     Printf.printf " '%s'...%!" (match radio with None -> "None" | Some rc -> rc.Radio.filename);
   let conf_aircraft = conf_aircraft @ (match radio with None -> [] | Some x -> [x.Radio.xml]) in
@@ -297,7 +297,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
 
   if verbose then
     Printf.printf "Parsing telemetry%!";
-  let telemetry = get_config_element (gen_tl || gen_all) aircraft_xml "telemetry" Telemetry.from_file in
+  let telemetry = get_config_element (parse_tl || parse_all) aircraft_xml "telemetry" Telemetry.from_file in
   if verbose then
     Printf.printf " '%s'...%!" (match telemetry with None -> "None" | Some tl -> tl.Telemetry.filename);
   let conf_aircraft = conf_aircraft @ (match telemetry with None -> [] | Some x -> [x.Telemetry.xml]) in
@@ -311,7 +311,7 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
   if verbose then
     Printf.printf "Parsing settings...%!";
   let settings =
-    if gen_set || gen_all then begin
+    if parse_set || parse_all then begin
       (* normal settings *)
       let settings = try Env.filter_settings (ExtXml.attrib aircraft_xml "settings") with _ -> "" in
       let settings_files = Str.split (Str.regexp " ") settings in
@@ -324,7 +324,9 @@ let parse_aircraft = fun ?(gen_af=false) ?(gen_ap=false) ?(gen_fp=false) ?(gen_r
       let settings_modules_files = Str.split (Str.regexp " ") settings_modules in
       let settings_modules = List.fold_left
           (fun acc m ->
-            if List.exists (fun name -> m.Module.xml_filename = (Env.paparazzi_conf // name)) settings_modules_files
+            if List.exists (fun name ->
+              m.Module.xml_filename = (if Filename.is_relative name
+              then (Env.paparazzi_conf // name) else name)) settings_modules_files
             then acc @ m.Module.settings else acc
           ) [] loaded_modules in
       (* system settings *)

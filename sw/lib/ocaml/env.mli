@@ -34,6 +34,7 @@ val flight_plans_path : string
 val flight_plan_dtd : string
 
 val modules_paths : string list
+val modules_ext_paths : string list
 
 val icon_file : string
 (** PNG paparazzi logo icon (48 x 48, 8-bit/color RGBA, non-interlaced) *)

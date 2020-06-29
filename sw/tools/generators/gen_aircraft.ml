@@ -93,9 +93,10 @@ let copy_file = fun source dest ->
  *
  * [a' -> (a' -> unit) -> (string * string list) list -> unit]
  *)
-let generate_config_element = fun elt f dep_list ->
-  if List.exists (fun (file, dep) -> is_older file dep) dep_list then f elt
-  else ()
+let generate_config_element = fun ?(verbose=true) elt f dep_list ->
+  if List.exists (fun (file, dep) -> is_older file dep) dep_list
+  then begin if verbose then Printf.printf "(updated)"; f elt end
+  else if verbose then Printf.printf "(unchanged)"
 
 (******************************* MAIN ****************************************)
 let () =
@@ -181,7 +182,7 @@ let () =
      *  Parse file if needed
      *)
 
-    let ac = Aircraft.parse_aircraft ~gen_af:!gen_af ~gen_ap:!gen_ap ~gen_fp:!gen_fp ~gen_rc:!gen_rc ~gen_set:!gen_rc ~gen_all:!gen_all ~verbose:true target aircraft_xml in
+    let ac = Aircraft.parse_aircraft ~parse_af:!gen_af ~parse_ap:!gen_ap ~parse_fp:!gen_fp ~parse_rc:!gen_rc ~parse_set:!gen_rc ~parse_all:!gen_all ~verbose:true target aircraft_xml in
 
     (*
      *  Expands the configuration of the A/C into one single file
@@ -231,14 +232,18 @@ let () =
     Printf.printf "Dumping aircraft header...%!";
     let abs_airframe_h = aircraft_gen_dir // airframe_h in
     begin match ac.Aircraft.airframe with
-      | None -> ()
+      | None -> Printf.printf "(skip)"
       | Some airframe ->
+        let inc = List.map (fun i ->
+          let href = i.Airframe.Include.href in
+          Str.global_replace (Str.regexp "\\$AC_ID") (value "ac_id") href
+        ) airframe.Af.includes in
         generate_config_element airframe
           (fun e ->
              Gen_airframe.generate
                e (value "ac_id") (get_string_opt !ac_name)
                md5sum airframe.Airframe.filename abs_airframe_h)
-          [ (abs_airframe_h, [airframe.Airframe.filename]) ];
+          [ (abs_airframe_h, [airframe.Airframe.filename] @ inc) ];
         (* save conf file in aircraft conf dir *)
         begin match Aircraft.get_element_relative_path (!gen_af || !gen_all) aircraft_xml "airframe" with
           | None -> ()
@@ -250,11 +255,10 @@ let () =
         end;
     end;
     Printf.printf " done\n%!";
-    (* TODO add dep in included files *)
 
     Printf.printf "Dumping autopilot header...%!";
     begin match ac.Aircraft.autopilots with
-      | None -> ()
+      | None ->  Printf.printf "(skip)"
       | Some autopilots ->
           List.iter (fun (freq, autopilot) ->
             let dep = List.map (fun sm ->
@@ -271,14 +275,14 @@ let () =
     let abs_flight_plan_h = aircraft_gen_dir // flight_plan_h in
     let abs_flight_plan_dump = aircraft_dir // flight_plan_xml in
     begin match ac.Aircraft.flight_plan with
-      | None -> ()
+      | None -> Printf.printf "(skip)"
       | Some flight_plan ->
         generate_config_element flight_plan
           (fun e ->
              Gen_flight_plan.generate
                e flight_plan.Flight_plan.filename abs_flight_plan_h)
           [ (abs_flight_plan_h, [flight_plan.Flight_plan.filename]) ];
-        generate_config_element flight_plan
+        generate_config_element ~verbose:false flight_plan
           (fun e ->
              Gen_flight_plan.generate
                e ~dump:true flight_plan.Flight_plan.filename abs_flight_plan_dump)
@@ -297,7 +301,7 @@ let () =
     Printf.printf "Dumping radio header...%!";
     let abs_radio_h = aircraft_gen_dir // radio_h in
     begin match ac.Aircraft.radio with
-      | None -> ()
+      | None -> Printf.printf "(skip)"
       | Some radio ->
         generate_config_element radio
           (fun e -> Gen_radio.generate e radio.Radio.filename abs_radio_h)
@@ -307,7 +311,7 @@ let () =
     Printf.printf "Dumping telemetry header...%!";
     let abs_telemetry_h = aircraft_gen_dir // periodic_h in
     begin match ac.Aircraft.telemetry with
-      | None -> ()
+      | None -> Printf.printf "(skip)"
       | Some telemetry ->
         generate_config_element telemetry
           (fun e -> Gen_periodic.generate e !tl_freq abs_telemetry_h)
@@ -327,7 +331,7 @@ let () =
     let abs_settings_h = aircraft_gen_dir // settings_h in
     let abs_settings_xml = aircraft_dir // settings_xml in
     begin match ac.Aircraft.settings with
-      | None -> ()
+      | None -> Printf.printf "(skip)"
       | Some settings ->
         let dep_list = List.fold_left
           (fun l s -> if Sys.file_exists s.Settings.filename then s.Settings.filename :: l else l) [] settings
