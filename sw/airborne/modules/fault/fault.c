@@ -42,7 +42,7 @@ float fault_right;
 float fault_left;
 float fault_offset_right;
 float fault_offset_left;
-
+int flight_status;
 
 static void fault_downlink(struct transport_tx *trans, struct link_device *dev){
   pprz_msg_send_FAULT_TELEMETRY(trans, dev, AC_ID, &flight_status);
@@ -105,7 +105,7 @@ void fault_Set_Offset_Left(float _v)
 
 void fault_parse_FAULT_INFO(uint8_t *buf)
 {
-  int flight_status =  DL_FAULT_INFO_info(buf);
+  flight_status =  DL_FAULT_INFO_info(buf);
 }
 
 void fault_status_report(void)
