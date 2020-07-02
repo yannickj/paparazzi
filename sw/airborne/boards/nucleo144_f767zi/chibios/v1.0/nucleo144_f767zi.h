@@ -25,36 +25,36 @@
 /*
  * LEDs
  */
-/* red, on PD15, 1 on LED_ON, 0 on LED_OFF */
+/* green, on PB0 (SB120 on, SB119 off), 1 on LED_ON, 0 on LED_OFF */
 #ifndef USE_LED_1
 #define USE_LED_1 1
 #endif
-#define LED_1_GPIO GPIOD
-#define LED_1_GPIO_PIN GPIO15
+#define LED_1_GPIO GPIOB
+#define LED_1_GPIO_PIN GPIO0
 #define LED_1_GPIO_ON gpio_set
 #define LED_1_GPIO_OFF gpio_clear
 
-/* orange, on PA10, 1 on LED_ON, 0 on LED_OFF */
+/* blue, on PB7, 1 on LED_ON, 0 on LED_OFF */
 #ifndef USE_LED_2
 #define USE_LED_2 1
 #endif
-#define LED_2_GPIO GPIOA
-#define LED_2_GPIO_PIN GPIO10
+#define LED_2_GPIO GPIOB
+#define LED_2_GPIO_PIN GPIO7
 #define LED_2_GPIO_ON gpio_set
 #define LED_2_GPIO_OFF gpio_clear
 
-/* green, on PC7, 1 on LED_ON, 0 on LED_OFF */
+/* red, on PB14, 1 on LED_ON, 0 on LED_OFF (disabled by default as shared with SPI2) */
 #ifndef USE_LED_3
-#define USE_LED_3 1
+#define USE_LED_3 0
 #endif
-#define LED_3_GPIO GPIOC
-#define LED_3_GPIO_PIN GPIO7
+#define LED_3_GPIO GPIOB
+#define LED_3_GPIO_PIN GPIO14
 #define LED_3_GPIO_ON gpio_set
 #define LED_3_GPIO_OFF gpio_clear
 
-/* yellow, on PD10, 1 on LED_ON, 0 on LED_OFF */
+/* yellow, on PD10, 1 on LED_ON, 0 on LED_OFF (not really a LED, disabled by default) */
 #ifndef USE_LED_4
-#define USE_LED_4 1
+#define USE_LED_4 0
 #endif
 #define LED_4_GPIO GPIOD
 #define LED_4_GPIO_PIN GPIO10
