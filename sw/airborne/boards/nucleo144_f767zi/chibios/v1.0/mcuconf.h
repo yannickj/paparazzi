@@ -43,11 +43,11 @@
 #define STM32_HSI_ENABLED                   TRUE
 #define STM32_LSI_ENABLED                   FALSE
 #define STM32_HSE_ENABLED                   TRUE
-#define STM32_LSE_ENABLED                   FALSE
+#define STM32_LSE_ENABLED                   TRUE
 #define STM32_CLOCK48_REQUIRED              TRUE
 #define STM32_SW                            STM32_SW_PLL
 #define STM32_PLLSRC                        STM32_PLLSRC_HSE
-#define STM32_PLLM_VALUE                    16
+#define STM32_PLLM_VALUE                    8
 #define STM32_PLLN_VALUE                    432
 #define STM32_PLLP_VALUE                    2
 #define STM32_PLLQ_VALUE                    9
@@ -55,7 +55,7 @@
 #define STM32_PPRE1                         STM32_PPRE1_DIV4
 #define STM32_PPRE2                         STM32_PPRE2_DIV2
 #if HAL_USE_RTC
-#define STM32_RTCSEL                        STM32_RTCSEL_HSEDIV
+#define STM32_RTCSEL                        STM32_RTCSEL_LSE
 #else
 #define STM32_RTCSEL                        STM32_RTCSEL_NOCLOCK
 #endif
@@ -119,7 +119,7 @@
 /*
  * ADC driver system settings.
  */
-#define STM32_ADC_ADCPRE                    ADC_CCR_ADCPRE_DIV8
+#define STM32_ADC_ADCPRE                    ADC_CCR_ADCPRE_DIV4
 #define STM32_ADC_USE_ADC1                  TRUE
 #define STM32_ADC_USE_ADC2                  FALSE
 #define STM32_ADC_USE_ADC3                  FALSE
