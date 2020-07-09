@@ -1714,7 +1714,9 @@
 
     <!-- 212 is not free anymore-->
     <message name="FAULT_TELEMETRY" id="212">
-      <field name="info" type="int16" />
+      <field name="info"  type="int16" />
+      <field name="type"  type="int16" />
+      <field name="class" type="int16" />
     </message>
 
     <message name="TUNE_VERT" id="213">

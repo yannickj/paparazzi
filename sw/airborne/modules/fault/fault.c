@@ -24,9 +24,10 @@
  */
 
 #include "modules/fault/fault.h"
+#include "subsystems/datalink/telemetry.h"
 
 #if FLIGHTRECORDER_SDLOG
-#include "subsystems/datalink/telemetry.h"
+//#include "subsystems/datalink/telemetry.h"
 #include "modules/loggers/pprzlog_tp.h"
 #include "modules/loggers/sdlog_chibios.h"
 #endif
@@ -42,17 +43,22 @@ float fault_right;
 float fault_left;
 float fault_offset_right;
 float fault_offset_left;
-int flight_status;
+int16_t fault_info;
+int16_t fault_type;
+int16_t fault_class;
 
 static void fault_downlink(struct transport_tx *trans, struct link_device *dev){
-  pprz_msg_send_FAULT_TELEMETRY(trans, dev, AC_ID, &flight_status);
+  pprz_msg_send_FAULT_TELEMETRY(trans, dev, AC_ID, &fault_info, &fault_type, &fault_class);
 }
 
 void fault_init(void) {
-fault_right = 1.0;
-fault_left  = 1.0; 
-fault_offset_left  = 0.0; 
-fault_offset_right  = 0.0; 
+  fault_right = 1.0;
+  fault_left  = 1.0; 
+  fault_offset_left  = 0.0; 
+  fault_offset_right  = 0.0; 
+  fault_info = 0;
+  fault_type = 0;
+  fault_class = 0;
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FAULT_TELEMETRY, fault_downlink);
@@ -105,7 +111,9 @@ void fault_Set_Offset_Left(float _v)
 
 void fault_parse_FAULT_INFO(uint8_t *buf)
 {
-  flight_status =  DL_FAULT_INFO_info(buf);
+  fault_info  =  DL_FAULT_INFO_info(buf);
+  fault_type  =  DL_FAULT_INFO_type(buf);
+  fault_class =  DL_FAULT_INFO_class(buf);
 }
 
 void fault_status_report(void)

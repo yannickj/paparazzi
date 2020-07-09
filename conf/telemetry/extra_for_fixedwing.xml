@@ -145,9 +145,10 @@
     <mode name="default">
       <message name="ALIVE" period="11.1"/>
       <message name="GPS" period="1.1"/>
-      <message name="IMU_ACCEL"      period="0.1"/>
-      <message name="IMU_GYRO"       period="0.1"/>
-      <message name="AIR_DATA" period="5.1"/>
+      <message name="IMU_ACCEL"           period="0.1"/>
+      <message name="IMU_GYRO"            period="0.1"/>
+      <message name="COMMANDS"            period="0.1"/>
+      <message name="AIR_DATA"            period="0.1"/>
       <!-- <message name="ACTUATORS " period="1.6"/> -->
     </mode>
   </process>
