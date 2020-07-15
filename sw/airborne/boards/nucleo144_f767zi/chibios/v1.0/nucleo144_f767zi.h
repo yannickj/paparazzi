@@ -45,7 +45,7 @@
 
 /* red, on PB14, 1 on LED_ON, 0 on LED_OFF (disabled by default as shared with SPI2) */
 #ifndef USE_LED_3
-#define USE_LED_3 0
+#define USE_LED_3 1
 #endif
 #define LED_3_GPIO GPIOB
 #define LED_3_GPIO_PIN GPIO14
@@ -60,6 +60,13 @@
 #define LED_4_GPIO_PIN GPIO10
 #define LED_4_GPIO_ON gpio_set
 #define LED_4_GPIO_OFF gpio_clear
+
+
+/*
+ * Sensor input
+ */
+// #define SENSOR_1_CO2_GPIO GPIOC
+// #define SENSOR_1_CO2_GPIO_PIN GPIO1
 
 /*
  * ADCs
@@ -591,11 +598,24 @@
  * are configured as UART from ChibiOS board file by default
  */
 
+
+// In case, do dynamic config of UARTs
+#define USE_UART3_RX TRUE
+#define USE_UART3_TX TRUE
+// #ifndef USE_UART3_TX // may be used in half duplex mode
+// #define USE_UART3_TX FALSE
+// #endif
+// #define UART8_GPIO_PORT_RX GPIOE
+// #define UART8_GPIO_RX GPIO0
+// #define UART8_GPIO_AF 8
+
 #define UART3_GPIO_PORT_TX GPIOD
 #define UART3_GPIO_TX GPIO8
 #define UART3_GPIO_PORT_RX GPIOD
 #define UART3_GPIO_RX GPIO9
 #define UART3_GPIO_AF 7
+
+
 
 #define UART7_GPIO_PORT_TX GPIOA
 #define UART7_GPIO_TX GPIO15

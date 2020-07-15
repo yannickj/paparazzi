@@ -59,6 +59,12 @@
     <module name="pprzlog"/>
     <module name="logger" type="sd_chibios"/>
     <module name="flight_recorder"/>
+
+    <module name="ineris_sensors">
+      <configure name="INERIS_SENSORS_PORT" value="UART3"/>
+      <configure name="INERIS_SENSORS_BAUD" value="B9600"/>
+    </module>
+
   </firmware>
 
   <!-- commands section -->

@@ -269,6 +269,8 @@
 #define	LINE_B15_SPI2_EXTERNAL_MOSI    PAL_LINE(GPIOB, 15U)
 
 #define	LINE_C00_VBAT_MEAS             PAL_LINE(GPIOC, 0U)
+#define LINE_C01_K30_MEAS							 PAL_LINE(GPIOC, 1U)
+// #define LINE_C02_LMP50_MEAS						 PAL_LINE(GPIOC, 2U) //FIXME
 #define	LINE_C06_RC2                   PAL_LINE(GPIOC, 6U)
 #define	LINE_C07_LED3                  PAL_LINE(GPIOC, 7U)
 #define	LINE_C08_SDMMC1_D0             PAL_LINE(GPIOC, 8U)

@@ -262,7 +262,9 @@ bool mmc_lld_is_write_protected(MMCDriver *mmcp) {
  * @todo    Add your board-specific code, if any.
  */
 void boardInit(void) {
-
+  palSetLineMode(LINE_C01_K30_MEAS, PAL_MODE_INPUT);
+  // palSetLineMode(LINE_C02_LMP50_MEAS, PAL_MODE_INPUT);
+  // palSetLineMode(LINE_D07_K30_MEAS, PAL_MODE_INPUT);
 }
 
 /** Energy saving procedure for SD log closing
