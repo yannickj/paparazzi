@@ -7,7 +7,9 @@ if test $# -lt 1; then
     args="-t -i paparazziuav/pprz-dev"
 else
     # Use this script with derived images, and pass your 'docker run' args
-    args="$@"
+    echo stlink-tools
+    STLINK_NEEDED=1
+    args="-t -i paparazziuav/pprz-dev-stlink-tools"
 fi
 
 # check if running on Linux or OSX
@@ -90,6 +92,9 @@ if [ -z "$DISABLE_USB" ]; then
         USB_OPTS=$(find /dev -maxdepth 2 \( -name "ttyACM?" -or -name "ttyUSB?" -or -name "bmp-*" -or -path /dev/paparazzi/* \) -exec echo -n "--device={} " \; 2> /dev/null)
     else
         USB_OPTS=$(find /dev -maxdepth 1 \( -name "ttyACM?" -or -name "ttyUSB?" \) -exec echo -n "--device={} " \; 2> /dev/null)
+    fi
+    if [ STLINK_NEEDED ] ; then
+        USB_OPTS="--privileged $USB_OPTS"
     fi
     if [ -n "$USB_OPTS" ]; then
         echo Passing auto-detected USB devices: $USB_OPTS
