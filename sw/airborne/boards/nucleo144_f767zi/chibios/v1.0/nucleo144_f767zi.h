@@ -72,19 +72,29 @@
  * ADCs
  */
 // AUXa1
+#ifndef USE_ADC_1
+#define USE_ADC_1 TRUE
+#endif
+
 #if USE_ADC_1
 #define AD1_1_CHANNEL ADC_CHANNEL_IN0
 #define ADC_1 AD1_1
 #define ADC_1_GPIO_PORT GPIOA
-#define ADC_1_GPIO_PIN GPIO0
+#define ADC_1_GPIO_PIN GPIO1
+#define K30_ADC_CHANNEL1 ADC_1
 #endif
 
 // AUXa2
+#ifndef USE_ADC_2
+#define USE_ADC_2 TRUE
+#endif
+
 #if USE_ADC_2
 #define AD1_2_CHANNEL ADC_CHANNEL_IN1
 #define ADC_2 AD1_2
 #define ADC_2_GPIO_PORT GPIOA
-#define ADC_2_GPIO_PIN GPIO1
+#define ADC_2_GPIO_PIN GPIO2
+#define K30_ADC_CHANNEL2 ADC_2
 #endif
 
 // AUXa3

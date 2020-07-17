@@ -243,7 +243,8 @@
 #define	LINE_A00_AUX_A1                PAL_LINE(GPIOA, 0U)
 #define	LINE_A01_AUX_A2                PAL_LINE(GPIOA, 1U)
 #define	LINE_A02_AUX_A3                PAL_LINE(GPIOA, 2U)
-#define	LINE_A03_AUX_B1                PAL_LINE(GPIOA, 3U)
+// #define	LINE_A03_AUX_B1                PAL_LINE(GPIOA, 3U)
+#define LINE_A03_K30_MEAS							 PAL_LINE(GPIOA, 3U)
 #define	LINE_A06_AUX_A4                PAL_LINE(GPIOA, 6U)
 #define	LINE_A07_AUX_B2                PAL_LINE(GPIOA, 7U)
 #define	LINE_A09_USB_VBUS              PAL_LINE(GPIOA, 9U)
@@ -269,7 +270,7 @@
 #define	LINE_B15_SPI2_EXTERNAL_MOSI    PAL_LINE(GPIOB, 15U)
 
 #define	LINE_C00_VBAT_MEAS             PAL_LINE(GPIOC, 0U)
-#define LINE_C01_K30_MEAS							 PAL_LINE(GPIOC, 1U)
+// #define LINE_C01_K30_MEAS							 PAL_LINE(GPIOC, 1U)
 // #define LINE_C02_LMP50_MEAS						 PAL_LINE(GPIOC, 2U) //FIXME
 #define	LINE_C06_RC2                   PAL_LINE(GPIOC, 6U)
 #define	LINE_C07_LED3                  PAL_LINE(GPIOC, 7U)
