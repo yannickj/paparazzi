@@ -29,7 +29,7 @@
 #define K30_I2C_H
 
 /* Header includes */
-// #include "peripherals/k30_regs.h"
+#include "peripherals/k30_regs.h"
 #include "mcu_periph/i2c.h"
 
 struct K30_I2c {

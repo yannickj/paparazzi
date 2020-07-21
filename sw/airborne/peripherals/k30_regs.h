@@ -54,7 +54,17 @@ enum K30Status {
   K30_STATUS_READ_DATA
 };
 
-#endif
+struct k30_reg_calib_data {
+  uint16_t par_t1;
+};
+
+//for DOUBLE_PRECISION_COMPENSATION
+/**
+ * @brief Quantized Trim Variables
+ */
+struct k30_quantized_calib_data {
+  double par_t1;
+}
 
 /** MS byte are always at lower address */
 #define K30_CO2                  0x08 //in RAM
