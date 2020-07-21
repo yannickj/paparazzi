@@ -30,14 +30,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "mcu_periph/uart.h"
-
 #include "mcu_periph/adc.h"
+#include "mcu_periph/sys_time_arch.h"
 
 #include "modules/ineris/ineris_sensors.h"
 
-#include <math.h>
+// #include "peripherals/k30_i2c.h"
 
 
 // uart periph
@@ -166,7 +167,7 @@ void send_request_k30(enum request_t req){
       // uart_put_buffer(k_30_serial, 0, cmd_init, 8);
       break;
   }
-  chThdSleepMilliseconds(100); //FIXME Deal it with State management instead of sleep
+  sys_time_msleep(100); //FIXME Deal it with State management instead of sleep
 
   // uint8_t timeout = 0;
   // wait to get a 7 byte response (arduino : while serial.availabble() < 7 )
@@ -176,9 +177,9 @@ void send_request_k30(enum request_t req){
       //flush serial (Serial.read)
       //break
     }
-    chThdSleepMilliseconds(50);
+    sys_time_msleep(50);
   }*/
-  chThdSleepMilliseconds(250); //FIXME
+  sys_time_msleep(250); //FIXME
   
   for(int i = 0; i < 7; i++){
     // response[i] = uart_getch(k_30_serial);
@@ -257,29 +258,28 @@ void k30_periodic(){
 void led_pattern(int id){
   if (id == 1){
     LED_TOGGLE(2);
-    chThdSleepMilliseconds(20);
+    sys_time_msleep(20);
     LED_TOGGLE(2);
-    chThdSleepMilliseconds(20);
     LED_TOGGLE(2);
-    chThdSleepMilliseconds(20);
+    sys_time_msleep(20);
     LED_TOGGLE(2);
-    chThdSleepMilliseconds(20);
+    sys_time_msleep(20);
     LED_TOGGLE(2);
-    chThdSleepMilliseconds(20);
+    sys_time_msleep(20);
     LED_OFF(2);
     return;
   }
   if (id == 2){
     LED_ON(2);
-    chThdSleepMilliseconds(200);
+    sys_time_msleep(200);
     LED_OFF(2);
     LED_ON(3);
-    chThdSleepMilliseconds(200);
+    sys_time_msleep(200);
     LED_OFF(3);
     LED_ON(2);
-    chThdSleepMilliseconds(200);
+    sys_time_msleep(200);
     LED_OFF(2);
-    chThdSleepMilliseconds(200);
+    sys_time_msleep(200);
     return;
   }
 }
