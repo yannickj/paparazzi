@@ -64,7 +64,8 @@ struct k30_reg_calib_data {
  */
 struct k30_quantized_calib_data {
   double par_t1;
-}
+  double t_lin;
+};
 
 /** MS byte are always at lower address */
 #define K30_CO2                  0x08 //in RAM
@@ -80,9 +81,19 @@ struct k30_quantized_calib_data {
 #define K30_ABC_PERIOD           0x40 // 2 bytes (MS at lower address), unit 1 hour, write 0 to disable ABC 
 #define K30_ABC_ON_OFF           // bit 1 in METER_CONTROL EEPROM
 
+
+// TODO define these registers, remove #define K30_DEFAULT_REGISTER after
+#define K30_DEFAULT_REGISTER 0
+#define K30_CALIB_DATA_ADDR             K30_DEFAULT_REGISTER
+#define K30_CALIB_DATA_LEN              K30_DEFAULT_REGISTER
+#define K30_SENS_STATUS_REG_ADDR        K30_DEFAULT_REGISTER
+#define K30_C02_AND_T_HEADER_DATA_LEN   K30_DEFAULT_REGISTER
+#define K30_ALL                         K30_DEFAULT_REGISTER
+#define K30_I2C_ADDR                    K30_I2C_ADDR_RD
+
 /** Fractional filters */
-#define K30_FRACTIONAL_ALGO_OFF   // bit 2 IN METER_CONTROL (1 disabled)
-#define K30_DYN_FRACTIONAL_ALGO_OFF // bit 3 in METER_CONTROL
+#define K30_FRACTIONAL_ALGO_OFF         K30_DEFAULT_REGISTER //TODO bit 2 IN METER_CONTROL (1 disabled)
+#define K30_DYN_FRACTIONAL_ALGO_OFF     K30_DEFAULT_REGISTER //TODO bit 3 in METER_CONTROL
 #define K30_DEFAULT_FRAC            0x4A // (1..8 range)
 
 #endif /* K30_REGS_H */

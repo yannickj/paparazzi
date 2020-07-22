@@ -154,6 +154,7 @@ void k30_i2c_event(struct K30_I2c *k30)
 
 static void parse_sensor_data(struct K30_I2c *k30)
 {
+  (void) k30; //rm warning
   /* Temporary variables to store the sensor data */
 
   /* Store the parsed register values for co2 concentration data */
@@ -172,7 +173,7 @@ static void parse_sensor_data(struct K30_I2c *k30)
  */
 static void parse_calib_data(struct K30_I2c *k30)
 {
-  
+  (void) k30; //rm warning
 }
 
 /**
@@ -190,6 +191,7 @@ static double compensate_temperature(struct K30_I2c *k30)
  */
 static double compensate_co2(struct K30_I2c *k30)
 {
+  (void) k30; //rm warning
   /* Variable to store the compensated co2 concentration */
   double comp_press;
 

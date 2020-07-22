@@ -38,7 +38,9 @@
 
 #include "modules/ineris/ineris_sensors.h"
 
-// #include "peripherals/k30_i2c.h"
+#include "peripherals/k30_i2c.h"
+#include "peripherals/k30_regs.h"
+#include "peripherals/lmp91000_i2c.h"
 
 
 // uart periph

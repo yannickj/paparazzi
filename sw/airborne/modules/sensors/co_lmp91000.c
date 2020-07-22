@@ -38,7 +38,7 @@
 #define LMP91000_SLAVE_ADDR LMP91000_I2C_ADDR
 #endif
 
-struct LMP91000_I2c co_lmp91000;
+struct Lmp91000_I2c co_lmp91000;
 
 void co_lmp91000_init(void)
 {
@@ -55,7 +55,7 @@ void co_lmp91000_event(void)
   lmp91000_i2c_event(&co_lmp91000);
 
   if (co_lmp91000.data_available) {
-    uint32_t now_ts = get_sys_time_usec();
+    // uint32_t now_ts = get_sys_time_usec();
     // send ABI message
     // AbiSendMsgBARO_ABS(BARO_LMP91000_SENDER_ID, now_ts, co_lmp91000.pressure);
     // AbiSendMsgTEMPERATURE(BARO_LMP91000_SENDER_ID, co_lmp91000.temperature);

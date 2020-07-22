@@ -65,6 +65,14 @@
       <configure name="INERIS_SENSORS_BAUD" value="B9600"/>
     </module>
 
+    <module name ="co2_k30">
+      <configure name="K30_I2C_DEV" value="i2c4"/>
+    </module>
+
+    <module name ="co_lmp91000">
+      <configure name="LMP91000_I2C_DEV" value="i2c4"/>
+    </module>
+
   </firmware>
 
   <!-- commands section -->

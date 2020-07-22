@@ -29,14 +29,24 @@
 #include "peripherals/lmp91000_i2c.h"
 #include "mcu_periph/sys_time_arch.h"
 
+
+// definition of array
+const double LMP91000_TIA_GAIN[] = {2750,3500,7000,14000,35000,120000,350000};
+const double LMP91000_TIA_BIAS[] = {0, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22, 0.24};
+const double LMP91000_TIA_ZERO[] = {0.2, 0.5, 0.67};
+
 // TODO local function declarations
+
+static void parse_sensor_data(struct Lmp91000_I2c *lmp91000);
+static double compensate_temperature(struct Lmp91000_I2c *lmp91000);
+static double compensate_co(struct Lmp91000_I2c *lmp91000);
 
 /**
  * init function
  */
 void lmp91000_i2c_init(struct Lmp91000_I2c *lmp91000, struct i2c_periph *i2c_periph, uint8_t addr){
   /* set i2c_peripheral */
-  lmp91000->i2c_p = i2c_p;
+  lmp91000->i2c_p = i2c_periph;
 
   /* slave address */
   lmp91000->i2c_trans.slave_addr = addr;
@@ -49,41 +59,41 @@ void lmp91000_i2c_init(struct Lmp91000_I2c *lmp91000, struct i2c_periph *i2c_per
 }
 
 void lmp91000_i2c_periodic(struct Lmp91000_I2c *lmp91000){
-  if (k30->i2c_trans.status != I2CTransDone) {
+  if (lmp91000->i2c_trans.status != I2CTransDone) {
     return; // transaction not finished
   }
 
-  switch (k30->status) {
-    case K30_STATUS_UNINIT:
-      k30->data_available = false;
-      k30->initialized = false;
-      k30->status = K30_STATUS_CONFIGURE;
+  switch (lmp91000->status) {
+    case LMP91000_STATUS_UNINIT:
+      lmp91000->data_available = false;
+      lmp91000->initialized = false;
+      lmp91000->status = LMP91000_STATUS_CONFIGURE;
       break;
 
-    // case K30_STATUS_GET_CALIB:
+    // case LMP91000_STATUS_GET_CALIB:
     //   break;
 
-    case K30_STATUS_CONFIGURE:
+    case LMP91000_STATUS_CONFIGURE:
       // // From datasheet, recommended config for drone usecase:
       // // osrs_p = 8, osrs_t = 1
       // // IIR filter = 2 (note: this one doesn't exist...)
       // // ODR = 50
-      // k30->i2c_trans.buf[0] = K30_PWR_CTRL_ADDR;
-      // k30->i2c_trans.buf[1] = K30_ALL | K30_NORMAL_MODE << 4;
-      // k30->i2c_trans.buf[2] = K30_OSR_ADDR;
-      // k30->i2c_trans.buf[3] = K30_OVERSAMPLING_8X | K30_NO_OVERSAMPLING << 3;
-      // k30->i2c_trans.buf[4] = K30_ODR_ADDR;
-      // k30->i2c_trans.buf[5] = K30_ODR_50_HZ;
-      // k30->i2c_trans.buf[6] = K30_CONFIG_ADDR;
-      // k30->i2c_trans.buf[7] = K30_IIR_FILTER_COEFF_3 << 1;
-      // i2c_transmit(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 8);
+      // lmp91000->i2c_trans.buf[0] = LMP91000_PWR_CTRL_ADDR;
+      // lmp91000->i2c_trans.buf[1] = LMP91000_ALL | LMP91000_NORMAL_MODE << 4;
+      // lmp91000->i2c_trans.buf[2] = LMP91000_OSR_ADDR;
+      // lmp91000->i2c_trans.buf[3] = LMP91000_OVERSAMPLING_8X | LMP91000_NO_OVERSAMPLING << 3;
+      // lmp91000->i2c_trans.buf[4] = LMP91000_ODR_ADDR;
+      // lmp91000->i2c_trans.buf[5] = LMP91000_ODR_50_HZ;
+      // lmp91000->i2c_trans.buf[6] = LMP91000_CONFIG_ADDR;
+      // lmp91000->i2c_trans.buf[7] = LMP91000_IIR_FILTER_COEFF_3 << 1;
+      // i2c_transmit(lmp91000->i2c_p, &lmp91000->i2c_trans, lmp91000->i2c_trans.slave_addr, 8);
       break;
 
-    case K30_STATUS_READ_DATA:
+    case LMP91000_STATUS_READ_DATA:
       /* read data */
       /*
-      k30->i2c_trans.buf[0] = K30_SENS_STATUS_REG_ADDR;
-      i2c_transceive(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 1, K30_C02_AND_T_HEADER_DATA_LEN);
+      lmp91000->i2c_trans.buf[0] = LMP91000_SENS_STATUS_REG_ADDR;
+      i2c_transceive(lmp91000->i2c_p, &lmp91000->i2c_trans, lmp91000->i2c_trans.slave_addr, 1, LMP91000_C02_AND_T_HEADER_DATA_LEN);
       */
       break;
 
@@ -93,48 +103,72 @@ void lmp91000_i2c_periodic(struct Lmp91000_I2c *lmp91000){
 }
 
 void lmp91000_i2c_event(struct Lmp91000_I2c *lmp91000){
-  if (k30->i2c_trans.status == I2CTransSuccess) {
-    switch (k30->status) {
-      // case K30_STATUS_GET_CALIB:
+  if (lmp91000->i2c_trans.status == I2CTransSuccess) {
+    switch (lmp91000->status) {
+      // case LMP91000_STATUS_GET_CALIB:
       //   // compute calib
-      //   parse_calib_data(k30);
-      //   k30->status = K30_STATUS_CONFIGURE;
+      //   parse_calib_data(lmp91000);
+      //   lmp91000->status = LMP91000_STATUS_CONFIGURE;
       //   break;
 
-      case K30_STATUS_CONFIGURE:
+      case LMP91000_STATUS_CONFIGURE:
         // nothing else to do, start reading
-        k30->status = K30_STATUS_READ_DATA;
-        k30->initialized = true;
+        lmp91000->status = LMP91000_STATUS_READ_DATA;
+        lmp91000->initialized = true;
         break;
 
-      case K30_STATUS_READ_DATA:
+      case LMP91000_STATUS_READ_DATA:
         // check status byte
-        if (k30->i2c_trans.buf[0] & (K30_ALL << 5)) {
-          // parse sensor data, compensate temperature first, then co2 concentration
-          parse_sensor_data(k30);
-          compensate_temperature(k30);
-          compensate_co2(k30);
-          k30->data_available = true;
+        if (lmp91000->i2c_trans.buf[0] & (LMP91000_ALL << 5)) {
+          // parse sensor data, compensate temperature first, then co concentration
+          parse_sensor_data(lmp91000);
+          compensate_temperature(lmp91000);
+          compensate_co(lmp91000);
+          lmp91000->data_available = true;
         }
         break;
 
       default:
         break;
     }
-    k30->i2c_trans.status = I2CTransDone;
-  } else if (k30->i2c_trans.status == I2CTransFailed) {
+    lmp91000->i2c_trans.status = I2CTransDone;
+  } else if (lmp91000->i2c_trans.status == I2CTransFailed) {
     /* try again */
-    if (!k30->initialized) {
-      k30->status = K30_STATUS_UNINIT;
+    if (!lmp91000->initialized) {
+      lmp91000->status = LMP91000_STATUS_UNINIT;
     }
-    k30->i2c_trans.status = I2CTransDone;
+    lmp91000->i2c_trans.status = I2CTransDone;
   }
 }
 
 static void parse_sensor_data(struct Lmp91000_I2c *lmp91000){
-
+    (void) lmp91000; //rm warning
 }
 
+/**
+ * @brief This internal API is used to compensate the raw temperature data and
+ * return the compensated temperature data in double data type.
+ */
+static double compensate_temperature(struct Lmp91000_I2c *lmp91000)
+{
+  // return lmp91000->quant_calib.t_lin;
+  (void) lmp91000; // rm warning
+  double comp_t;
+  return comp_t;
+}
+
+/**
+ * @brief This internal API is used to compensate the raw co concentration data and
+ * return the compensated co concentration data in double data type.
+ */
+static double compensate_co(struct Lmp91000_I2c *lmp91000)
+{
+  (void) lmp91000; //rm warning
+  /* Variable to store the compensated co2 concentration */
+  double comp_press;
+
+  return comp_press;
+}
 
 /* ænt ----------------------------------------------------
    below code from  Linnes Lab
@@ -191,12 +225,16 @@ void LMP91000::disable() const
 //Operation in the datsheet for more information.
 void lmp91000_write(uint8_t reg, uint8_t data) 
 {
-    /* change to transmit ænt*/
+    (void) reg; //rm warning
+    (void) data; //rm warning
+    /*TODO change to transmit ænt*/
     // enable();
+    /*
     Wire.beginTransmission(LMP91000_I2C_ADDRESS);
     Wire.write(reg);
     Wire.write(data);
     Wire.endTransmission();
+    */
 }
 
 
@@ -213,11 +251,12 @@ void lmp91000_write(uint8_t reg, uint8_t data)
 //The device has must be written to first before a read operation can be performed.
 uint8_t lmp91000_read(uint8_t reg) 
 {
-    /* change to recieve ænt*/
+    (void) reg; //rm warning
+    /*TODO change to recieve ænt*/
     uint8_t data = 0;
     
     // enable();
-    
+    /*
     Wire.beginTransmission(LMP91000_I2C_ADDRESS);
     Wire.write(reg);
     Wire.endTransmission(false);
@@ -226,6 +265,7 @@ uint8_t lmp91000_read(uint8_t reg)
     while(Wire.available()){
         data = Wire.read();
     }
+    */
     
     return data;
 }
@@ -264,7 +304,7 @@ uint8_t lmp91000_isReady(void)
 uint8_t lmp91000_isLocked(void)
 {
     // return bitRead(read(LMP91000_LOCK_REG),0)==LMP91000_WRITE_LOCK;
-    return (!(lmp91000_read(LMP91000_LOCK_REG) & 1) == LMP91000_WRITE_LOCK; // read the first bit
+    return (!(lmp91000_read(LMP91000_LOCK_REG) & 1)) == LMP91000_WRITE_LOCK; // read the first bit
 }
 
 //from vicatcu
@@ -318,9 +358,9 @@ void lmp91000_unlock(void)
 //Please consult page 14 "7.3.1.1 Transimpedance Amplifier" and page 22 "Section
 //7.6.3 TIACN -- TIA Control Register (Address 0x10)" of the datasheet for more
 //information.
-void lmp91000_setGain(uint8_t user_gain)
+void lmp91000_setGain(struct Lmp91000_I2c *lmp91000, uint8_t user_gain)
 {
-    gain = user_gain;
+    lmp91000->gain = user_gain;
     
     lmp91000_unlock();
     uint8_t data = lmp91000_read(LMP91000_TIACN_REG);
@@ -330,10 +370,10 @@ void lmp91000_setGain(uint8_t user_gain)
 }
 
 
-double lmp91000_getGain(void)
+double lmp91000_getGain(struct Lmp91000_I2c *lmp91000)
 {
-    if (gain == 0) return gain;
-    else return TIA_GAIN[gain];
+    if (lmp91000->gain== 0) return lmp91000->gain;
+    else return LMP91000_TIA_GAIN[lmp91000->gain];
 }
 
 //void lmp91000_setRLoad(uint8_t load) const
@@ -438,9 +478,9 @@ void lmp91000_setExtRefSource(void)
 //
 //Please consult page 22, "Section 7.6.4 REFCN -- Reference Control Register
 //(Address 0x11)" of the datasheet for more information.
-void lmp91000_setIntZ(uint8_t intZ)
+void lmp91000_setIntZ(struct Lmp91000_I2c *lmp91000,uint8_t intZ)
 {
-    zero = intZ;
+    lmp91000->zero = intZ;
     
     lmp91000_unlock(); //unlocks the REFCN register for "write" mode
     uint8_t data = lmp91000_read(LMP91000_REFCN_REG);
@@ -449,9 +489,9 @@ void lmp91000_setIntZ(uint8_t intZ)
     lmp91000_write(LMP91000_REFCN_REG, data);
 }
 
-double lmp91000_getIntZ(void)
+double lmp91000_getIntZ(struct Lmp91000_I2c *lmp91000)
 {
-    return TIA_ZERO[zero];
+    return LMP91000_TIA_ZERO[lmp91000->zero];
 }
 
 
@@ -510,7 +550,7 @@ void lmp91000_setBias_sign(uint8_t bias, signed char sign)
 	data &= ~(0x1F); //clear the first five bits in order to bit Or in the next step
 	data |= bias;
 	data |= ((sign << 4) | bias);
-	write(LMP91000_REFCN_REG, data);
+	lmp91000_write(LMP91000_REFCN_REG, data);
 }
 
 
@@ -518,7 +558,7 @@ void lmp91000_setBias_sign(uint8_t bias, signed char sign)
 void lmp91000_setFET(uint8_t selection) 
 {
     if (selection == 0) lmp91000_disableFET();
-    else enableFET();
+    else lmp91000_enableFET();
 }
 
 //void lmp91000_disableFET() const
@@ -540,7 +580,7 @@ void lmp91000_enableFET(void)
 //void lmp91000_setMode(uint8_t mode) const
 void lmp91000_setMode(uint8_t mode) 
 {
-    if (mode == 0) sleep();
+    if (mode == 0) lmp91000_sleep();
     else if (mode == 1) lmp91000_setTwoLead();
     else if (mode == 2) lmp91000_standby();
     else if (mode == 3) lmp91000_setThreeLead();
@@ -638,7 +678,7 @@ double lmp91000_getTemp_adc(uint8_t sensor, double adc_ref, uint8_t adc_bits)
     data |= (0x07);
     lmp91000_write(LMP91000_MODECN_REG, data);
     sys_time_msleep(100);   
-    return (getVoltage(sensor, adc_ref, adc_bits)-TEMP_INTERCEPT)/TEMPSLOPE;
+    return (lmp91000_getVoltage(sensor, adc_ref, adc_bits)-LMP91000_TEMP_INTERCEPT)/LMP91000_TEMPSLOPE;
 }
 
 //ænt change to use ADC
@@ -652,6 +692,7 @@ double lmp91000_getTemp_adc(uint8_t sensor, double adc_ref, uint8_t adc_bits)
 uint16_t lmp91000_getOutput(uint8_t sensor) 
 {
     // return analogRead(sensor);
+    (void) sensor; //rm warning
     return 0;
 }
 
@@ -693,9 +734,9 @@ double lmp91000_getVoltage(uint16_t adcVal, double adc_ref, uint8_t adc_bits)
 //
 //This method calculates the current at the working electrode by reading in the
 //voltage at the output of LMP91000 and dividing by the value of the gain resistor.
-double lmp91000_getCurrent(uint16_t adcVal, double adc_ref, uint8_t adc_bits) 
+double lmp91000_getCurrent(struct Lmp91000_I2c *lmp91000, uint16_t adcVal, double adc_ref, uint8_t adc_bits) 
 {
-    return (getVoltage(adcVal, adc_ref, adc_bits) - (adc_ref*TIA_ZERO[zero]))/TIA_GAIN[gain-1];
+    return (lmp91000_getVoltage(adcVal, adc_ref, adc_bits) - (adc_ref*LMP91000_TIA_ZERO[lmp91000->zero]))/LMP91000_TIA_GAIN[lmp91000->gain-1];
 }
 
 
@@ -718,8 +759,8 @@ double lmp91000_getCurrent(uint16_t adcVal, double adc_ref, uint8_t adc_bits)
 //This method calculates the current at the working electrode by reading in the
 //voltage at the output of LMP91000 and dividing by the value of the external
 //gain resistor.
-double lmp91000_getCurrentExtGain(uint16_t adcVal, double adc_ref, uint8_t adc_bits,
+double lmp91000_getCurrentExtGain(struct Lmp91000_I2c *lmp91000, uint16_t adcVal, double adc_ref, uint8_t adc_bits,
                             double extGain) 
 {
-    return (getVoltage(adcVal, adc_ref, adc_bits) - (adc_ref*TIA_ZERO[zero]))/extGain;
+    return (lmp91000_getVoltage(adcVal, adc_ref, adc_bits) - (adc_ref*LMP91000_TIA_ZERO[lmp91000->zero]))/extGain;
 }

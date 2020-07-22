@@ -29,8 +29,8 @@
 #define K30_I2C_H
 
 /* Header includes */
-#include "peripherals/k30_regs.h"
 #include "mcu_periph/i2c.h"
+#include "peripherals/k30_regs.h"
 
 struct K30_I2c {
   struct i2c_periph *i2c_p;
@@ -48,10 +48,10 @@ struct K30_I2c {
   float temperature;                ///< temperature in deg Celcius
 };
 
-// extern void k30_i2c_read_eeprom_calib(struct K30_I2c *bmp);
-extern void k30_i2c_init(struct K30_I2c *bmp, struct i2c_periph *i2c_p, uint8_t addr);
-extern void k30_i2c_periodic(struct K30_I2c *bmp);
-extern void k30_i2c_event(struct K30_I2c *bmp);
+// extern void k30_i2c_read_eeprom_calib(struct K30_I2c *k30);
+extern void k30_i2c_init(struct K30_I2c *k30, struct i2c_periph *i2c_p, uint8_t addr);
+extern void k30_i2c_periodic(struct K30_I2c *k30);
+extern void k30_i2c_event(struct K30_I2c *k30);
 
 
 #endif /* K30_I2C_H */

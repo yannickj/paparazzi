@@ -32,78 +32,82 @@
 #include "mcu_periph/i2c.h"
 
 
-#define TEMP_INTERCEPT        1555;
-#define TEMPSLOPE        -8;
-#define LMP91000_I2C_ADDRESS        0X48;
+#define LMP91000_TEMP_INTERCEPT        1555
+#define LMP91000_TEMPSLOPE        -8
+#define LMP91000_I2C_ADDR        0X48
 
-#define LMP91000_STATUS_REG        0x00;    /* Read only status register */
-#define LMP91000_LOCK_REG      0x01;    /* Protection Register */
-#define LMP91000_TIACN_REG      0x10;    /* TIA Control Register */
-#define LMP91000_REFCN_REG      0x11;    /* Reference Control Register*/
-#define LMP91000_MODECN_REG      0x12;    /* Mode Control Register */
+#define LMP91000_STATUS_REG        0x00    /* Read only status register */
+#define LMP91000_LOCK_REG      0x01    /* Protection Register */
+#define LMP91000_TIACN_REG      0x10    /* TIA Control Register */
+#define LMP91000_REFCN_REG      0x11    /* Reference Control Register*/
+#define LMP91000_MODECN_REG      0x12    /* Mode Control Register */
 
-#define LMP91000_READY      0x01;
-#define LMP91000_NOT_READY      0x00;
+#define LMP91000_READY      0x01
+#define LMP91000_NOT_READY      0x00
 
-#define LMP91000_TIA_GAIN_EXT      0x00; //default
-#define LMP91000_TIA_GAIN_2P75K      0x04;
-#define LMP91000_TIA_GAIN_3P5K      0x08;
-#define LMP91000_TIA_GAIN_7K      0x0C;
-#define LMP91000_TIA_GAIN_14K      0x10;
-#define LMP91000_TIA_GAIN_35K      0x14;
-#define LMP91000_TIA_GAIN_120K      0x18;
-#define LMP91000_TIA_GAIN_350K      0x1C;
+#define LMP91000_TIA_GAIN_EXT      0x00 //default
+#define LMP91000_TIA_GAIN_2P75K      0x04
+#define LMP91000_TIA_GAIN_3P5K      0x08
+#define LMP91000_TIA_GAIN_7K      0x0C
+#define LMP91000_TIA_GAIN_14K      0x10
+#define LMP91000_TIA_GAIN_35K      0x14
+#define LMP91000_TIA_GAIN_120K      0x18
+#define LMP91000_TIA_GAIN_350K      0x1C
 
-#define LMP91000_RLOAD_10OHM      0X00;
-#define LMP91000_RLOAD_33OHM      0X01;
-#define LMP91000_RLOAD_50OHM      0X02;
-#define LMP91000_RLOAD_100OHM      0X03; //default
+#define LMP91000_RLOAD_10OHM      0X00
+#define LMP91000_RLOAD_33OHM      0X01
+#define LMP91000_RLOAD_50OHM      0X02
+#define LMP91000_RLOAD_100OHM      0X03 //default
 
-#define LMP91000_REF_SOURCE_INT      0x00; //default
-#define LMP91000_REF_SOURCE_EXT      0x80;
+#define LMP91000_REF_SOURCE_INT      0x00 //default
+#define LMP91000_REF_SOURCE_EXT      0x80
 
-#define LMP91000_INT_Z_20PCT      0x00;
-#define LMP91000_INT_Z_50PCT      0x20; //default
-#define LMP91000_INT_Z_67PCT      0x40;
-#define LMP91000_INT_Z_BYPASS      0x60;
+#define LMP91000_INT_Z_20PCT      0x00
+#define LMP91000_INT_Z_50PCT      0x20//default
+#define LMP91000_INT_Z_67PCT      0x40
+#define LMP91000_INT_Z_BYPASS      0x60
 
-#define LMP91000_BIAS_SIGN_NEG      0x00; //default
-#define LMP91000_BIAS_SIGN_POS      0x10;
+#define LMP91000_BIAS_SIGN_NEG      0x00 //default
+#define LMP91000_BIAS_SIGN_POS      0x10
 
-#define LMP91000_BIAS_0PCT      0x00; //default
-#define LMP91000_BIAS_1PCT      0x01;
-#define LMP91000_BIAS_2PCT      0x02;
-#define LMP91000_BIAS_4PCT      0x03;
-#define LMP91000_BIAS_6PCT      0x04;
-#define LMP91000_BIAS_8PCT      0x05;
-#define LMP91000_BIAS_10PCT      0x06;
-#define LMP91000_BIAS_12PCT      0x07;
-#define LMP91000_BIAS_14PCT      0x08;
-#define LMP91000_BIAS_16PCT      0x09;
-#define LMP91000_BIAS_18PCT      0x0A;
-#define LMP91000_BIAS_20PCT      0x0B;
-#define LMP91000_BIAS_22PCT      0x0C;
-#define LMP91000_BIAS_24PCT      0x0D;
+#define LMP91000_BIAS_0PCT      0x00 //default
+#define LMP91000_BIAS_1PCT      0x01
+#define LMP91000_BIAS_2PCT      0x02
+#define LMP91000_BIAS_4PCT      0x03
+#define LMP91000_BIAS_6PCT      0x04
+#define LMP91000_BIAS_8PCT      0x05
+#define LMP91000_BIAS_10PCT      0x06
+#define LMP91000_BIAS_12PCT      0x07
+#define LMP91000_BIAS_14PCT      0x08
+#define LMP91000_BIAS_16PCT      0x09
+#define LMP91000_BIAS_18PCT      0x0A
+#define LMP91000_BIAS_20PCT      0x0B
+#define LMP91000_BIAS_22PCT      0x0C
+#define LMP91000_BIAS_24PCT      0x0D
 
-#define LMP91000_FET_SHORT_DISABLED      0x00; //default
-#define LMP91000_FET_SHORT_ENABLED      0x80;
-#define LMP91000_OP_MODE_DEEP_SLEEP      0x00; //default
-#define LMP91000_OP_MODE_GALVANIC      0x01;
-#define LMP91000_OP_MODE_STANDBY      0x02;
-#define LMP91000_OP_MODE_AMPEROMETRIC      0x03;
-#define LMP91000_OP_MODE_TIA_OFF      0x06;
-#define LMP91000_OP_MODE_TIA_ON      0x07;
+#define LMP91000_FET_SHORT_DISABLED      0x00 //default
+#define LMP91000_FET_SHORT_ENABLED      0x80
+#define LMP91000_OP_MODE_DEEP_SLEEP      0x00 //default
+#define LMP91000_OP_MODE_GALVANIC      0x01
+#define LMP91000_OP_MODE_STANDBY      0x02
+#define LMP91000_OP_MODE_AMPEROMETRIC      0x03
+#define LMP91000_OP_MODE_TIA_OFF      0x06
+#define LMP91000_OP_MODE_TIA_ON      0x07
 
-#define LMP91000_WRITE_LOCK      0x01; //default
-#define LMP91000_WRITE_UNLOCK      0x00;
+#define LMP91000_WRITE_LOCK      0x01 //default
+#define LMP91000_WRITE_UNLOCK      0x00
 
-#define LMP91000_NOT_PRESENT      0xA8;    // arbitrary library status code
+#define LMP91000_NOT_PRESENT      0xA8    // arbitrary library status code
 
-const double TIA_GAIN[]     =   {2750,3500,7000,14000,35000,120000,350000};
-const double TIA_BIAS[]     =   {0, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14,
-                                  0.16, 0.18, 0.2, 0.22, 0.24};
-#define NUM_TIA_BIAS        14;
-const double TIA_ZERO[]    =    {0.2, 0.5, 0.67};
+#define LMP91000_NUM_TIA_BIAS        14
+
+extern const double LMP91000_TIA_GAIN[];
+extern const double LMP91000_TIA_BIAS[];
+extern const double LMP91000_TIA_ZERO[];
+
+// TODO define these registers, remove #define LMP91000_DEFAULT_REGISTER after
+#define LMP91000_DEFAULT_REGISTER 0
+#define LMP91000_ALL                         LMP91000_DEFAULT_REGISTER
 
 enum Lmp91000Status {
   LMP91000_STATUS_UNINIT,
@@ -135,6 +139,11 @@ struct Lmp91000_I2c {
   uint8_t zero;
 };
 
+// extern void lmp91000_i2c_read_eeprom_calib(struct Lmp91000_I2c *lmp91000);
+extern void lmp91000_i2c_init(struct Lmp91000_I2c *lmp91000, struct i2c_periph *i2c_p, uint8_t addr);
+extern void lmp91000_i2c_periodic(struct Lmp91000_I2c *lmp91000);
+extern void lmp91000_i2c_event(struct Lmp91000_I2c *lmp91000);
+
 /*
 //sets and gets MENB pin for enabling and disabling I2C commands
 void lmp91000_setMENB(uint8_t pin);
@@ -165,8 +174,8 @@ void lmp91000_unlock(void);
 uint8_t lmp91000_isLocked(void);
 
 //sets the gain of the transimpedance amplifier
-void lmp91000_setGain(uint8_t gain);
-double lmp91000_getGain(void);
+void lmp91000_setGain(struct Lmp91000_I2c *lmp91000, uint8_t gain);
+double lmp91000_getGain(struct Lmp91000_I2c *lmp91000);
 
 //sets the load for compensating voltage differences
 //between working and reference electrodes
@@ -179,8 +188,8 @@ void lmp91000_setIntRefSource(void);
 void lmp91000_setExtRefSource(void);
 
 //sets reference voltage for transimpedance amplifier
-void lmp91000_setIntZ(uint8_t intZ);
-double lmp91000_getIntZ(void);
+void lmp91000_setIntZ(struct Lmp91000_I2c *lmp91000, uint8_t intZ);
+double lmp91000_getIntZ(struct Lmp91000_I2c *lmp91000);
 
 //sets bias voltage for electrochemical cell
 void lmp91000_setBiasSign(uint8_t sign);
@@ -207,7 +216,7 @@ double lmp91000_getTemp_adc(uint8_t sensor, double adc_ref, uint8_t adc_bits);
 //reading the output of the LMP91000
 uint16_t lmp91000_getOutput(uint8_t sensor);
 double lmp91000_getVoltage(uint16_t adcVal, double adc_ref, uint8_t adc_bits);
-double lmp91000_getCurrent(uint16_t adcVal, double adc_ref, uint8_t adc_bits);
-double lmp91000_getCurrentExtGain(uint16_t adcVal, double adc_ref, uint8_t adc_bits, double extGain);
+double lmp91000_getCurrent(struct Lmp91000_I2c *lmp91000, uint16_t adcVal, double adc_ref, uint8_t adc_bits);
+double lmp91000_getCurrentExtGain(struct Lmp91000_I2c *lmp91000, uint16_t adcVal, double adc_ref, uint8_t adc_bits, double extGain);
 
 #endif /* LMP91000_I2C_H */

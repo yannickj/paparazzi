@@ -55,7 +55,7 @@ void co2_k30_event(void)
   k30_i2c_event(&co2_k30);
 
   if (co2_k30.data_available) {
-    uint32_t now_ts = get_sys_time_usec();
+    // uint32_t now_ts = get_sys_time_usec();
     // send ABI message
     // AbiSendMsgBARO_ABS(BARO_K30_SENDER_ID, now_ts, co2_k30.pressure);
     // AbiSendMsgTEMPERATURE(BARO_K30_SENDER_ID, co2_k30.temperature);
