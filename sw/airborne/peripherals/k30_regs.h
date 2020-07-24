@@ -67,20 +67,20 @@ struct k30_quantized_calib_data {
   double t_lin;
 };
 
-/** MS byte are always at lower address */
-#define K30_CO2                  0x08 //in RAM
-// #define K30_TEMP                 0x12 //in RAM only K33
 
 #define K30_METER_CONTROL        0x3E // EEPROM
 
 #define K30_SENSOR_TYPE_ID       0x2C //RAM
 #define K30_SENSOR_SERIAL_NUMBER 0x28 //RAM
 #define K30_MEMORYP_MAP_ID       0x2F //RAM
-#define K30_I2C_ADDR_RD          0x20 //RAM (read)
-#define K30_I2C_ADDR_WR          0x00 //EEPROM (write (restart needed)) 
 #define K30_ABC_PERIOD           0x40 // 2 bytes (MS at lower address), unit 1 hour, write 0 to disable ABC 
-#define K30_ABC_ON_OFF           // bit 1 in METER_CONTROL EEPROM
+#define K30_ABC_OFF           // 1 = off ; 0 = on bit 1 in METER_CONTROL EEPROM
 
+// read and write operation
+#define K30_WRITE_RAM                   0x10
+#define K30_READ_RAM                    0x20
+#define K30_WRITE_EEPROM                0X30
+#define K30_READ_EEPROM                 0x40
 
 // TODO define these registers, remove #define K30_DEFAULT_REGISTER after
 #define K30_DEFAULT_REGISTER 0
@@ -89,12 +89,36 @@ struct k30_quantized_calib_data {
 #define K30_SENS_STATUS_REG_ADDR        K30_DEFAULT_REGISTER
 #define K30_C02_AND_T_HEADER_DATA_LEN   K30_DEFAULT_REGISTER
 #define K30_ALL                         K30_DEFAULT_REGISTER
-#define K30_I2C_ADDR                    K30_I2C_ADDR_RD
+#define K30_I2C_ADDR                    0x68
+#define K30_CO2_HEADER_DATA_LEN         4
+#define K30_CO2_REQUEST_LEN             5
 
-/** Fractional filters */
+/** Measured value and status (MS byte are always at lower address) */
+#define K30_PADDING                     0x00
+#define K30_CO2_ADDR                    0x08
+#define K30_TEMP_ADDR                   0x12 // K33 and K45 only
+#define K30_RH_ADDR                     0x14 // K33 only
+#define K30_ERROR_STATUS                0x1E
+
+/** Fractional filters (not valid for K45)*/
 #define K30_FRACTIONAL_ALGO_OFF         K30_DEFAULT_REGISTER //TODO bit 2 IN METER_CONTROL (1 disabled)
 #define K30_DYN_FRACTIONAL_ALGO_OFF     K30_DEFAULT_REGISTER //TODO bit 3 in METER_CONTROL
 #define K30_DEFAULT_FRAC            0x4A // (1..8 range)
+
+/** Signal and calibration parameters (not valid for K45)*/
+#define K30_CALIB_OLD_ADDR              0x06 // RAM
+#define K30_CALIB_ZERO_ADDR             0x38 // EEPROM READ ONLY !
+#define K30_CALIB_ZERO_TRIM_ADDR        0x48 // EEPROM
+#define K30_CALIB_BCC_ADDR              0x3C // EEPROM READ ONLY !
+
+/** Error code*/
+#define K30_FATAL_ERROR                 0x01
+#define K30_OFFSET_REG_ERROR            0x02
+#define K30_ALGO_ERROR                  0x04
+#define K30_OUPUT_ERROR                 0x08
+#define K30_SELF_DIAG_ERROR             0x10
+#define K30_OUT_RANGE_ERROR             0x20
+#define K30_MEMORY_ERROR                0x40
 
 #endif /* K30_REGS_H */
 
