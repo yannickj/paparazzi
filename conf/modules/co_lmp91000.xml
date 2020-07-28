@@ -5,7 +5,7 @@
     <description>
       Texas Instrument LMP91000 configurable AFE potentiostat for low-power chemical sensing applications.
     </description>
-    <configure name="LMP91000_I2C_DEV" value="i2cX" description="select which i2c peripheral to use (default i2c4)"/>
+    <configure name="LMP91000_I2C_DEV" value="i2cX" description="select which i2c peripheral to use (default i2c2)"/>
     <define name="LMP91000_SLAVE_ADDR" value="LMP91000_I2C_ADDR|LMP91000_I2C_ADDR_ALT" description="i2c slave address (default LMP91000_I2C_ADDR)"/>
     <!-- <define name="LMP91000_SYNC_SEND" description="flag to transmit the data as it is acquired"/> -->
     <!-- <define name="LMP91000_COMPENSATION" value="LMP91000_SINGLE_PRECISION_COMPENSATION" description="select precision for compensation (single precision, double precision, or integer)"/> -->
@@ -17,7 +17,7 @@
   <periodic fun="co_lmp91000_periodic()" freq="50"/>
   <event fun="co_lmp91000_event()"/>
   <makefile target="ap">
-    <configure name="LMP91000_I2C_DEV" default="i2c4" case="upper|lower"/>
+    <configure name="LMP91000_I2C_DEV" default="i2c2" case="upper|lower"/>
     <define name="USE_$(LMP91000_I2C_DEV_UPPER)"/>
     <define name="LMP91000_I2C_DEV" value="$(LMP91000_I2C_DEV_LOWER)"/>
     <file name="co_lmp91000.c"/>

@@ -746,7 +746,7 @@
 // External I2C
 
 #ifndef I2C2_CLOCK_SPEED
-#define I2C2_CLOCK_SPEED 400000
+#define I2C2_CLOCK_SPEED 100000
 #endif
 
 #if I2C2_CLOCK_SPEED == 400000

@@ -42,10 +42,11 @@ struct K30_I2c {
 #if (K30_COMPENSATION == K30_DOUBLE_PRECISION_COMPENSATION) || ( K30_COMPENSATION == K30_SINGLE_PRECISION_COMPENSATION)
   struct k30_quantized_calib_data quant_calib; ///< quantized calibration data
 #endif
-  uint32_t raw_co2;                 ///< uncompensated co2 concentration
+  uint16_t raw_co2;                 ///< uncompensated co2 concentration
   uint32_t raw_temperature;         ///< uncompensated temperature
   float co2;                        ///< co2 concentration in ppm
   float temperature;                ///< temperature in deg Celcius
+  float raw_co2_bytes[4];
 };
 
 // extern void k30_i2c_read_eeprom_calib(struct K30_I2c *k30);

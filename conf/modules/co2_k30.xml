@@ -5,7 +5,7 @@
     <description>
       Senseair K30 CO2 sensor
     </description>
-    <configure name="K30_I2C_DEV" value="i2cX" description="select which i2c peripheral to use (default i2c4)"/>
+    <configure name="K30_I2C_DEV" value="i2cX" description="select which i2c peripheral to use (default i2c2)"/>
     <define name="K30_SLAVE_ADDR" value="K30_I2C_ADDR|K30_I2C_ADDR_ALT" description="i2c slave address (default K30_I2C_ADDR)"/>
     <!-- <define name="K30_SYNC_SEND" description="flag to transmit the data as it is acquired"/> -->
     <!-- <define name="K30_COMPENSATION" value="K30_SINGLE_PRECISION_COMPENSATION" description="select precision for compensation (single precision, double precision, or integer)"/> -->
@@ -14,12 +14,12 @@
     <file name="co2_k30.h"/>
   </header>
   <init fun="co2_k30_init()"/>
-  <periodic fun="co2_k30_periodic()" freq="50"/>
+  <periodic fun="co2_k30_periodic()" freq="0.5"/>
   <event fun="co2_k30_event()"/>
   <makefile target="ap">
-    <configure name="K30_I2C_DEV" default="i2c4" case="upper|lower"/>
-    <define name="USE_$(K30_I2C_DEV_UPPER)"/>
-    <define name="K30_I2C_DEV" value="$(K30_I2C_DEV_LOWER)"/>
+    <configure name="K30_I2C_BUS" default="i2c2" case="upper|lower"/>
+    <define name="USE_$(K30_I2C_BUS_UPPER)"/>
+    <define name="K30_I2C_DEV" value="$(K30_I2C_BUS_LOWER)"/>
     <file name="co2_k30.c"/>
     <file name="k30_i2c.c" dir="peripherals"/>
   </makefile>

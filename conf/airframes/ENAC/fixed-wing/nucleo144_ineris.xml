@@ -66,11 +66,11 @@
     </module>
 
     <module name ="co2_k30">
-      <configure name="K30_I2C_DEV" value="i2c4"/>
+      <configure name="K30_I2C_DEV" value="i2c2"/>
     </module>
 
     <module name ="co_lmp91000">
-      <configure name="LMP91000_I2C_DEV" value="i2c4"/>
+      <configure name="LMP91000_I2C_DEV" value="i2c2"/>
     </module>
 
   </firmware>

@@ -27,6 +27,7 @@
 
 #include "peripherals/k30_i2c.h"
 #include <math.h>
+#include "mcu_periph/sys_time_arch.h"
 
 /** local function to extract raw data from i2c buffer
  *  and compute compensation with selected precision
@@ -59,6 +60,10 @@ void k30_i2c_init(struct K30_I2c *k30, struct i2c_periph *i2c_p, uint8_t addr)
   k30->data_available = false;
   k30->initialized = false;
   k30->status = K30_STATUS_UNINIT;
+  k30->raw_co2 = 1; //abritrary value to detect error
+  for(int i=0; i<4; i++){
+    k30->raw_co2_bytes[i] = 0;
+  }
 }
 
 /**
@@ -72,14 +77,16 @@ void k30_i2c_periodic(struct K30_I2c *k30)
 
   switch (k30->status) {
     case K30_STATUS_UNINIT:
+    k30->raw_co2 = 2; //abritrary value to detect error
       k30->data_available = false;
       k30->initialized = false;
-      k30->status = K30_STATUS_GET_CALIB;
+      // k30->status = K30_STATUS_GET_CALIB;
+      k30->status = K30_STATUS_CONFIGURE; // for test, skip get_calib
       break;
 
     case K30_STATUS_GET_CALIB:
       // request calibration data
-      k30->i2c_trans.buf[0] = K30_CALIB_DATA_ADDR;
+      // k30->i2c_trans.buf[0] = K30_CALIB_DATA_ADDR;
       i2c_transceive(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 1, K30_CALIB_DATA_LEN);
       break;
 
@@ -97,12 +104,28 @@ void k30_i2c_periodic(struct K30_I2c *k30)
       // k30->i2c_trans.buf[6] = K30_CONFIG_ADDR;
       // k30->i2c_trans.buf[7] = K30_IIR_FILTER_COEFF_3 << 1;
       // i2c_transmit(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 8);
+      k30->raw_co2 = 3; //abritrary value to detect error
+      k30->status = K30_STATUS_READ_DATA;
+      k30->initialized = true;
+      
       break;
 
     case K30_STATUS_READ_DATA:
       /* read data */
-      k30->i2c_trans.buf[0] = K30_SENS_STATUS_REG_ADDR;
-      i2c_transceive(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 1, K30_C02_AND_T_HEADER_DATA_LEN);
+      // k30->i2c_trans.buf[0] = K30_SENS_STATUS_REG_ADDR;
+      k30->raw_co2 = 4; //abritrary value to detect error
+      k30->i2c_trans.buf[0] = K30_READ_RAM + 2; //0x22; //command number 2 byte to read 
+      k30->i2c_trans.buf[1] = K30_PADDING; // 0x00;
+      k30->i2c_trans.buf[2] = K30_CO2_ADDR; //0x08; //adress to read
+      k30->i2c_trans.buf[3] = k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2]; // 0x2A; //checksum to compare
+      
+      i2c_transmit(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 4);
+      k30->raw_co2 = 5; //abritrary value to detect error
+      sys_time_msleep(20); // necessary for the device
+      i2c_receive(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, 4);
+      sys_time_msleep(35);
+      k30->raw_co2 = 6; //abritrary value to detect error
+      //i2c_transceive(k30->i2c_p, &k30->i2c_trans, k30->i2c_trans.slave_addr, K30_CO2_REQUEST_LEN, K30_CO2_HEADER_DATA_LEN);
       break;
 
     default:
@@ -115,6 +138,9 @@ void k30_i2c_event(struct K30_I2c *k30)
 {
   if (k30->i2c_trans.status == I2CTransSuccess) {
     switch (k30->status) {
+      case K30_STATUS_UNINIT:
+        // TODO
+        break;
       case K30_STATUS_GET_CALIB:
         // compute calib
         parse_calib_data(k30);
@@ -129,13 +155,13 @@ void k30_i2c_event(struct K30_I2c *k30)
 
       case K30_STATUS_READ_DATA:
         // check status byte
-        if (k30->i2c_trans.buf[0] & (K30_ALL << 5)) {
+        // if (k30->i2c_trans.buf[0] & (K30_ALL << 5)) {
           // parse sensor data, compensate temperature first, then co2 concentration
           parse_sensor_data(k30);
-          compensate_temperature(k30);
-          compensate_co2(k30);
+          // compensate_temperature(k30);
+          // compensate_co2(k30);
           k30->data_available = true;
-        }
+        // }
         break;
 
       default:
@@ -143,9 +169,11 @@ void k30_i2c_event(struct K30_I2c *k30)
     }
     k30->i2c_trans.status = I2CTransDone;
   } else if (k30->i2c_trans.status == I2CTransFailed) {
+    k30->raw_co2 = 10; //abritrary value to detect error
     /* try again */
     if (!k30->initialized) {
       k30->status = K30_STATUS_UNINIT;
+      k30->raw_co2 = 11; //abritrary value to detect error
     }
     k30->i2c_trans.status = I2CTransDone;
   }
@@ -162,6 +190,30 @@ static void parse_sensor_data(struct K30_I2c *k30)
 
   /* Store the parsed register values for temperature data */
   // k30->raw_temperature = ;
+
+  uint8_t data_checksum, data_msb, data_lsb, data_op_status;
+  
+  data_op_status = k30->i2c_trans.buf[0];
+  data_msb = k30->i2c_trans.buf[1];
+  data_lsb = k30->i2c_trans.buf[2];
+  data_checksum = k30->i2c_trans.buf[3];
+  for(int i=0; i<4; i++){
+    k30->raw_co2_bytes[i] = k30->i2c_trans.buf[i];
+  }
+  if (data_checksum == data_op_status + data_msb + data_lsb){
+    // correct checksum -> save the measure
+    k30->raw_co2 = ((uint16_t)data_msb << 8) | ((uint16_t)data_lsb);
+    double tmp = compensate_co2(k30); //save value if error value stocked 
+    (void) tmp; // rm warning
+    k30->raw_co2 = 30; //abritrary value to detect error
+  }
+  else
+  {
+    k30->raw_co2 = ((uint16_t)data_msb << 8) | ((uint16_t)data_lsb); // for debug print even false value
+    double tmp = compensate_co2(k30); //save value if error value stocked
+    (void) tmp; // rm warning
+    k30->raw_co2 = 31; //abritrary value to detect error
+  }  
 }
 
 
@@ -191,10 +243,10 @@ static double compensate_temperature(struct K30_I2c *k30)
  */
 static double compensate_co2(struct K30_I2c *k30)
 {
-  (void) k30; //rm warning
+  // (void) k30; //rm warning
   /* Variable to store the compensated co2 concentration */
   double comp_press;
-
+  k30->co2 = (float) k30->raw_co2;
   return comp_press;
 }
 

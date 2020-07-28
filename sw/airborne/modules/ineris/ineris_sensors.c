@@ -127,7 +127,7 @@ void k30_adc_init(void){
 }
 
 void k30_adc_periodic(void){
-  #ifdef K30_ADC_CHANNEL1
+ #ifdef K30_ADC_CHANNEL1
   uint16_t adc_raw;
     adc_raw = k30_buf.sum / k30_buf.av_nb_sample;
   char str[] = "adc1 raw :";
@@ -145,7 +145,7 @@ void k30_adc_periodic(void){
   float out2 = ((float) adc_raw2 * 2 - 1) * 1250 / 1000;
   char str3[] = "OUT2 (ppm):";
   print_float_uart(out2, str3, 11);
-   
+
   #endif
   
   
@@ -207,7 +207,8 @@ void k30_init(){
 }
 
 void k30_periodic(){
-  k30_adc_periodic();
+  // k30_adc_periodic();
+  
   // read output OUT2 1-5V (or 0-5 V) -> should read OUT1 + configure
   // k30_meas = palReadLine(LINE_C01_K30_MEAS);
   // k30_meas = palReadLine(LINE_D07_K30_MEAS);

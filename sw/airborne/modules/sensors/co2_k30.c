@@ -33,21 +33,87 @@
 #include "pprzlink/messages.h"
 #include "subsystems/datalink/downlink.h"
 
+#include <stdio.h>
+#include <math.h>
+
 /** default slave address */
 #ifndef K30_SLAVE_ADDR
 #define K30_SLAVE_ADDR K30_I2C_ADDR
 #endif
 
+
+static void led_static_pattern(int id){
+  if (id == 1){
+    LED_TOGGLE(2);
+    sys_time_msleep(20);
+    LED_TOGGLE(2);
+    LED_TOGGLE(2);
+    sys_time_msleep(20);
+    LED_TOGGLE(2);
+    sys_time_msleep(20);
+    LED_TOGGLE(2);
+    sys_time_msleep(20);
+    LED_OFF(2);
+    return;
+  }
+  if (id == 2){
+    LED_ON(2);
+    sys_time_msleep(200);
+    LED_OFF(2);
+    LED_ON(3);
+    sys_time_msleep(200);
+    LED_OFF(3);
+    LED_ON(2);
+    sys_time_msleep(200);
+    LED_OFF(2);
+    sys_time_msleep(200);
+    return;
+  }
+}
+
+
+struct uart_periph *my_dev; //ænt
+
+static void print_float_uart(float f, char str[], int str_size){
+  char * data = NULL;
+  int size = str_size + 2 +1 + 1 +2; // 2 for spaces + (log +1)  for float;
+  if (f >= 10){
+    size += log10(f);
+  }else{
+    size ++;
+  }
+  data = malloc(size  * sizeof(char));
+  if (data == NULL){
+    led_static_pattern(2);
+    return;
+  }
+  snprintf(data, size, "%s %4.1f\n", str, f);
+  uart_put_buffer(my_dev, 0, (uint8_t *) data, size);
+  free(data);
+}
+
+
 struct K30_I2c co2_k30;
 
 void co2_k30_init(void)
 {
+  my_dev = &(INERIS_SENSORS_DEV);
   k30_i2c_init(&co2_k30, &K30_I2C_DEV, K30_SLAVE_ADDR);
 }
 
 void co2_k30_periodic(void)
-{
+{ 
+  led_static_pattern(1);
+  char str[14] = "co2 meas i2c :";
+  print_float_uart(co2_k30.co2, str, 14);
+  char raw[14] = "raw meas i2c :";
+  print_float_uart(co2_k30.raw_co2, raw, 14);
+  char str_for[3] = " - ";
+  for(int i = 0; i<4; i++){
+    print_float_uart(co2_k30.raw_co2_bytes[i], str_for, 3);
+  }
   k30_i2c_periodic(&co2_k30);
+  co2_k30.data_available = false;
 }
 
 void co2_k30_event(void)

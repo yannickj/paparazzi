@@ -89,7 +89,7 @@ struct k30_quantized_calib_data {
 #define K30_SENS_STATUS_REG_ADDR        K30_DEFAULT_REGISTER
 #define K30_C02_AND_T_HEADER_DATA_LEN   K30_DEFAULT_REGISTER
 #define K30_ALL                         K30_DEFAULT_REGISTER
-#define K30_I2C_ADDR                    0x68
+#define K30_I2C_ADDR                    0xD0 // 0x68 7 bits
 #define K30_CO2_HEADER_DATA_LEN         4
 #define K30_CO2_REQUEST_LEN             5
 
