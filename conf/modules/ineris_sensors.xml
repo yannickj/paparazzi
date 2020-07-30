@@ -10,6 +10,7 @@
   </doc>
   <header>
     <file name="ineris_sensors.h"/>
+    <file name='ineris_utils.h'/>
   </header>
   <init fun="k30_init()"/>
   <periodic fun="k30_periodic()" freq="1.0" autorun="TRUE"/>
@@ -24,6 +25,7 @@
 
     
     <file name="ineris_sensors.c"/>
+    <file name="ineris_utils.c"/>
   
   </makefile>
 </module>

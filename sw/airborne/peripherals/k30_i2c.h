@@ -36,6 +36,8 @@ struct K30_I2c {
   struct i2c_periph *i2c_p;
   struct i2c_transaction i2c_trans;
   enum K30Status status;           ///< state machine status
+  enum K30Status last_status;      ///< in order to restart the state machine
+  enum K30CalibrationStatus calibration_status; ///< state machine for the configuration step
   bool initialized;                 ///< config done flag
   volatile bool data_available;     ///< data ready flag
   struct k30_reg_calib_data calib; ///< calibration data
@@ -46,7 +48,10 @@ struct K30_I2c {
   uint32_t raw_temperature;         ///< uncompensated temperature
   float co2;                        ///< co2 concentration in ppm
   float temperature;                ///< temperature in deg Celcius
-  float raw_co2_bytes[4];
+  uint8_t raw_co2_bytes[4];
+  uint8_t raw_error_bytes[3];
+  uint8_t error_status;
+  uint8_t debug_flag;
 };
 
 // extern void k30_i2c_read_eeprom_calib(struct K30_I2c *k30);

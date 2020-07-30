@@ -51,11 +51,28 @@ enum K30Status {
   K30_STATUS_UNINIT,
   K30_STATUS_GET_CALIB,
   K30_STATUS_CONFIGURE,
-  K30_STATUS_READ_DATA
+  K30_STATUS_READ_DATA,
+  K30_STATUS_ERROR,
+  K30_STATUS_READ_ERROR_STATUS
+};
+
+/**
+ * @brief Status enum for calibration step
+ */
+enum K30CalibrationStatus {
+  K30_CALIB_OLD,
+  K30_CALIB_ZERO,
+  K30_CALIB_BCC,
+  K30_CALIB_ZERO_TRIM
 };
 
 struct k30_reg_calib_data {
   uint16_t par_t1;
+  uint16_t old;
+  uint16_t zero;
+  uint16_t bcc;
+  int16_t zero_trim;
+  int16_t background_trim;
 };
 
 //for DOUBLE_PRECISION_COMPENSATION
@@ -120,5 +137,10 @@ struct k30_quantized_calib_data {
 #define K30_OUT_RANGE_ERROR             0x20
 #define K30_MEMORY_ERROR                0x40
 
-#endif /* K30_REGS_H */
+/** Operation status from the sensor.*/
+#define WRITE_RAM_COMPLETE              0x11
+#define READ_RAM_COMPLETE               0x21
+#define WRITE_EEPROM_COMPLETE           0x31
+#define READ_EEPROM_COMPLETE            0x41
 
+#endif /* K30_REGS_H */

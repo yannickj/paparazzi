@@ -37,14 +37,11 @@
 #include "mcu_periph/sys_time_arch.h"
 
 #include "modules/ineris/ineris_sensors.h"
+#include "modules/ineris/ineris_utils.h"
 
 #include "peripherals/k30_i2c.h"
 #include "peripherals/k30_regs.h"
 #include "peripherals/lmp91000_i2c.h"
-
-
-// uart periph
-struct uart_periph *dev; // for printing on the screen
 
 // measures
 union{
@@ -76,48 +73,8 @@ uint8_t response[] = {0,0,0,0,0,0,0};
 
 enum request_t {CO2_REQUEST, TEMP_REQUEST, RH_REQUEST, INIT_REQUEST};
 
-// void print_int_tab_uart(float f, uint8_t *str){
-//   // max size : 50;
-//   // char data[50];
-//   // uint8_t s[14] = "k30 CO2 (ppm):";
-//   // snprintf(data, 50, "%s %d %d %d %d\n", str, tab[0], tab[1], tab[2], tab[3]);
-//   // snprintf(data, 50, "%s %f\n", str, f);
-//   // uart_put_buffer(dev, 0, data, 50);
-// }
-
-void print_float_uart(float f, char str[], int str_size){
-  char * data = NULL;
-  int size = str_size + 2 + 6 + 1; // 2 for spaces + 6 for float
-  data = malloc(size  * sizeof(char));
-  if (data == NULL){
-    return;
-  }
-  snprintf(data, size, "%s %4.1f\n", str, f);
-  uart_put_buffer(dev, 0, (uint8_t *) data, size);
-  free(data);
-}
-
-void print_int16_uart(uint16_t val, char str[], int str_size){
-  char * data = NULL;
-  int val_width = 0;
-  if (val == 0){
-    val_width = 1;
-  }
-  else{
-    val_width = (int)(log10(val)) + 1;
-  }
-  int size = str_size + 2 + val_width + 1; // 2 for spaces
-  data = malloc(size  * sizeof(char));
-  if (data == NULL){
-    return;
-  }
-  snprintf(data, size, "%s %d\n", str, val); 
-  uart_put_buffer(dev, 0, (uint8_t *) data, size);
-  // uart_put_buffer(dev, 0, (const unsigned char) data, size);
-  free(data);
-}
-
 void k30_adc_init(void){
+  ineris_utils_init();
   #ifdef K30_ADC_CHANNEL1
     adc_buf_channel(K30_ADC_CHANNEL1, &k30_buf, K30_ADC_NB_SAMPLES);
   #endif
@@ -130,8 +87,8 @@ void k30_adc_periodic(void){
  #ifdef K30_ADC_CHANNEL1
   uint16_t adc_raw;
     adc_raw = k30_buf.sum / k30_buf.av_nb_sample;
-  char str[] = "adc1 raw :";
-  print_int16_uart(adc_raw, str, 10);
+  char str[10] = "adc1 raw :";
+  print_uint16_uart(adc_raw, str, 10);
   char str1[] = "OUT1 (ppm):";
   float out1 = ((float) adc_raw) * 43 * 50 / 1000;
   print_float_uart(out1, str1, 11);
@@ -140,53 +97,14 @@ void k30_adc_periodic(void){
   #ifdef K30_ADC_CHANNEL2
   uint16_t adc_raw2;
     adc_raw2 = k30_buf2.sum / k30_buf2.av_nb_sample;
-  char str2[] = "adc2 raw :";
-  print_int16_uart(adc_raw2, str2, 10);
+  char str2[10] = "adc2 raw :";
+  print_uint16_uart(adc_raw2, str2, 10);
   float out2 = ((float) adc_raw2 * 2 - 1) * 1250 / 1000;
   char str3[] = "OUT2 (ppm):";
   print_float_uart(out2, str3, 11);
-
   #endif
-  
-  
 }
 
-
-void send_request_k30(enum request_t req){
-  // while serial available (keep sengind request until k30 send a response)
-  switch(req){
-    case CO2_REQUEST:
-      // uart_put_buffer(k_30_serial, 0, cmd_read_CO2, 7);
-      // i2c...
-      break;
-    case TEMP_REQUEST:
-      // uart_put_buffer(k_30_serial, 0, cmd_read_Temp, 7);
-      break;
-    case RH_REQUEST:
-      // uart_put_buffer(k_30_serial, 0, cmd_read_RH, 7);
-      break;
-    case INIT_REQUEST:
-      // uart_put_buffer(k_30_serial, 0, cmd_init, 8);
-      break;
-  }
-  sys_time_msleep(100); //FIXME Deal it with State management instead of sleep
-
-  // uint8_t timeout = 0;
-  // wait to get a 7 byte response (arduino : while serial.availabble() < 7 )
-  /*{
-    timeout++;
-    if(timeout > 10){
-      //flush serial (Serial.read)
-      //break
-    }
-    sys_time_msleep(50);
-  }*/
-  sys_time_msleep(250); //FIXME
-  
-  for(int i = 0; i < 7; i++){
-    // response[i] = uart_getch(k_30_serial);
-  }
-}
 
 uint16_t get_value_k30(uint8_t * response){
   uint8_t high = response[3];
@@ -201,8 +119,6 @@ void k30_init(){
   // LED_ON(2);
   // save_in_log_init();
   led_pattern(2);
-  dev = &(INERIS_SENSORS_DEV);
-  // k_30_serial = &(K_30_SERIAL_DEV);
   k30_adc_init();
 }
 
@@ -212,36 +128,8 @@ void k30_periodic(){
   // read output OUT2 1-5V (or 0-5 V) -> should read OUT1 + configure
   // k30_meas = palReadLine(LINE_C01_K30_MEAS);
   // k30_meas = palReadLine(LINE_D07_K30_MEAS);
-  /*
-  if (k30.k30_meas > 1 && k30.k30_meas < 3){
-    LED_ON(2);
-  }
-  else{
-    if (k30.k30_meas < 1){
-      LED_ON(3);
-    }
-    else{
-      LED_ON(2);
-      LED_ON(3);
-    }
-  }
-  */
-
-  // PRINTF("k30_meas : %f\n", k30_meas); non valable : pas simu
-  // float lmp50_meas = palReadLine(LINE_C02_LMP50_MEAS);
-  // PRINTF("k30_meas : %f\n", lmp50_meas);
-  // save_in_log(k30_meas);
-  // save_in_log(lmp50_meas);
-  // save_in_log(360123.); 
-
-  // read I2C
-
-  // fflush(stdout);
-
-  // led_pattern(2);
-
+  
   // test_uart();
-
   
   k30.k30_meas = palReadLine(LINE_A03_K30_MEAS);
   // k30.k30_meas = 103.5;
@@ -254,37 +142,6 @@ void k30_periodic(){
   // uint8_t s[14] = "k30 CO2 (ppm):";
   // print_int16_uart(k_30_value, s, 14);
   // print_int_tab_uart(response, s);
-
-  // led_pattern(2);  
-}
-
-void led_pattern(int id){
-  if (id == 1){
-    LED_TOGGLE(2);
-    sys_time_msleep(20);
-    LED_TOGGLE(2);
-    LED_TOGGLE(2);
-    sys_time_msleep(20);
-    LED_TOGGLE(2);
-    sys_time_msleep(20);
-    LED_TOGGLE(2);
-    sys_time_msleep(20);
-    LED_OFF(2);
-    return;
-  }
-  if (id == 2){
-    LED_ON(2);
-    sys_time_msleep(200);
-    LED_OFF(2);
-    LED_ON(3);
-    sys_time_msleep(200);
-    LED_OFF(3);
-    LED_ON(2);
-    sys_time_msleep(200);
-    LED_OFF(2);
-    sys_time_msleep(200);
-    return;
-  }
 }
 
 void test_uart(){

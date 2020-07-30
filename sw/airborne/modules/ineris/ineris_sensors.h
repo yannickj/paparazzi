@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2012 The Paparazzi Team
+ * Copyright (C)
  *
  * This file is part of paparazzi.
  *
@@ -21,24 +21,18 @@
  */
 
 /**
- * @file modules/ineris/ineris_sensors.h
- * @brief DigiPicco I2C sensor interface
- *
- * 
+ * @file modules/ineris/ineris_sensors.h 
  */
 
 #ifndef CO2_SENSOR_K30
 #define CO2_SENSOR_K30
 
-
-#include "led.h"
 #include <std.h>
 
 void k30_init(void);
 void k30_periodic(void);
-void save_in_log_init(void);
-void save_in_log(float data);
+// void save_in_log_init(void);
+// void save_in_log(float data);
 void test_uart(void);
-void led_pattern(int id);
 
 #endif
