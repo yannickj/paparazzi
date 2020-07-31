@@ -29,6 +29,14 @@
 #ifndef CO2_K30_H
 #define CO2_K30_H
 
+/** 
+ * Log on SD card as ASCII csv
+ * TRUE by default
+ */
+#ifndef LOG_INERIS
+#define LOG_INERIS TRUE
+#endif
+
 #include "peripherals/k30_i2c.h"
 
 extern struct K30_I2c co2_k30;
@@ -37,4 +45,7 @@ void co2_k30_init(void);
 void co2_k30_periodic(void);
 void co2_k30_event(void);
 
+#if LOG_INERIS
+#include "modules/loggers/sdlog_chibios.h"
 #endif
+#endif /* CO2_K30_H */

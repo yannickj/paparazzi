@@ -27,15 +27,13 @@
  */
 
 #include "co2_k30.h"
-
-#include "subsystems/abi.h"
-#include "mcu_periph/uart.h"
-#include "pprzlink/messages.h"
-#include "subsystems/datalink/downlink.h"
+#include <stdio.h>
 #include "modules/ineris/ineris_utils.h"
 
-#include <stdio.h>
-#include <math.h>
+// not useful until now
+// #include "subsystems/abi.h"
+// #include "pprzlink/messages.h"
+// #include "subsystems/datalink/downlink.h"
 
 /** default slave address */
 #ifndef K30_SLAVE_ADDR
@@ -46,9 +44,18 @@ static void co2_k30_print_error(void);
 
 struct K30_I2c co2_k30;
 
+#if LOG_INERIS
+static bool log_co2_k30_started;
+static void co2_k30_log_data_ascii(void);
+#endif
+
+
 void co2_k30_init(void)
 {
   k30_i2c_init(&co2_k30, &K30_I2C_DEV, K30_SLAVE_ADDR);
+  #if LOG_INERIS
+  log_co2_k30_started = false;
+  #endif
 }
 
 void co2_k30_periodic(void)
@@ -80,6 +87,11 @@ void co2_k30_periodic(void)
   // for(int i = 0; i<3; i++){
   //   print_uint8_uart(co2_k30.raw_error_bytes[i], str_for, 3);
   // }
+
+  // Log data
+  #if LOG_INERIS
+  co2_k30_log_data_ascii();
+  #endif
   co2_k30.data_available = false;
 }
 
@@ -109,3 +121,26 @@ static void co2_k30_print_error(void){
   char str[] = "";
   print_uint8_uart(co2_k30.error_status, str, 1);
 }
+
+#if LOG_INERIS
+static void co2_k30_log_data_ascii(void)
+{
+  if (pprzLogFile != -1){
+    if (!log_co2_k30_started){
+      char intro[] = "raw_co2(ppm) co2_meas(ppm) old zero bcc z_tr b_tr";
+      sdLogWriteLog(pprzLogFile, intro);
+      log_co2_k30_started = true;
+    }else{
+      sdLogWriteLog(pprzLogFile, "%d %f %d %d %d %d %d %d",
+                    co2_k30.raw_co2,
+                    co2_k30.co2,
+                    co2_k30.calib.old,
+                    co2_k30.calib.zero,
+                    co2_k30.calib.bcc,
+                    co2_k30.calib.zero_trim,
+                    co2_k30.calib.background_trim,
+                    co2_k30.debug_flag);
+    }
+  } 
+}
+#endif
