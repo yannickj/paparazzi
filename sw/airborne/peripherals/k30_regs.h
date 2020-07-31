@@ -63,7 +63,9 @@ enum K30CalibrationStatus {
   K30_CALIB_OLD,
   K30_CALIB_ZERO,
   K30_CALIB_BCC,
-  K30_CALIB_ZERO_TRIM
+  K30_CALIB_ZERO_TRIM,
+  K30_CALIB_START_ZERO,
+  K30_CALIB_START_BACKGROUND
 };
 
 struct k30_reg_calib_data {
@@ -123,6 +125,9 @@ struct k30_quantized_calib_data {
 #define K30_DEFAULT_FRAC            0x4A // (1..8 range)
 
 /** Signal and calibration parameters (not valid for K45)*/
+#define K30_CALIB_AUTO_ADDR             0x67 // RAM
+#define K30_CALIB_ZERO_CMD              0x7C07
+#define K30_CALIB_BACKGROUND_CMD        0x7C06
 #define K30_CALIB_OLD_ADDR              0x06 // RAM
 #define K30_CALIB_ZERO_ADDR             0x38 // EEPROM READ ONLY !
 #define K30_CALIB_ZERO_TRIM_ADDR        0x48 // EEPROM

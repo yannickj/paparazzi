@@ -29,8 +29,12 @@
 #include <math.h>
 #include "mcu_periph/sys_time_arch.h"
 
+// TODO change this with a variable linked to a logical button to trigger the calibration
+#define AUTO_CALIBRATION 0
+#if (! AUTO_CALIBRATION)
 #define ZERO_TRIM_WRITE 0  // 0 = skip the zero_trim (write in EEPROM operation)
 #define ZERO_TRIM_READ (! ZERO_TRIM_WRITE) // until now code works in read or write only for zero_trim
+#endif
 
 /** local function to extract raw data from i2c buffer
  *  and compute compensation with selected precision
@@ -38,13 +42,17 @@
 static void send_request(struct K30_I2c *k30, int request_buf_size, int response_buf_size);
 static void request_co2(struct K30_I2c *k30);
 static void request_error_status(struct K30_I2c *k30);
+static void parse_co2_data(struct K30_I2c *k30);
+static void parse_error_status(struct K30_I2c *k30);
 
+#if AUTO_CALIBRATION
+static void request_calib_start_zero(struct K30_I2c *k30);
+static void request_calib_start_background(struct K30_I2c *k30);
+static void parse_calib_start(struct K30_I2c *k30);
+#else
 static void request_calib_old(struct K30_I2c *k30);
 static void request_calib_bcc(struct K30_I2c *k30);
 static void request_calib_zero(struct K30_I2c *k30);
-
-static void parse_co2_data(struct K30_I2c *k30);
-static void parse_error_status(struct K30_I2c *k30);
 static void parse_calib_old(struct K30_I2c *k30);
 static void parse_calib_bcc(struct K30_I2c *k30);
 static void parse_calib_zero(struct K30_I2c *k30);
@@ -57,6 +65,7 @@ static void parse_calib_zero_trim_read(struct K30_I2c *k30);
 #if ZERO_TRIM_WRITE
 static void parse_calib_zero_trim_write(struct K30_I2c *k30);
 static void request_calib_zero_trim_write(struct K30_I2c *k30);
+#endif
 #endif
 
 static void compensate_co2(struct K30_I2c *k30);
@@ -87,6 +96,11 @@ void k30_i2c_init(struct K30_I2c *k30, struct i2c_periph *i2c_p, uint8_t addr)
   k30->data_available = false;
   k30->initialized = false;
   k30->status = K30_STATUS_UNINIT;
+  #if AUTO_CALIBRATION
+  k30->calibration_status = K30_CALIB_START_BACKGROUND;
+  #else
+  k30->calibration_status = K30_CALIB_OLD; 
+  #endif
   k30->debug_flag = 1;
   for(int i=0; i<4; i++){
     k30->raw_co2_bytes[i] = 0;
@@ -122,18 +136,23 @@ void k30_i2c_periodic(struct K30_I2c *k30)
       break;
     case K30_STATUS_GET_CALIB:
       switch (k30->calibration_status){
+        #if AUTO_CALIBRATION
+        case K30_CALIB_START_ZERO:
+          request_calib_start_zero(k30);
+          break;
+        case K30_CALIB_START_BACKGROUND:
+          request_calib_start_background(k30);
+          break;
+        #else
         case K30_CALIB_OLD:
           request_calib_old(k30);
           break;
-
         case K30_CALIB_ZERO:
           request_calib_zero(k30);
           break;
-        
         case K30_CALIB_BCC:
           request_calib_bcc(k30);
           break;
-        
         case K30_CALIB_ZERO_TRIM:
           #if ZERO_TRIM_READ
           request_calib_zero_trim_read(k30);
@@ -148,7 +167,7 @@ void k30_i2c_periodic(struct K30_I2c *k30)
           //TODO restart sensor
           #endif
           break;
-
+        #endif
         default:
           break;
       }
@@ -189,6 +208,14 @@ void k30_i2c_event(struct K30_I2c *k30)
         break;
       case K30_STATUS_GET_CALIB:
         switch (k30->calibration_status){
+          #if AUTO_CALIBRATION
+          case K30_CALIB_START_ZERO:
+            parse_calib_start(k30);
+            break;
+          case K30_CALIB_START_BACKGROUND:
+            parse_calib_start(k30);
+            break;
+          #else
           case K30_CALIB_OLD:
             parse_calib_old(k30);
             break;
@@ -205,7 +232,8 @@ void k30_i2c_event(struct K30_I2c *k30)
             #if ZERO_TRIM_WRITE
               parse_calib_zero_trim_write(k30);
             #endif
-            break;   
+            break;
+          #endif
           default:
             break;
         }
@@ -275,7 +303,29 @@ static void request_error_status(struct K30_I2c *k30)
   k30->i2c_trans.buf[3] = k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2];
   send_request(k30, 4, 3);  
 }
+#if AUTO_CALIBRATION
+static void request_calib_start_zero(struct K30_I2c *k30)
+{
+  k30->i2c_trans.buf[0] = K30_WRITE_RAM + 2;
+  k30->i2c_trans.buf[1] = K30_PADDING;
+  k30->i2c_trans.buf[2] = K30_CALIB_AUTO_ADDR;
+  k30->i2c_trans.buf[3] = (uint8_t) (K30_CALIB_ZERO_CMD >> 8);
+  k30->i2c_trans.buf[4] = (uint8_t) (K30_CALIB_ZERO_CMD && 255);
+  k30->i2c_trans.buf[5] = (k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2] + k30->i2c_trans.buf[3] + k30->i2c_trans.buf[4])%256;
+  send_request(k30, 6, 2);  
+}
 
+static void request_calib_start_background(struct K30_I2c *k30)
+{
+  k30->i2c_trans.buf[0] = K30_WRITE_RAM + 2;
+  k30->i2c_trans.buf[1] = K30_PADDING;
+  k30->i2c_trans.buf[2] = K30_CALIB_AUTO_ADDR;
+  k30->i2c_trans.buf[3] = (uint8_t) (K30_CALIB_BACKGROUND_CMD >> 8);
+  k30->i2c_trans.buf[4] = (uint8_t) (K30_CALIB_BACKGROUND_CMD && 255);
+  k30->i2c_trans.buf[5] = (k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2] + k30->i2c_trans.buf[3] + k30->i2c_trans.buf[4])%256;
+  send_request(k30, 6, 2);  
+}
+#else
 static void request_calib_old(struct K30_I2c *k30)
 {
   k30->i2c_trans.buf[0] = K30_READ_RAM + 2;
@@ -327,10 +377,11 @@ static void request_calib_zero_trim_write(struct K30_I2c *k30)
   k30->i2c_trans.buf[2] = K30_CALIB_ZERO_TRIM_ADDR;
   k30->i2c_trans.buf[3] = (uint8_t) (k30->calib.zero_trim >> 8);
   k30->i2c_trans.buf[4] = (uint8_t) (k30->calib.zero_trim & 255);
-  k30->i2c_trans.buf[5] = k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2] + k30->i2c_trans.buf[3] + k30->i2c_trans.buf[4];
+  k30->i2c_trans.buf[5] = (k30->i2c_trans.buf[0] + k30->i2c_trans.buf[1] + k30->i2c_trans.buf[2] + k30->i2c_trans.buf[3] + k30->i2c_trans.buf[4])%256;
   k30->debug_flag = 23;
   send_request(k30, 5, 2);  
 }
+#endif
 #endif
 
 static void parse_co2_data(struct K30_I2c *k30)
@@ -386,6 +437,17 @@ static void parse_error_status(struct K30_I2c *k30)
  *  @brief This internal API is used to parse the calibration data, compensates
  *  it and store it in device structure
  */
+#if AUTO_CALIBRATION
+static void parse_calib_start(struct K30_I2c *k30)
+{
+  uint8_t data_checksum, data_op_status;
+  data_op_status = k30->i2c_trans.buf[0];
+  data_checksum = k30->i2c_trans.buf[1];
+  if ((data_checksum == data_op_status) && (data_op_status == WRITE_RAM_COMPLETE)){
+    k30->status = K30_STATUS_CONFIGURE;
+  }
+}
+#else
 static void parse_calib_old(struct K30_I2c *k30)
 {
   uint8_t data_checksum, data_msb, data_lsb, data_op_status;
@@ -451,7 +513,6 @@ static void parse_calib_zero_trim_read(struct K30_I2c *k30)
 }
 #endif
 
-
 #if ZERO_TRIM_WRITE
 static void parse_calib_zero_trim_write(struct K30_I2c *k30)
 {
@@ -464,6 +525,7 @@ static void parse_calib_zero_trim_write(struct K30_I2c *k30)
   }
   k30->debug_flag = 36;
 }
+#endif
 #endif
 
 /**
