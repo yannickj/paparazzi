@@ -1,0 +1,29 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="adc161s626" dir="adcs">
+  <doc>
+    <description>
+      ADC driver via SPI.
+    </description>
+    <!-- <configure name="IMU_MPU_SPI_DEV" value="spi1" description="SPI device to use for MPU6000"/>
+    <configure name="IMU_MPU_SPI_SLAVE_IDX" value="SPI_SLAVE0" description="slave index of the MPU CS pin"/> -->
+  </doc>
+  <header>
+    <file name="adc161s626.h"/>
+  </header>
+  <init fun="adc161s626_init()"/>
+  <periodic fun="adc161s626_periodic()" freq="1.0"/>
+  <event fun="adc161s626_event()"/>
+  <makefile target="ap">
+    <configure name="ADC_161S626_SPI_DEV" default="spi2" case="lower|upper"/>
+    <configure name="ADC_161S626_SPI_SLAVE_IDX" default="SPI_SLAVE1"/> <!-- SPI_SLAVE0 pin already taken (i2c) -->
+
+    <define name="ADC_161S626_SPI_DEV" value="$(ADC_161S626_SPI_DEV_LOWER)"/>
+    <define name="USE_$(ADC_161S626_SPI_DEV_UPPER)"/>
+    <define name="ADC_161S626_SPI_SLAVE_IDX" value="$(ADC_161S626_SPI_SLAVE_IDX)"/>
+    <define name="USE_$(ADC_161S626_SPI_SLAVE_IDX)"/>
+
+    <file name="adc161s626.c"/>
+    <file name="adc161s626_spi.c" dir="peripherals"/>
+  </makefile>
+</module>

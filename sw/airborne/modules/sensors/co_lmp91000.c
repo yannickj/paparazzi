@@ -32,6 +32,7 @@
 #include "mcu_periph/uart.h"
 #include "pprzlink/messages.h"
 #include "subsystems/datalink/downlink.h"
+#include "modules/ineris/ineris_utils.h"
 
 /** default slave address */
 #ifndef LMP91000_SLAVE_ADDR
@@ -48,6 +49,7 @@ void co_lmp91000_init(void)
 void co_lmp91000_periodic(void)
 {
   lmp91000_i2c_periodic(&co_lmp91000);
+  print_float_uart(co_lmp91000.co, "lmp co meas : ", 14);
 }
 
 void co_lmp91000_event(void)

@@ -27,6 +27,13 @@
 
 struct uart_periph *dev;
 
+void ineris_utils_init(void){
+  dev = &(INERIS_SENSORS_DEV);
+}
+
+/**
+ * Diverse functions to print on UART for debug
+ */
 void print_float_uart(float f, char str[], int str_size){
   char * data = NULL;
   int size = str_size + 2 + 1 + 1 + 2; // 2 for spaces + (log +1)  for float;
@@ -111,8 +118,4 @@ void led_pattern(int id){
     sys_time_msleep(200);
     return;
   }
-}
-
-void ineris_utils_init(void){
-  dev = &(INERIS_SENSORS_DEV);
 }

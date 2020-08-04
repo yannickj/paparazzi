@@ -45,7 +45,7 @@
 
 /* red, on PB14, 1 on LED_ON, 0 on LED_OFF (disabled by default as shared with SPI2) */
 #ifndef USE_LED_3
-#define USE_LED_3 1
+#define USE_LED_3 0
 #endif
 #define LED_3_GPIO GPIOB
 #define LED_3_GPIO_PIN GPIO14
