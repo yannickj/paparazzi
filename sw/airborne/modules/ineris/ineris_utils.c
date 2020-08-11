@@ -71,7 +71,7 @@ void print_uint8_uart(uint8_t val, char str[], int str_size){
   free(data);
 }
 
-void print_uint16_uart(uint16_t val, char str[], int str_size){
+void print_uint32_uart(uint32_t val, char str[], int str_size){
   char * data = NULL;
   int size = str_size + 2 + 1 + 1; // 2 for (space + \n) + 1 for the log10 + 1 for \0 ?
   if(val != 0){
@@ -82,9 +82,13 @@ void print_uint16_uart(uint16_t val, char str[], int str_size){
     led_pattern(2);
     return;
   }
-  snprintf(data, size, "%s %d\n", str, val);
+  snprintf(data, size, "%s %ld\n", str, val);
   uart_put_buffer(dev, 0, (uint8_t *) data, size);
   free(data);
+}
+
+void print_uint16_uart(uint16_t val, char str[], int str_size){
+  print_uint32_uart((uint32_t) val, str, str_size);
 }
 
 void print_char_uart(char str[], int str_size){

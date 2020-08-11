@@ -42,6 +42,7 @@
 void print_float_uart(float f, char str[], int str_size);
 void print_uint8_uart(uint8_t val, char str[], int str_size);
 void print_uint16_uart(uint16_t val, char str[], int str_size);
+void print_uint32_uart(uint32_t val, char str[], int str_size);
 void print_char_uart(char str[], int str_size);
 void led_pattern(int id);
 void ineris_utils_init(void);

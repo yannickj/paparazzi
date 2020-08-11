@@ -65,16 +65,23 @@
       <configure name="INERIS_SENSORS_BAUD" value="B9600"/>
     </module>
 
-    <!-- test: only the ADC 161S626 
-    <module name ="co2_k30">
+    <!-- test: only the ADC 161S626  -->
+    <!-- <module name ="co2_k30">
       <configure name="K30_I2C_DEV" value="i2c2"/>
-    </module>
-
-    <module name ="co_lmp91000">
-      <configure name="LMP91000_I2C_DEV" value="i2c2"/>
     </module> -->
 
-    <module name="adc161s626"/>
+    <!-- <module name ="co_lmp91000">
+      <configure name="LMP91000_I2C_DEV" value="i2c2"/>
+    </module> -->
+    
+    <!-- <module name="adc161s626">
+      <configure name="ADC_161S626_SPI_DEV" value="SPI2"/>
+      <configure name="ADC_161S626_SLAVE_IDX" value="SPI_SLAVE1"/>
+    </module> -->
+    
+    <module name ="bme280">
+      <configure name="BME280_I2C_DEV" value="i2c2"/>
+    </module>
 
   </firmware>
 
