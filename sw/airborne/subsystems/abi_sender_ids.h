@@ -169,6 +169,10 @@
 #define AGL_LIDAR_TFMINI_ID 11
 #endif
 
+#ifndef AGL_VL53L1X_ID
+#define AGL_VL53L1X_ID 12
+#endif
+
 /*
  * IDs of magnetometer sensors (including IMUs with mag)
  */
@@ -343,6 +347,10 @@
 #define FLOW_OPTICFLOW_ID 1
 #endif
 
+#ifndef FLOW_OPTICFLOW_PMW3901_ID
+#define FLOW_OPTICFLOW_PMW3901_ID 2
+#endif
+
 /*
  * IDs of VELOCITY estimates (message 12)
  */
@@ -360,6 +368,10 @@
 
 #ifndef VEL_STEREOCAM_ID
 #define VEL_STEREOCAM_ID 4
+#endif
+
+#ifndef VEL_OPTICFLOW_PMW3901_ID
+#define VEL_OPTICFLOW_PMW3901_ID 5
 #endif
 
 /*
@@ -408,6 +420,10 @@
 
 #ifndef OBS_DETECTION_RANGE_ARRAY_NPS_ID
 #define OBS_DETECTION_RANGE_ARRAY_NPS_ID 3
+#endif
+
+#ifndef OBS_DETECTION_MULTI_RANGER_DECK_ID
+#define OBS_DETECTION_MULTI_RANGER_DECK_ID 4
 #endif
 
 /*

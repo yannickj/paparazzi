@@ -26,18 +26,17 @@
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_common_int.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_ref_quat_int.h"
 
-//only 4 actuators supported for now
-#define INDI_NUM_ACT 4
-// outputs: roll, pitch, yaw, thrust
-#define INDI_OUTPUTS 4
 // Scaling for the control effectiveness to make it readible
 #define INDI_G_SCALING 1000.0
 
 extern struct Int32Quat   stab_att_sp_quat;  ///< with #INT32_QUAT_FRAC
 extern struct Int32Eulers stab_att_sp_euler; ///< with #INT32_ANGLE_FRAC
 extern float g1g2[INDI_OUTPUTS][INDI_NUM_ACT];
+extern float actuator_state_filt_vect[INDI_NUM_ACT];
 
 extern bool indi_use_adaptive;
+
+extern float *Bwls[INDI_OUTPUTS];
 
 struct ReferenceSystem {
   float err_p;

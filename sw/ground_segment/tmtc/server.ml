@@ -31,7 +31,7 @@ let replay_old_log = ref false
 open Printf
 open Latlong
 open Server_globals
-open Aircraft
+open Aircraft_server
 open Quaternion
 (*open Intruder*)
 module U = Unix
@@ -68,18 +68,24 @@ let send_aircrafts_msg = fun _asker _values ->
 
 let expand_aicraft x =
   let ac_name = ExtXml.attrib x "name" in
+  let handle_error_message = fun error_type msg ->
+    prerr_endline ("A failure occurred while processing aircraft '"^ac_name^"'");
+    prerr_endline (" - "^error_type^" : "^msg);
+    prerr_endline (" - '"^ac_name^"' will be ignored by the server");
+    prerr_endline " - Please remove it from 'conf.xml' or fix its parameter(s)";
+    flush stderr;
+    Xml.Element ("ignoring_aircraft",["name", ac_name],[])
+  in
   try
-    Env.expand_ac_xml x
-  with Failure msg ->
-    begin
-      prerr_endline ("A failure occurred while processing aircraft '"^ac_name^"'");
-      prerr_endline (" - Fail with : "^msg);
-      prerr_endline (" - '"^ac_name^"' will be ignored by the server");
-      prerr_endline " - Please remove it from 'conf.xml' or fix its parameter(s)";
-      flush stderr;
-      (*failwith msg*)
-      Xml.Element ("ignoring_aircraft",["name", ac_name],[])
-    end
+    let ac = Aircraft.parse_aircraft ~parse_all:true "" x in
+    if List.length ac.Aircraft.xml > 0 then Xml.Element (Xml.tag x, Xml.attribs x, ac.Aircraft.xml)
+    else failwith "Nothing to parse"
+  with
+    | Failure msg -> handle_error_message "Fail with" msg
+    | Xml.File_not_found file -> handle_error_message "File not found" file
+    | Module.Module_not_found m -> handle_error_message "Module not found" m
+    | Dtd.Prove_error err -> handle_error_message "Dtd error" (Dtd.prove_error err)
+    | Not_found -> handle_error_message "Not found" "sorry, something went wrong somewhere"
 
 let make_element = fun t a c -> Xml.Element (t,a,c)
 
@@ -193,7 +199,7 @@ let send_cam_status = fun a ->
           let utmx = dx *. cos angles.y -. dy *. sin angles.y
           and utmy = dx *. sin angles.y +. dy *. cos angles.y in
             
-          Aircraft.add_pos_to_nav_ref (Geo a.pos) (utmx, utmy) in
+          Aircraft_server.add_pos_to_nav_ref (Geo a.pos) (utmx, utmy) in
     
         let geo_1 = find_point_on_ground tr_rotated
         and geo_2 = find_point_on_ground tl_rotated
@@ -203,7 +209,7 @@ let send_cam_status = fun a ->
         let lats = sprintf "%f,%f,%f,%f," ((Rad>>Deg)geo_1.posn_lat) ((Rad>>Deg)geo_2.posn_lat) ((Rad>>Deg)geo_3.posn_lat) ((Rad>>Deg)geo_4.posn_lat) in  
         let longs = sprintf "%f,%f,%f,%f," ((Rad>>Deg)geo_1.posn_long) ((Rad>>Deg)geo_2.posn_long) ((Rad>>Deg)geo_3.posn_long) ((Rad>>Deg)geo_4.posn_long) in 
         
-        let twgs84 = Aircraft.add_pos_to_nav_ref nav_ref a.cam.target in
+        let twgs84 = Aircraft_server.add_pos_to_nav_ref nav_ref a.cam.target in
         let values = ["ac_id", PprzLink.String a.id;
                       "lats", PprzLink.String lats;
                       "longs", PprzLink.String longs;
@@ -327,7 +333,7 @@ let send_telemetry_status = fun a ->
   (* if no link send anyway for rx_lost_time with special link id *)
   if Hashtbl.length a.link_status = 0 then
     begin
-      let vs = tl_payload "no_id" a.datalink_status (Aircraft.link_status_init ()) in
+      let vs = tl_payload "no_id" a.datalink_status (Aircraft_server.link_status_init ()) in
       Ground_Pprz.message_send my_id "TELEMETRY_STATUS" vs
     end
   else
@@ -555,15 +561,18 @@ let new_aircraft = fun get_alive_md5sum real_id ->
   if not is_replayed then
     check_md5sum real_id (get_alive_md5sum ()) aircraft_conf_dir;
 
-  let ac = Aircraft.new_aircraft real_id ac_name xml_fp airframe_xml in
+  let ac = Aircraft_server.new_aircraft real_id ac_name xml_fp airframe_xml in
   let update = fun () ->
     for i = 0 to Array.length ac.svinfo - 1 do
       ac.svinfo.(i).age <-  ac.svinfo.(i).age + 1;
     done in
 
   ignore (ac.ap_modes <- try
-    let (ap_file, _) = Gen_common.get_autopilot_of_airframe airframe_xml in
-    Some (modes_from_autopilot (ExtXml.parse_file ap_file))
+    let ac = Aircraft.parse_aircraft "" airframe_xml in
+    match ac.Aircraft.autopilots with
+    | None -> None
+    | Some [(_, ap)] -> Some (modes_from_autopilot ap.Autopilot.xml)
+    | _ -> None (* more than one *)
   with _ -> None);
 
   ignore (Glib.Timeout.add 1000 (fun _ -> update (); true));
@@ -846,7 +855,7 @@ let link_report = fun logging _sender vs ->
   try
     let ac = Hashtbl.find aircrafts ac_id in
     let link_status = {
-      Aircraft.rx_lost_time = PprzLink.int_assoc "rx_lost_time" vs;
+      Aircraft_server.rx_lost_time = PprzLink.int_assoc "rx_lost_time" vs;
       rx_bytes = PprzLink.int_assoc "rx_bytes" vs;
       rx_msgs = PprzLink.int_assoc "rx_msgs" vs;
       rx_bytes_rate = PprzLink.float_assoc "rx_bytes_rate" vs;
@@ -896,7 +905,6 @@ let () =
     "Usage: ";
 
   Srtm.add_path srtm_path;
-
   Ivy.init "Paparazzi server" "READY" (fun _ _ -> ());
   Ivy.start !ivy_bus;
 
