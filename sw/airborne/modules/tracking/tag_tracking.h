@@ -30,6 +30,10 @@
 
 #include "std.h"
 
+#define TAG_TRACKING_SEARCHING  0
+#define TAG_TRACKING_RUNNING    1
+#define TAG_TRACKING_LOST       2
+
 struct tag_tracking_public {
   float cmd_roll;     ///< roll command [rad]
   float cmd_pitch;    ///< pitch command [rad]
@@ -37,7 +41,7 @@ struct tag_tracking_public {
   float kp;           ///< horizontal proportional gain
   float kd;           ///< horizontal derivative gain
   float kp_climb;     ///< vertical proportional gain
-  bool lost;          ///< tracking lost flag
+  uint8_t status;     ///< tracking status flag
 };
 
 extern struct tag_tracking_public tag_tracking;
