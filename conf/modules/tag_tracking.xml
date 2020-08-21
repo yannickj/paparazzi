@@ -8,23 +8,20 @@
   <settings target="ap|nps">
     <dl_settings>
       <dl_settings NAME="Tag Tracking">
-        <dl_setting var="tag_tracking_kp" min="0." step="0.00001" max="0.1" shortname="kp" module="modules/tracking/tag_tracking"/>
-        <dl_setting var="tag_tracking_kd" min="0." step="0.00001" max="0.1" shortname="kd" module="modules/tracking/tag_tracking"/>
-        <dl_setting var="tag_tracking_kp_descent" min="0." step="0.001" max="1" shortname="kp_descent" module="modules/tracking/tag_tracking"/>
+        <dl_setting var="tag_tracking.kp" min="0." step="0.001" max="1." shortname="kp" module="modules/tracking/tag_tracking"/>
+        <dl_setting var="tag_tracking.kd" min="0." step="0.001" max="1." shortname="kd" module="modules/tracking/tag_tracking"/>
+        <dl_setting var="tag_tracking.kp_climb" min="0." step="0.001" max="1." shortname="kp_climb" module="modules/tracking/tag_tracking"/>
       </dl_settings>
     </dl_settings>
   </settings>
   <header>
     <file name="tag_tracking.h"/>
-    <file name="kalman.h"/>
-    <file name="visualizer.h"/>
   </header>
   <init fun="tag_tracking_init()"/>
   <periodic fun="tag_tracking_propagate()" freq="10.0" start="tag_tracking_propagate_start()" autorun="TRUE"/>
   <periodic fun="tag_tracking_report()" freq="1.0" autorun="TRUE"/>
   <makefile>
     <file name="tag_tracking.c"/>
-    <file name="kalman.c"/>
-    <file name="visualizer.c"/>
+    <file name="simple_kinematic_kalman.c"/>
   </makefile>
 </module>

@@ -77,7 +77,7 @@
     </block> -->
     <block name="track tag">
       <set var="tag_tracking_tag_tracking_propagate_status" value="MODULES_START"/>
-      <attitude climb="tag_tracking_climb" pitch="tag_tracking_pitch" roll="tag_tracking_roll" vmode="climb" until="tag_tracking_lost" />
+      <attitude climb="tag_tracking.cmd_climb" pitch="DegOfRad(tag_tracking.cmd_pitch)" roll="DegOfRad(tag_tracking.cmd_roll)" vmode="climb" until="tag_tracking.lost" />
       <set var="tag_tracking_tag_tracking_propagate_status" value="MODULES_STOP"/>
       <deroute block="Standby"/>
     </block>

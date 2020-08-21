@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ * Copyright (C) 2020 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi
  *
@@ -28,21 +28,24 @@
 #ifndef TAG_TRACKING_H
 #define TAG_TRACKING_H
 
+#include "std.h"
 
+struct tag_tracking_public {
+  float cmd_roll;     ///< roll command [rad]
+  float cmd_pitch;    ///< pitch command [rad]
+  float cmd_climb;    ///< vertical speed command [m/s]
+  float kp;           ///< horizontal proportional gain
+  float kd;           ///< horizontal derivative gain
+  float kp_climb;     ///< vertical proportional gain
+  bool lost;          ///< tracking lost flag
+};
+
+extern struct tag_tracking_public tag_tracking;
 
 extern void tag_tracking_init(void);
 extern void tag_tracking_propagate(void);
 extern void tag_tracking_propagate_start(void);
 extern void tag_tracking_report(void);
-// extern void compute_command(void);
-
-extern float tag_tracking_roll;
-extern float tag_tracking_pitch;
-extern float tag_tracking_climb;
-
-extern float tag_tracking_kp;
-extern float tag_tracking_kd;
-extern bool tag_tracking_lost;
-extern float tag_tracking_kp_descent;
 
 #endif  // TAG_TRACKING_H
+

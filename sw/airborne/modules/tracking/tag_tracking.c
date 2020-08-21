@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ * Copyright (C) 2020 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *
  * This file is part of paparazzi
  *
@@ -18,21 +18,20 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-/** @file "modules/tracking/tag_tracking.h"
+/** @file "modules/tracking/tag_tracking.c"
  * @author Gautier Hattenberger <gautier.hattenberger@enac.fr>
  * Track poistion of a tag (ArUco, QRcode, ...) detected by an onboard camera
  * The tag detection and pose computation is done outside of the module, only the estimation
  * by fusion of AHRS and visual detection with a Kalman filter is performed in this module
  */
-#include "modules/tracking/kalman.h"
+
 #include "modules/tracking/tag_tracking.h"
+#include "modules/tracking/simple_kinematic_kalman.h"
 #include "generated/modules.h"
-#include "math/pprz_algebra_float.h"
 #include "state.h"
 #include "subsystems/abi.h"
-#include "modules/tracking/visualizer.h"
-#include "stdlib.h"
 #include <math.h>
+#include "subsystems/datalink/downlink.h"
 
 #if defined SITL
 #include "generated/flight_plan.h"
@@ -40,13 +39,12 @@ static void tag_tracking_sim(void);
 static void tag_motion_sim(void);
 
 // use WP_TARGET by default
-#if !(defined TAG_TRACKING_SIM_WP) && (defined WP_TARGET) 
+#if !(defined TAG_TRACKING_SIM_WP) && (defined WP_TARGET)
 #define TAG_TRACKING_SIM_WP WP_TARGET
 #endif
 
 #if !(defined TAG_TRACKING_PRED) && (defined WP_PRED)
 #define TAG_TRACKING_PRED WP_PRED
-
 #endif
 
 // select print function for debug
@@ -65,7 +63,13 @@ static void tag_motion_sim(void);
 
 static uint8_t tag_motion_sim_type = TAG_MOTION_LINE;
 static struct FloatVect3 tag_motion_speed = { TAG_MOTION_SPEED_X, TAG_MOTION_SPEED_Y, 0.f };
-#endif
+
+// variables for circle
+int time_circle = 0;
+float time_circle_corrected;
+float speed_circle = 0.03;
+
+#endif // SITL
 
 // Default parameters
 // Camera is looking down and is placed at the center of the frame
@@ -96,12 +100,42 @@ static struct FloatVect3 tag_motion_speed = { TAG_MOTION_SPEED_X, TAG_MOTION_SPE
 #define TAG_TRACKING_CAM_POS_Z 0.f
 #endif
 
-#define R 1
-#define Q_SIGMA2 1
-#define DT 1
-#define P0_POS 10
-#define P0_SPEED 10
-#define SECURITY_ANGLE_THRESHOLD 1 //Degree FIXME
+#ifndef TAG_TRACKING_PIXEL_TO_M
+#define TAG_TRACKING_PIXEL_TO_M (1.f / 1000.f)
+#endif
+
+#ifndef TAG_TRACKING_R
+#define TAG_TRACKING_R 1.f
+#endif
+
+#ifndef TAG_TRACKING_Q_SIGMA2
+#define TAG_TRACKING_Q_SIGMA2 1.f
+#endif
+
+#ifndef TAG_TRACKING_P0_POS
+#define TAG_TRACKING_P0_POS 10.f
+#endif
+
+#ifndef TAG_TRACKING_P0_SPEED
+#define TAG_TRACKING_P0_SPEED 10.f
+#endif
+
+#ifndef TAG_TRACKING_KP
+#define TAG_TRACKING_KP 0.1f
+#endif
+
+#ifndef TAG_TRACKING_KD
+#define TAG_TRACKING_KD 0.1f
+#endif
+
+#ifndef TAG_TRACKING_KP_CLIMB
+#define TAG_TRACKING_KP_CLIMB 0.1f
+#endif
+
+#ifndef TAG_TRACKING_SECURITY_ANGLE_THRESHOLD
+#define TAG_TRACKING_SECURITY_ANGLE_THRESHOLD RadOfDeg(60.f)
+#endif
+
 // generated in modules.h
 static const float tag_track_dt = TAG_TRACKING_PROPAGATE_PERIOD;
 
@@ -116,23 +150,12 @@ struct tag_tracking {
   struct FloatVect3 cam_pos;    ///< Position of camera in body frame
 };
 
-static struct tag_tracking tag_track;
-struct Kalman kalman;
+static struct tag_tracking tag_track_private;
+static struct SimpleKinematicKalman kalman;
 
-float tag_tracking_roll;
-float tag_tracking_pitch;
-float tag_tracking_climb;
-float tag_tracking_kp;
-float tag_tracking_kd;
-bool tag_tracking_lost;
-float tag_tracking_kp_descent;
+struct tag_tracking_public tag_tracking;
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
-
-// variables for circle
-int time_circle = 0;
-float time_circle_corrected;
-float speed_circle = 0.03;
 
 // Abi bindings
 #ifndef TAG_TRACKING_ID
@@ -148,77 +171,64 @@ static void tag_track_cb(uint8_t sender_id UNUSED,
 {
   if (type == JEVOIS_MSG_D3) {
     // store data from Jevois detection
-    tag_track.meas.x = coord[0];
-    tag_track.meas.y = coord[1];
-    tag_track.meas.z = coord[2];
+    tag_track_private.meas.x = coord[0] * TAG_TRACKING_PIXEL_TO_M;
+    tag_track_private.meas.y = coord[1] * TAG_TRACKING_PIXEL_TO_M;
+    tag_track_private.meas.z = coord[2] * TAG_TRACKING_PIXEL_TO_M;
     struct FloatVect3 measures;
     struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
     struct FloatRMat ltp_to_cam_rmat;
-    float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track.body_to_cam);
-    float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track.meas);
-    // TODO call correction step from here
-    kalman_update(&kalman, measures);
+    float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track_private.body_to_cam);
+    float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track_private.meas);
+    // call correction step from here
+    simple_kinematic_kalman_update(&kalman, measures);
   }
 }
 
-//static void compute_command(...);
-static void compute_command(){
-  tag_tracking_pitch = - tag_tracking_kp * kalman.state[0] - tag_tracking_kd * kalman.state[1]; 
-  tag_tracking_roll = tag_tracking_kp * kalman.state[2] + tag_tracking_kd * kalman.state[3];
-  tag_tracking_climb = - MIN(tag_tracking_kp_descent * kalman.state[4], 0.5);
-
-  PRINTF("pitch : %f", tag_tracking_pitch);
-  PRINTF("roll : %f", tag_tracking_roll);
-  //integrity tests
-  if (abs(tag_tracking_pitch) > SECURITY_ANGLE_THRESHOLD || abs(tag_tracking_roll) > SECURITY_ANGLE_THRESHOLD){
-    tag_tracking_lost = true;
-    PRINTF("INTEGRITY STOP");
-  }
-  else{
-    struct EnuCoor_f * posDrone = stateGetPositionEnu_f();
-
-    // PRINTF("x drone : %f", posDrone->x);
-    // PRINTF("y drone : %f", posDrone->y);
-    struct EnuCoor_f pos;
-    pos.x = kalman.state[2] / 1000 + posDrone->x;
-    pos.y = kalman.state[0] / 1000 + posDrone->y;
-    pos.z = posDrone->z - kalman.state[4] / 1000;
-    struct EnuCoor_i pos_i;
-    ENU_BFP_OF_REAL(pos_i, pos);
-    //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
-    waypoint_move_enu_i(TAG_TRACKING_PRED, &pos_i);
-
-    PRINTF("roll : %f\n", tag_tracking_roll);
-    PRINTF("pitch : %f\n", tag_tracking_pitch);
-    // PRINTF("climb : %f\n", tag_tracking_climb);
-    fflush(stdout);
-
-    struct EnuCoor_f posPlt = waypoints[TAG_TRACKING_SIM_WP].enu_f;
-    PRINTF(" plt : %f %f %f ", posPlt.x, posPlt.y, posPlt.z);
-
-    visualizer_write(tag_tracking_roll, tag_tracking_pitch, tag_tracking_climb, kalman.state[0], kalman.state[2], kalman.state[4], pos.x, pos.y, pos.z, posPlt.x, posPlt.y, posPlt.z);
-  }
-}
-/*
+/** Tracking with basic PD control
+ *
  * cmd = kp*(e - m) + kd*(ev - v)
  * e = 0
  * ev = 0
  */
+static void compute_command(void)
+{
+  struct FloatVect3 target_pos, target_speed; // NED frame
+  simple_kinematic_kalman_get_state(&kalman, &target_pos, &target_speed);
+  tag_tracking.cmd_pitch = - tag_tracking.kp * target_pos.x - tag_tracking.kd * target_speed.x;
+  tag_tracking.cmd_roll = tag_tracking.kp * target_pos.y + tag_tracking.kd * target_speed.y;
+  //tag_tracking.cmd_climb = - MIN(tag_tracking.kp_climb * target_pos.z, 0.2f);
+  tag_tracking.cmd_climb = 0.f;
+
+  // integrity tests
+  if (fabsf(tag_tracking.cmd_pitch) > TAG_TRACKING_SECURITY_ANGLE_THRESHOLD ||
+      fabsf(tag_tracking.cmd_roll) > TAG_TRACKING_SECURITY_ANGLE_THRESHOLD) {
+    tag_tracking.lost = true;
+  }
+  else {
+    struct EnuCoor_f * pos_enu = stateGetPositionEnu_f();
+    struct EnuCoor_f target_pos_enu;
+    ENU_OF_TO_NED(target_pos_enu, target_pos); // convert local target pos to ENU
+    VECT3_ADD(target_pos_enu, *pos_enu); // add uav pos
+    struct EnuCoor_i pos_i;
+    ENU_BFP_OF_REAL(pos_i, target_pos_enu);
+    waypoint_move_enu_i(TAG_TRACKING_PRED, &pos_i);
+  }
+}
 
 // Init function
 void tag_tracking_init()
 {
   // Init structure
-  FLOAT_VECT3_ZERO(tag_track.meas);
-  FLOAT_VECT3_ZERO(tag_track.pos);
-  FLOAT_VECT3_ZERO(tag_track.speed);
+  FLOAT_VECT3_ZERO(tag_track_private.meas);
+  FLOAT_VECT3_ZERO(tag_track_private.pos);
+  FLOAT_VECT3_ZERO(tag_track_private.speed);
   struct FloatEulers euler = {
     TAG_TRACKING_BODY_TO_CAM_PHI,
     TAG_TRACKING_BODY_TO_CAM_THETA,
     TAG_TRACKING_BODY_TO_CAM_PSI
   };
-  float_rmat_of_eulers(&tag_track.body_to_cam, &euler);
-  VECT3_ASSIGN(tag_track.cam_pos,
+  float_rmat_of_eulers(&tag_track_private.body_to_cam, &euler);
+  VECT3_ASSIGN(tag_track_private.cam_pos,
       TAG_TRACKING_CAM_POS_X,
       TAG_TRACKING_CAM_POS_Y,
       TAG_TRACKING_CAM_POS_Z);
@@ -227,18 +237,13 @@ void tag_tracking_init()
   AbiBindMsgJEVOIS_MSG(TAG_TRACKING_ID, &tag_track_ev, tag_track_cb);
 
   // tag_tracking_commands
-  tag_tracking_roll = 0.f;
-  tag_tracking_pitch = 0.f;
-  tag_tracking_climb = 0.f;
-  tag_tracking_kp = 0.001f; //FIXME
-  tag_tracking_kd = 0.015f;
-  tag_tracking_kp_descent = 0.0005f;
-
-  // file for saving data
-  visualizer_init();
+  tag_tracking.cmd_roll = 0.f;
+  tag_tracking.cmd_pitch = 0.f;
+  tag_tracking.cmd_climb = 0.f;
+  tag_tracking.kp = TAG_TRACKING_KP;
+  tag_tracking.kd = TAG_TRACKING_KD;
+  tag_tracking.kp_climb = TAG_TRACKING_KP_CLIMB;
 }
-
-
 
 
 // Propagation function
@@ -251,35 +256,42 @@ void tag_tracking_propagate()
   tag_tracking_sim();
 #endif
 
-  // TODO call kalman propagation step
-  kalman_predict(&kalman);
+  // call kalman propagation step
+  simple_kinematic_kalman_predict(&kalman);
+  // compute commands
   compute_command();
-  // PRINTF("tag_tracking_roll : %f\n", tag_tracking_roll);
 }
 
 // Propagation start function (called at each start state
 void tag_tracking_propagate_start()
-{    
+{
   // your periodic start code here.
-  PRINTF("start of tag_tracking\n");
-  fflush(stdout);
   struct FloatVect3 speed, measures;
   struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
   struct FloatRMat ltp_to_cam_rmat;
-  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track.body_to_cam);
-  float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track.meas);
-  float_rmat_transp_vmult(&speed, &ltp_to_cam_rmat, &tag_track.speed);
-  kalman_init(&kalman, P0_POS, P0_SPEED, Q_SIGMA2, R, DT);
-  kalman_set_state(&kalman, measures, speed);
-  // TODO reset kalman state ?
-  tag_tracking_lost = false;
+  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track_private.body_to_cam);
+  float_rmat_transp_vmult(&measures, &ltp_to_cam_rmat, &tag_track_private.meas);
+  float_rmat_transp_vmult(&speed, &ltp_to_cam_rmat, &tag_track_private.speed);
+  simple_kinematic_kalman_init(&kalman, TAG_TRACKING_P0_POS, TAG_TRACKING_P0_SPEED, TAG_TRACKING_Q_SIGMA2, TAG_TRACKING_R, tag_track_dt);
+  simple_kinematic_kalman_set_state(&kalman, measures, speed);
+  tag_tracking.lost = false;
 }
 
 // Report function
 void tag_tracking_report()
 {
-  // your periodic code here.
-  // freq = 1.0 Hz  
+  float msg[] = {
+    kalman.state[0],
+    kalman.state[1],
+    kalman.state[2],
+    kalman.state[3],
+    kalman.state[4],
+    kalman.state[5],
+    tag_tracking.cmd_roll,
+    tag_tracking.cmd_pitch,
+    tag_tracking.cmd_climb
+  };
+  DOWNLINK_SEND_PAYLOAD_FLOAT(DefaultChannel, DefaultDevice, 9, msg);
 }
 
 
@@ -290,23 +302,20 @@ static void tag_tracking_sim(void)
   // Compute image coordinates of a WP given fake camera parameters
   struct FloatRMat *ltp_to_body_rmat = stateGetNedToBodyRMat_f();
   struct FloatRMat ltp_to_cam_rmat;
-  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track.body_to_cam);
+  float_rmat_comp(&ltp_to_cam_rmat, ltp_to_body_rmat, &tag_track_private.body_to_cam);
   // Prepare cam world position
   // C_w = P_w + R_w2b * C_b
   struct FloatVect3 cam_pos_ltp;
-  float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &tag_track.cam_pos);
+  float_rmat_vmult(&cam_pos_ltp, ltp_to_body_rmat, &tag_track_private.cam_pos);
   VECT3_ADD(cam_pos_ltp, *stateGetPositionNed_f());
-  // PRINTF("Cw %f %f %f\n", cam_pos_ltp.x, cam_pos_ltp.y, cam_pos_ltp.z);
   // Target
   struct NedCoor_f target_ltp;
   ENU_OF_TO_NED(target_ltp, waypoints[TAG_TRACKING_SIM_WP].enu_f);
   target_ltp.z = 0.f; // force on the ground
-  // PRINTF("Tw %f %f %f\n", target_ltp.x, target_ltp.y, target_ltp.z);
   // Compute target in camera frame Pc = R * (Pw - C)
   struct FloatVect3 target_cam, tmp;
   VECT3_DIFF(tmp, target_ltp, cam_pos_ltp);
   float_rmat_vmult(&target_cam, &ltp_to_cam_rmat, &tmp);
-  // PRINTF("Tc %f %f %f\n", target_cam.x, target_cam.y, target_cam.z);
   if (fabsf(target_cam.z) > 1.) {
     // If we are not too close from target
     // Compute target in image frame x = X/Z, y = X/Z
@@ -322,11 +331,9 @@ static void tag_tracking_sim(void)
       uint16_t dim[3] = { 100, 100, 0 };
       struct FloatQuat quat; // TODO
       float_quat_identity(&quat);
-      // PRINTF("Sending Abi Msg %d %d %d\n", coord[0], coord[1], coord[2]);
       AbiSendMsgJEVOIS_MSG(42, JEVOIS_MSG_D3, "1", 3, coord, dim, quat, "");
     }
   }
-  fflush(stdout);
 }
 
 static void tag_motion_sim(void)
@@ -347,7 +354,6 @@ static void tag_motion_sim(void)
         VECT2_ADD(pos, speed_dt);
         struct EnuCoor_i pos_i;
         ENU_BFP_OF_REAL(pos_i, pos);
-        //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
         waypoint_move_enu_i(TAG_TRACKING_SIM_WP, &pos_i);
         break;
       }
@@ -365,7 +371,6 @@ static void tag_motion_sim(void)
         VECT2_ADD(pos, speed_dt);
         struct EnuCoor_i pos_i;
         ENU_BFP_OF_REAL(pos_i, pos);
-        //waypoint_set_enu(TAG_TRACKING_SIM_WP, &pos);
         waypoint_move_enu_i(TAG_TRACKING_SIM_WP, &pos_i);
     }
     default:
@@ -374,3 +379,4 @@ static void tag_motion_sim(void)
 }
 
 #endif
+
