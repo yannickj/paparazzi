@@ -8,8 +8,8 @@
   <settings target="ap|nps">
     <dl_settings>
       <dl_settings NAME="Tag Tracking">
-        <dl_setting var="tag_tracking.kp" min="0." step="0.001" max="1." shortname="kp" module="modules/tracking/tag_tracking"/>
-        <dl_setting var="tag_tracking.kd" min="0." step="0.001" max="1." shortname="kd" module="modules/tracking/tag_tracking"/>
+        <dl_setting var="tag_tracking.kp" min="0." step="0.001" max="0.2" shortname="kp" module="modules/tracking/tag_tracking"/>
+        <dl_setting var="tag_tracking.kd" min="0." step="0.001" max="0.2" shortname="kd" module="modules/tracking/tag_tracking"/>
         <dl_setting var="tag_tracking.kp_climb" min="0." step="0.001" max="1." shortname="kp_climb" module="modules/tracking/tag_tracking"/>
       </dl_settings>
     </dl_settings>
