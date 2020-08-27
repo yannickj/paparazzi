@@ -1,7 +1,5 @@
 <airframe>
 
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_common_target_flying.xml"/>
-
   <module name="extra_dl">
     <configure name="EXTRA_DL_PORT" value="UART3"/>
     <configure name="EXTRA_DL_BAUD" value="B115200"/>

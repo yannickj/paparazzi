@@ -68,18 +68,18 @@
 
 
 <!-- OPTION_2 nps-OR-ap: ACTUATORS-->
-    <!--module name="actuators" type="pwm"/-->
+    <module name="actuators" type="pwm"/>
     <!--Tawaki-OR-Apogee: ACTUATORS-->
     <!--module name="actuators" type="dshot"-->
-    <module name="actuators" type="dshot">
+    <!--module name="actuators" type="dshot">
       <define name="DSHOT_SPEED" value="300"/>
       <define name="USE_DSHOT_TIM3" value="TRUE"/>
       <define name="USE_DSHOT6" value="TRUE"/>
-    </module>
+    </module-->
 
 <!-- OPTION_1B Tawaki(?)-Apogee: servo_switch-->
-    <module name="actuators" type="pwm"/>
-    <module name="switch" type="servo"/>
+    <!--module name="actuators" type="pwm"/-->
+    <!--module name="switch" type="servo"/-->
 
 
 <!-- OPTION_1C Tawaki-OR-Apogee: EXTRA_DL-->
@@ -132,17 +132,17 @@
 
 
 <!-- OPTION_1D Tawaki(?)-Apogee: servo_switch-->
-  <servos driver="Pwm">
+  <!--servos driver="Pwm">
     <servo name="SWITCH" no="1" min="1000" neutral="1000" max="1900"/>
-  </servos>
+  </servos-->
 
 <!-- OPTION_3 nps-OR-ap: DRIVER-->
-  <!--servos driver="Pwm">
+  <servos driver="Pwm">
     <servo name="FR" no="1" min="1000" neutral="1100" max="1900"/>
     <servo name="FL" no="2" min="1000" neutral="1100" max="1900"/>
     <servo name="BR" no="3" min="1000" neutral="1100" max="1900"/>
     <servo name="BL" no="4" min="1000" neutral="1100" max="1900"/>
-  </servos-->
+  </servos>
   <!--Tawaki-OR-Apogee: DRIVER-->
   <!--servos driver="DShot">
     <servo name="FR" no="1" min="0" neutral="100" max="2000"/>
@@ -150,12 +150,12 @@
     <servo name="BR" no="3" min="0" neutral="100" max="2000"/>
     <servo name="BL" no="4" min="0" neutral="100" max="2000"/>
   </servos-->
-  <servos driver="DShot">
+  <!--servos driver="DShot">
     <servo name="FR" no="0" min="0" neutral="100" max="2000"/>
     <servo name="BR" no="2" min="0" neutral="100" max="2000"/>
     <servo name="BL" no="3" min="0" neutral="100" max="2000"/>
     <servo name="FL" no="6" min="0" neutral="100" max="2000"/>
-  </servos>  
+  </servos-->  
 
 
   <commands>

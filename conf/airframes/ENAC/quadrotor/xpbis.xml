@@ -46,9 +46,9 @@
 
   <!--tawaki_1.0 & apogee_1.0_chibios -->
   <!-- OPTION 2A -->
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_option_indoor.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_option_indoor.xml"/>
   <!-- OPTION 2B -->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_option_outdoor.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_option_outdoor.xml"/-->
 
   <!-- OPTION 1C -->
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_option_board_tawaki.xml"/-->

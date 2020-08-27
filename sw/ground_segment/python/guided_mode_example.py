@@ -55,7 +55,7 @@ class Guidance(object):
         if self.auto2_index is not None:
             msg = PprzMessage("ground", "DL_SETTING")
             msg['ac_id'] = self.ac_id
-            msg['index'] = self.auto2_index
+            msg['index'] = 6
             msg['value'] = 19  # AP_MODE_GUIDED
             print("Setting mode to GUIDED: %s" % msg)
             self._interface.send(msg)
