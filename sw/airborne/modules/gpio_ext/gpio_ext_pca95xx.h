@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ * Copyright (C) Tom van Dijk <tomvand@users.noreply.github.com>
  *
  * This file is part of paparazzi
  *
@@ -18,18 +18,16 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file "modules/actuators/actuators_dshot_arch.c"
- * @author Gautier Hattenberger
- * Simulation driver for DSHOT speed controller protocol
- * Arch dependent part
+/** @file "modules/gpio_ext/gpio_ext_pca95xx.h"
+ * @author Tom van Dijk <tomvand@users.noreply.github.com>
+ * PCA95XX external GPIO peripheral
  */
 
-#include "modules/actuators/actuators_dshot.h"
+#ifndef GPIO_EXT_PCA95XX_H
+#define GPIO_EXT_PCA95XX_H
 
-uint16_t actuators_dshot_values[ACTUATORS_DSHOT_NB];
+#define GPIO_EXT_PCA95XX &pca95xx_functions
 
-void actuators_dshot_arch_init(void) {}
+extern struct gpio_ext_functions pca95xx_functions;
 
-void actuators_dshot_arch_commit(void) {}
-
+#endif  // GPIO_EXT_PCA95XX_H

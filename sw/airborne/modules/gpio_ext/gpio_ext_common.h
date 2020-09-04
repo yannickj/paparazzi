@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ * Copyright (C) Tom van Dijk <tomvand@users.noreply.github.com>
  *
  * This file is part of paparazzi
  *
@@ -18,18 +18,27 @@
  * <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file "modules/actuators/actuators_dshot_arch.c"
- * @author Gautier Hattenberger
- * Simulation driver for DSHOT speed controller protocol
- * Arch dependent part
+/** @file "modules/gpio_ext/gpio_ext_common.h"
+ * @author Tom van Dijk <tomvand@users.noreply.github.com>
+ * Common external GPIO functions.
  */
 
-#include "modules/actuators/actuators_dshot.h"
+#ifndef GPIO_EXT_COMMON_H
+#define GPIO_EXT_COMMON_H
 
-uint16_t actuators_dshot_values[ACTUATORS_DSHOT_NB];
 
-void actuators_dshot_arch_init(void) {}
+#include <stdint.h>
 
-void actuators_dshot_arch_commit(void) {}
 
+// External GPIO implementation struct
+struct gpio_ext_functions {
+  void (*setup_output)(uint32_t port, uint32_t gpios);
+  void (*setup_input)(uint32_t port, uint32_t gpios);
+  uint32_t (*get)(uint32_t port, uint32_t gpios);
+  void (*set)(uint32_t port, uint32_t gpios);
+  void (*clear)(uint32_t port, uint32_t gpios);
+  void (*toggle)(uint32_t port, uint32_t gpios);
+};
+
+
+#endif  // GPIO_EXT_COMMON_H
