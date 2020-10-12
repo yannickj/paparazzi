@@ -195,10 +195,10 @@
   </section>
 
   <section name="YAC CONTROL" prefix="STABILIZATION_YAC_">
-    <define name="ROLL_KP" value="3"/>
-    <define name="ROLL_KD" value="1"/>
-    <define name="PITCH_KP" value="6"/>
-    <define name="PITCH_KD" value="1.5"/>
+    <define name="ROLL_KP" value="10"/>
+    <define name="ROLL_KD" value="0.1"/>
+    <define name="PITCH_KP" value="12"/>
+    <define name="PITCH_KD" value="0.1"/>
   </section>
 
   <section name="FAILSAFE" prefix="FAILSAFE_">
