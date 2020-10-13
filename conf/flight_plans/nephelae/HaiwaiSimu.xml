@@ -1,0 +1,131 @@
+<!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
+
+<flight_plan alt="100.0" ground_alt="9.0" lat0="18.912255" lon0="-155.678243" max_dist_from_home="15000" name="Haiwaï" security_height="70.">
+  <waypoints>
+    <waypoint name="HOME" x="0" y="0"/>
+    <waypoint alt="100.0" name="STDBY" x="28.0" y="-100.2"/>
+    <waypoint name="CLIMB" x="571.2" y="-29.9"/>
+    <waypoint name="_BASELEG" x="-279.5" y="-109.9"/>
+    <waypoint alt="80.0" name="AF" x="-406.0" y="4.5"/>
+    <waypoint alt="30.0" name="TD" x="-44.2" y="-2.4"/>
+    <waypoint alt="100.0" name="Spi_Desc" x="-95.6" y="-303.9"/>
+    <waypoint alt="500.0" name="Spi_Climb" x="120.1" y="-312.7"/>
+
+    <!-- TEST fonctionnement Plan de vol-->
+    <waypoint alt="800.0" name="Cloud" x="691.8" y="-306.3"/>
+    <waypoint alt="800.0" name="P1" x="690.1" y="-487.2"/>
+    <waypoint alt="800.0" name="P2" x="697.2" y="-127.4"/>
+  </waypoints>
+  <variables>
+    <variable init="800.f" max="2500." min="100.0" step="1." type="float" var="cloud_alt"/>
+    <variable init="150." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
+    <variable init="2.0" max="4.0" min="1.0" step="0.5" type="float" var="v_climb"/>
+    <variable init="0.5" max="1.0" min="0." step="0.1" type="float" var="fp_throttle"/>
+    <variable init="0.0" max="20.0" min="-20.0" step="0.1" type="float" var="fp_pitch"/>
+    <variable init="1" max="3" min="1" step="1" type="uint8_t" var="FP_tested"/>
+  </variables>
+  <modules>
+    <module name="mission" type="fw"/>
+    <module name="nav" type="flower"/>
+    <module name="nav" type="lace"/>
+    <module name="nav" type="rosette"/>
+    <module name="nav" type="trinity"/>
+    <module name="nav" type="spiral_3D"/>
+    <module name="cloud_sensor"/>
+  </modules>
+  <blocks>
+    <block name="Wait GPS">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <while cond="!GpsFixValid()"/>
+    </block>
+    <block name="Geo init">
+      <while cond="LessThan(NavBlockTime(), 10)"/>
+    </block>
+    <block name="Holding point">
+      <set value="1" var="autopilot.kill_throttle"/>
+      <attitude roll="0" throttle="0" vmode="throttle"/>
+    </block>
+    <block group="home" key="t" name="Takeoff" strip_button="Takeoff (wp CLIMB)" strip_icon="takeoff.png">
+      <exception cond="GetPosAlt() > GetAltRef()+25" deroute="Standby"/>
+      <set value="0" var="autopilot.kill_throttle"/>
+      <set value="0" var="autopilot.flight_time"/>
+      <go from="HOME" pitch="15" throttle="1.0" vmode="throttle" wp="CLIMB"/>
+      <deroute block="Standby"/>
+    </block>
+    <block group="home" key="Ctrl+a" name="Standby" strip_button="Standby" strip_icon="home.png">
+      <circle radius="fp_radius" until="GetPosAlt() > WaypointAlt(WP_STDBY)-20" wp="STDBY"/>
+    </block>
+
+    <block group="prepa" name="CircleClimb">
+      <circle climb="v_climb" radius="fp_radius" until="GetPosAlt() > cloud_alt-20 " vmode="climb" wp="Spi_Climb"/>
+      <deroute block="StartMission"/>
+    </block>
+
+    <block group ="prepa" name="StartMission" strip_button="ChoixMission">
+      <exception cond="FP_tested == 1" deroute="LaceFP"/>
+      <exception cond="FP_tested == 2" deroute="RosetteFP"/>
+      <exception cond="FP_tested == 3" deroute="TrinityFP"/>
+      <deroute block="SpiralLow"/>
+    </block>
+
+    <block group="test_FP" name="LaceFP">
+      <!-- TEST fonctionnement Plan de vol-->
+      <circle radius="fp_radius" wp="Cloud"/>
+      <exception cond="block_time > 300" deroute="SpiralLow"/>
+      <!--
+      <call_once fun="nav_lace_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vx, float vy, float vz)"/>
+      <call fun="nav_lace_run()"/>
+	  -->
+    </block>
+
+    <block group="test_FP" name="RosetteFP">
+      <!-- TEST fonctionnement Plan de vol-->
+      <eight center="P1" radius="fp_radius" turn_around="P2"/>
+      <exception cond="block_time > 300" deroute="SpiralLow"/>
+      <!--
+      <call_once fun="nav_rosette_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vx, float vy, float vz)"/>
+      <call fun="nav_rosette_run()"/>
+  	  -->
+    </block>
+
+    <block group="test_FP" name="TrinityFP">
+      <!-- TEST fonctionnement Plan de vol-->
+      <oval p1="P1" p2="P2" radius="fp_radius"/>
+      <exception cond="block_time > 300" deroute="SpiralLow"/>
+      <!--
+      <call_once fun="nav_trinity_setup(float init_x, float init_y, float init_z, int turn, float desired_radius, float vx, float vy, float vz)"/>
+      <call fun="nav_rosette_run()"/>
+  	  -->
+    </block>
+
+    <block group="prepa" name="SpiralLow" strip_button="SpiDescent">
+      <set value="0.10" var="fp_throttle"/>
+      <set value="-5." var="fp_pitch"/>
+      <circle pitch="fp_pitch" radius="fp_radius" throttle="fp_throttle" until="WaypointAlt(WP_Spi_Desc) > GetPosAlt() " vmode="throttle" wp="Spi_Desc"/>
+      <deroute block="Land Right AF-TD"/>
+    </block>
+
+    <!--LAND PROCEDURE-->
+    <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
+      <set value="DEFAULT_CIRCLE_RADIUS" var="fp_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block group="land" name="Land Left AF-TD" strip_button="Land left (wp AF-TD)" strip_icon="land-left.png">
+      <set value="-DEFAULT_CIRCLE_RADIUS" var="fp_radius"/>
+      <deroute block="land"/>
+    </block>
+    <block name="land">
+      <call_once fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, fp_radius)"/>
+      <circle radius="fp_radius" until="NavCircleCount() > 0.5" wp="_BASELEG"/>
+      <circle radius="fp_radius" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(fp_radius/fabs(fp_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" wp="_BASELEG"/>
+    </block>
+    <block name="final">
+      <exception cond="GetAltRef() + 6 > GetPosAlt()" deroute="flare"/>
+      <go from="AF" hmode="route" vmode="glide" wp="TD"/>
+    </block>
+    <block name="flare">
+      <go exceeding_time="30" from="AF" hmode="route" throttle="0.0" vmode="throttle" wp="TD"/>
+      <attitude roll="0.0" throttle="0.0" until="FALSE" vmode="throttle"/>
+    </block>
+  </blocks>
+</flight_plan>
