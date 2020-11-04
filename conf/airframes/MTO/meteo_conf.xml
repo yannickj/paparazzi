@@ -5,10 +5,32 @@
    airframe="airframes/MTO/cabfly_01.xml"
    radio="radios/T10CG_SBUS.xml"
    telemetry="telemetry/nephelae.xml"
-   flight_plan="flight_plans/basic.xml"
+   flight_plan="flight_plans/nephelae/Lannemezan_nov20.xml"
    settings="settings/fixedwing_basic.xml"
-   settings_modules="modules/ahrs_float_dcm.xml modules/cloud_sensor.xml modules/gps.xml modules/guidance_full_pid_fw.xml modules/imu_common.xml modules/nav_basic_fw.xml modules/stabilization_adaptive_fw.xml"
+   settings_modules="modules/ahrs_float_dcm.xml modules/gps.xml modules/guidance_full_pid_fw.xml modules/imu_common.xml modules/nav_basic_fw.xml modules/stabilization_adaptive_fw.xml"
    gui_color="#fc2c776f776f"
+  />
+  <aircraft
+   name="CABFLY_02"
+   ac_id="2"
+   airframe="airframes/MTO/cabfly_02.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/nephelae.xml"
+   flight_plan="flight_plans/nephelae/Lannemezan_nov20.xml"
+   settings="settings/fixedwing_basic.xml"
+   settings_modules="modules/ahrs_float_dcm.xml modules/gps.xml modules/guidance_full_pid_fw.xml modules/imu_common.xml modules/nav_basic_fw.xml modules/stabilization_adaptive_fw.xml"
+   gui_color="#d64907cbd0e9"
+  />
+  <aircraft
+   name="CABFLY_03"
+   ac_id="3"
+   airframe="airframes/MTO/cabfly_03.xml"
+   radio="radios/T10CG_SBUS.xml"
+   telemetry="telemetry/nephelae.xml"
+   flight_plan="flight_plans/nephelae/Lannemezan_nov20.xml"
+   settings="settings/fixedwing_basic.xml"
+   settings_modules="modules/ahrs_float_dcm.xml modules/gps.xml modules/guidance_full_pid_fw.xml modules/imu_common.xml modules/nav_basic_fw.xml modules/stabilization_adaptive_fw.xml"
+   gui_color="#ebb2f76b1622"
   />
   <aircraft
    name="X6_10"
@@ -31,17 +53,6 @@
    settings="settings/fixedwing_basic.xml settings/power_switch.xml"
    settings_modules="modules/meteo_stick.xml modules/cloud_sensor.xml modules/gps_ubx_ucenter.xml modules/gps.xml modules/nav_basic_fw.xml modules/guidance_full_pid_fw.xml modules/stabilization_adaptive_fw.xml modules/ahrs_float_dcm.xml modules/imu_common.xml"
    gui_color="#43e7da68516f"
-  />
-  <aircraft
-   name="X6_3"
-   ac_id="3"
-   airframe="airframes/MTO/x6_cloud_sensor-3.xml"
-   radio="radios/cockpitSX.xml"
-   telemetry="telemetry/nephelae.xml"
-   flight_plan="flight_plans/nephelae/Barbados_Morgan_Lewis_test.xml"
-   settings="settings/fixedwing_basic.xml settings/power_switch.xml"
-   settings_modules="modules/meteo_stick.xml modules/cloud_sensor.xml modules/gps_ubx_ucenter.xml modules/gps.xml modules/nav_basic_fw.xml modules/guidance_full_pid_fw.xml modules/stabilization_adaptive_fw.xml modules/ahrs_float_dcm.xml modules/imu_common.xml"
-   gui_color="#cad6d1e526c7"
   />
   <aircraft
    name="X6_5"
