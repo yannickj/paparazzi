@@ -79,6 +79,7 @@ endif
 #
 $(TARGET).srcs += c++.cpp pprz_syscalls.c
 $(TARGET).CXXFLAGS += -fno-sized-deallocation
+$(TARGET).CXXFLAGS += $(CXXSTANDARD)
 
 #
 # General rules
@@ -353,6 +354,9 @@ endif
 
 # Settings for GDB
 GDB = $(shell which arm-none-eabi-gdb)
+ifeq ($(GDB),)
+GDB = $(shell which gdb-multiarch)
+endif
 
 
 # Settings for OOCD

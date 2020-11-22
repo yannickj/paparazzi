@@ -61,6 +61,7 @@
       <board name="openpilot_revo.*"/>
       <board name="chimera_.*"/>
       <board name="tawaki_.*"/>
+      <board name="crazybee_f4_.*"/>
       <board name="crazyflie_.*"/>
       <board name="nucleo144_f767zi_.*"/>
     </boards>
@@ -77,6 +78,7 @@
       <board name="openpilot_revo.*"/>
       <board name="chimera_.*"/>
       <board name="tawaki_.*"/>
+      <board name="crazybee_f4_.*"/>
       <board name="crazyflie_.*"/>
       <board name="nucleo144_f767zi_.*"/>
     </boards>
