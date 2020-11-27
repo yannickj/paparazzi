@@ -2,12 +2,12 @@
   <aircraft
    name="ANTON_217"
    ac_id="217"
-   airframe="airframes/ENAC/darko3_indi.xml"
+   airframe="airframes/ENAC/quadrotor/anton.xml"
    radio="radios/FrSky_X-Lite.xml"
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/ENAC/rotorcraft_survey_target_enac.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/air_data.xml modules/airspeed_sdp3x.xml modules/gps.xml modules/guidance_indi_hybrid.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_indi.xml"
+   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/air_data.xml modules/cv_target_localization.xml modules/filter_1euro_imu.xml modules/gps.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/jevois.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_int_quat.xml modules/switch_servo.xml"
    gui_color="#e0265dc85dc8"
   />
   <aircraft

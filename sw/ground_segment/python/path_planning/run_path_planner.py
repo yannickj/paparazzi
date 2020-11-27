@@ -44,6 +44,9 @@ def main():
         if rc.id == target_id:
             start_x = rc.X[0]
             start_y = rc.X[1]
+
+    start_x=4
+    start_y=1
     print(start_x)
     print(start_y)
     
