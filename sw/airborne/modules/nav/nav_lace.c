@@ -33,11 +33,16 @@
 #include "autopilot.h"
 #include "generated/flight_plan.h"
 #include "subsystems/abi.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 enum LaceStatus {
   LACE_ENTER,
   LACE_INSIDE,
-  LACE_OUTSIDE
+  LACE_OUTSIDE,
+  LACE_RECOVER
 };
 
 enum RotationDir {
@@ -52,10 +57,17 @@ struct NavLace {
   struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
+  struct EnuCoor_f last_border;
+  struct EnuCoor_f estim_border;
+  struct EnuCoor_f recover_circle;
   struct FloatVect3 pos_incr;
   float direction;
   float radius;
   float radius_sign;
+  float tps_in;
+  float tps_out;
+  float last_border_time;
+  bool state_changed;
 };
 
 static struct NavLace nav_lace;
@@ -145,6 +157,8 @@ void nav_lace_init(void)
   nav_lace.radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.inside_cloud = false;
 
+  nav_lace.state_changed = false;
+
   AbiBindMsgPAYLOAD_DATA(NAV_LACE_LWC_ID, &lwc_ev, lwc_cb);
 
 #if USE_MISSION
@@ -177,11 +191,29 @@ void nav_lace_setup(float init_x, float init_y,
   nav_lace.actual = *stateGetPositionEnu_f();
 }
 
+// static int fp;
+// char *file = "LaceSimStat1.txt";
+// int nb_border_cloud = 0;
+
+// void write_log(float time, struct EnuCoor_f *position, int nb_border, float alt_sp){
+//   fp = fopen(file, "a");
+//   fprintf(fp,"Time %f ; GPS Position (X,Y,Z) (%f , %f , %f); Number of cloud border %d \n", time, position->x, position->y, alt_sp ,nb_border_cloud);
+//   fclose(fp);
+// }
+
 bool nav_lace_run(void)
 {
   float pre_climb = 0.f;
 
+  float stamp = get_sys_time_float();
+
+  float max_recover_radius = 0.0;
+  float current_recover_radius = nav_lace.radius;
+
   NavVerticalAutoThrottleMode(0.f); /* No pitch */
+
+  // printf("Circle Count : %f \n", NavCircleCountNoRewind());
+  // fflush(stdout);
 
   switch (nav_lace.status) {
     case LACE_ENTER:
@@ -190,40 +222,117 @@ bool nav_lace_run(void)
 
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE;
-        nav_lace.actual = *stateGetPositionEnu_f();
-        nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
+        nav_lace.state_changed = true;
       }
       break;
     case LACE_INSIDE:
-      // increment center position
-      VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
-      nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
-
-      if (!nav_lace.inside_cloud) {
-        nav_lace.status = LACE_OUTSIDE;
+      if(nav_lace.state_changed){
         nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
+
+        nav_circle_radians = 0;
+        nav_circle_radians_no_rewind = 0;
+
+        nav_lace.last_border = nav_lace.actual;
+        nav_lace.estim_border = nav_lace.actual;
+
+        nav_lace.state_changed = false;
+
+        // nb_border_cloud += 1;
+        // write_log(stamp, &nav_lace.actual, nb_border_cloud, nav_lace.target.z);
       }
-      pre_climb = nav_lace.pos_incr.z / nav_dt;
-      break;
+      else{
+        // increment center position
+        VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
+
+        VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);        
+
+        nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
+        NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
+
+        if (!nav_lace.inside_cloud) {
+          nav_lace.status = LACE_OUTSIDE;
+          nav_lace.state_changed = true;
+          nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        }
+        else if(NavCircleCountNoRewind() > MAX_CIRCLE_TURN){
+          nav_lace.status = LACE_RECOVER;
+          nav_lace.state_changed = true;
+        }
+        pre_climb = nav_lace.pos_incr.z / nav_dt;
+        break;
+      }    
     case LACE_OUTSIDE:
-      VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
-      nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
-      NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
-
-      if(nav_lace.inside_cloud){
-        nav_lace.status = LACE_INSIDE;
+      if(nav_lace.state_changed){
         nav_lace.actual = *stateGetPositionEnu_f();
         nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+
+        nav_circle_radians = 0;
+        nav_circle_radians_no_rewind = 0;
+
+        nav_lace.last_border = nav_lace.actual;
+        nav_lace.estim_border = nav_lace.actual;
+
+        nav_lace.state_changed = false;
+
+        // nb_border_cloud += 1;
+        // write_log(stamp, &nav_lace.actual, nb_border_cloud, nav_lace.target.z);
       }
-      pre_climb = nav_lace.pos_incr.z / nav_dt;
-      break;
+      else{
+        VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
+
+        VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
+
+        nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
+        NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
+
+        if(nav_lace.inside_cloud){
+          nav_lace.status = LACE_INSIDE;
+          nav_lace.state_changed = true;
+          nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        }
+        else if(NavCircleCountNoRewind() > MAX_CIRCLE_TURN){
+          nav_lace.status = LACE_RECOVER;
+          nav_lace.state_changed = true;
+        }
+        pre_climb = nav_lace.pos_incr.z / nav_dt;
+        break;
+      }
+    case LACE_RECOVER:
+      if(nav_lace.state_changed){
+
+        nav_lace.recover_circle.x = nav_lace.estim_border.x;
+        nav_lace.recover_circle.y = nav_lace.estim_border.y;
+        nav_lace.recover_circle.z = nav_lace.estim_border.z;
+
+        max_recover_radius = sin(Recover_angle) * sqrt(pow(nav_lace.last_border.x - nav_lace.recover_circle.x, 2.0) + pow(nav_lace.last_border.y - nav_lace.recover_circle.y, 2.0));
+
+        nav_circle_radians = 0;
+        nav_circle_radians_no_rewind = 0;
+
+        nav_lace.state_changed = false;
+      }
+      else{
+        VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
+        nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * current_recover_radius);
+
+        if(current_recover_radius < max_recover_radius){
+          current_recover_radius += 0.5; 
+        }
+
+        if(nav_lace.inside_cloud){
+          nav_lace.status = LACE_INSIDE;
+          nav_lace.state_changed = true;
+          nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        }
+        else if(!nav_lace.inside_cloud) {
+          nav_lace.status = LACE_OUTSIDE;
+          nav_lace.state_changed = true;
+          nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        }
+      }
     default:
       // error, leaving
       return false;

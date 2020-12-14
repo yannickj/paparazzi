@@ -91,7 +91,7 @@ static void update_barycenter(struct EnuCoor_f *new_coord, float alt_sp, struct 
   } else if(nav_rosette.nb_border_point >= 2){
     //new_point.x = ((nav_rosette.barycenter.x * (nav_rosette.nb_border_point - 1)) + new_coord->x ) / nav_rosette.nb_border_point;
     //new_point.y = ((nav_rosette.barycenter.y * (nav_rosette.nb_border_point - 1)) + new_coord->y ) / nav_rosette.nb_border_point;
-    float alpha = dt / (dt + 5.f);
+    float alpha = dt / (dt - 30.f);
     bary->x = (bary->x * (1.f - alpha)) + (new_coord->x * alpha);
     bary->y = (bary->y * (1.f - alpha)) + (new_coord->y * alpha);
     bary->z = alt_sp;
@@ -249,6 +249,16 @@ void nav_rosette_setup(float init_x, float init_y, float init_z,
   nav_rosette.last_border_time = get_sys_time_float();
 }
 
+static int fp;
+char *file = "RosetteSimStat1.txt";
+int nb_border_cloud = 0;
+
+void write_log(float time, struct EnuCoor_f *position, int nb_border, float alt_sp){
+  fp = fopen(file, "a");
+  fprintf(fp,"Time %f ; GPS Position (X,Y,Z) (%f , %f , %f); Number of cloud border %d \n", time, position->x, position->y, alt_sp ,nb_border_cloud);
+  fclose(fp);
+}
+
 bool nav_rosette_run(void)
 {
   float pre_climb = 0.f;
@@ -267,6 +277,9 @@ bool nav_rosette_run(void)
         nav_rosette.actual = *stateGetPositionEnu_f();
         update_barycenter(&nav_rosette.actual, nav_rosette.target.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
         nav_rosette.last_border_time = t;
+
+        nb_border_cloud += 1;
+        write_log(t, &nav_rosette.actual, nb_border_cloud, nav_rosette.target.z);
       }
       break;
     case RSTT_CROSSING:
@@ -283,6 +296,9 @@ bool nav_rosette_run(void)
         nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
+
+        nb_border_cloud += 1;
+        write_log(t, &nav_rosette.actual, nb_border_cloud, nav_rosette.target.z);
       }
       pre_climb = nav_rosette.pos_incr.z / nav_dt;
       break;
@@ -300,6 +316,9 @@ bool nav_rosette_run(void)
         nav_rosette.last_border_time = t;
         nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_rosette.target = nav_rosette.barycenter;
+
+        nb_border_cloud += 1;
+        write_log(t, &nav_rosette.actual, nb_border_cloud, nav_rosette.target.z);
       }
       pre_climb = nav_rosette.pos_incr.z / nav_dt;
       break;

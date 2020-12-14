@@ -210,23 +210,23 @@ static float lwc_from_buffer(uint8_t *buf)
   for (int i = 0; i < DL_PAYLOAD_COMMAND_command_length(buf); i++) {
     res = res * 10 + DL_PAYLOAD_COMMAND_command(buf)[i];
   }
-  float lwc = 0.65f * (float) res / 255.0f;
+  float lwc = /*0.65f **/ (float) res /*/ 255.0f*/;
   return lwc;
 }
 
 // send CLOUD_SENSOR message
 static void send_cloud_sensor_data(struct transport_tx *trans, struct link_device *dev)
 {
-  if (cloud_sensor.nb_raw > 0) {
+  //if (cloud_sensor.nb_raw > 0) {
     pprz_msg_send_CLOUD_SENSOR(trans, dev, AC_ID,
         &stateGetPositionLla_i()->lat,
         &stateGetPositionLla_i()->lon,
         &gps.hmsl,
         &gps.tow,
         &cloud_sensor.coef,
-        cloud_sensor.nb_raw,
+        1,//cloud_sensor.nb_raw,
         cloud_sensor.raw);
-  }
+  //}
 }
 
 #if CLOUD_SENSOR_REPORT_BORDER_CROSSING

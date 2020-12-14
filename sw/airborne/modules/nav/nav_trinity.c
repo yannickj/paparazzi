@@ -192,9 +192,21 @@ void nav_trinity_setup(float init_x, float init_y,
   nav_trinity.actual = *stateGetPositionEnu_f();
 }
 
+// static int fp;
+// char *file = "TrinitySimStat1.txt";
+// int nb_border_cloud = 0;
+
+// void write_log(float time, struct EnuCoor_f *position, int nb_border, float alt_sp){
+//   fp = fopen(file, "a");
+//   fprintf(fp,"Time %f ; GPS Position (X,Y,Z) (%f , %f , %f); Number of cloud border %d \n", time, position->x, position->y, alt_sp ,nb_border_cloud);
+//   fclose(fp);
+// }
+
 bool nav_trinity_run(void)
 {
   float pre_climb = 0.f;
+
+  float stamp = get_sys_time_float();
 
   NavVerticalAutoThrottleMode(0.f); /* No pitch */
 
@@ -208,6 +220,9 @@ bool nav_trinity_run(void)
         nav_trinity.actual = *stateGetPositionEnu_f();
         nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_trinity.circle = process_first_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
+
+        // nb_border_cloud += 1;
+        // write_log(stamp, &nav_trinity.actual, nb_border_cloud, nav_trinity.target.z);
       }
       break;
     case TRINITY_INSIDE:
@@ -221,6 +236,9 @@ bool nav_trinity_run(void)
         nav_trinity.actual = *stateGetPositionEnu_f();
         nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
         nav_trinity.circle = process_new_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
+
+        // nb_border_cloud += 1;
+        // write_log(stamp, &nav_trinity.actual, nb_border_cloud, nav_trinity.target.z);
       }
       pre_climb = nav_trinity.pos_incr.z / nav_dt;
       break;
@@ -231,6 +249,11 @@ bool nav_trinity_run(void)
 
       if(nav_trinity.inside_cloud){
         nav_trinity.status = TRINITY_INSIDE;
+        nav_trinity.actual = *stateGetPositionEnu_f();
+        nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
+        
+      //   nb_border_cloud += 1;
+      //   write_log(stamp, &nav_trinity.actual, nb_border_cloud, nav_trinity.target.z);
       }
       pre_climb = nav_trinity.pos_incr.z / nav_dt;
       break;
