@@ -1,0 +1,51 @@
+<airframe>
+
+    <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
+    <!-- setpoint limits for attitude stabilization rc flight -->
+    <define name="SP_MAX_PHI" value="45" unit="deg"/>
+    <define name="SP_MAX_THETA" value="45" unit="deg"/>
+    <define name="SP_MAX_R" value="120" unit="deg/s"/>
+    <define name="DEADBAND_A" value="0"/>
+    <define name="DEADBAND_E" value="0"/>
+    <define name="DEADBAND_R" value="50"/>
+  </section>
+
+  <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
+
+
+    <!-- reference acceleration for attitude control -->
+    <define name="REF_ERR_P" value="111.0"/>
+    <define name="REF_ERR_Q" value="111.0"/>
+    <define name="REF_ERR_R" value="166.0"/>
+    <define name="REF_RATE_P" value="14.0"/>
+    <define name="REF_RATE_Q" value="14.0"/>
+    <define name="REF_RATE_R" value="14.0"/>
+
+    <define name="MAX_R" value="120" unit="deg/s"/>
+
+    <!-- second order filter parameters -->
+    <define name="FILT_CUTOFF" value="4.0"/>
+    <define name="FILT_CUTOFF_R" value="4.0"/>
+
+    <!-- Adaptive Learning Rate -->
+    <define name="USE_ADAPTIVE" value="FALSE"/>
+    <define name="ADAPTIVE_MU" value="0.0001"/>
+
+
+    <!-- Full INDI -->
+    <!-- control effectiveness -->
+    <define name="G1_ROLL"  value="{-35 , -35, 35 , 35 }"/>
+    <define name="G1_PITCH" value="{30 , -30, -30 , 30 }"/>
+    <define name="G1_YAW"   value="{-5, 5, -5, 5}"/>
+    <define name="G1_THRUST" value="{-.8, -.8, -.8, -.8}"/>
+    <!--Counter torque effect of spinning up a rotor-->
+    <define name="G2" value="{-150.0,   150.0,  -150.0,   150.0 }"/>
+    <!-- first order actuator dynamics -->
+    <define name="ACT_DYN" value="{0.03, 0.03, 0.03, 0.03}"/>
+    <define name="ESTIMATION_FILT_CUTOFF" value="4.0"/>
+
+    <!--Priority for each axis (roll, pitch, yaw and thrust)-->
+    <define name="WLS_PRIORITIES" value="{1000, 1000, 1, 100}"/>
+  </section>
+
+</airframe>

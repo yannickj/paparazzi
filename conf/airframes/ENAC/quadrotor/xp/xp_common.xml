@@ -1,0 +1,52 @@
+<airframe>
+  <commands>	
+    <axis name="ROLL" failsafe_value="0"/>
+    <axis name="PITCH" failsafe_value="0"/>
+    <axis name="YAW" failsafe_value="0"/>
+    <axis name="THRUST" failsafe_value="0"/>
+  </commands>	
+	
+  <section name="MIXING" prefix="MOTOR_MIXING_">	
+    <define name="TYPE" value="QUAD_X"/>
+    <define name="REVERSE" value="TRUE"/>
+  </section>	
+	
+  <command_laws>	
+      <call fun="motor_mixing_run(autopilot_get_motors_on(),FALSE,values)"/>
+      <set servo="FL" value="motor_mixing.commands[MOTOR_FRONT_LEFT]"/>
+      <set servo="FR" value="motor_mixing.commands[MOTOR_FRONT_RIGHT]"/>
+      <set servo="BR" value="motor_mixing.commands[MOTOR_BACK_RIGHT]"/>
+      <set servo="BL" value="motor_mixing.commands[MOTOR_BACK_LEFT]"/>
+  </command_laws>	
+
+  <section name="NAV">
+    <define name="ARRIVED_AT_WAYPOINT" value="0.25"/>
+    <define name="NAV_DESCEND_VSPEED" value="-0.5"/>
+    <define name="NAV_CLIMB_VSPEED" value="0.5"/>
+  </section>
+
+  <section name="BAT">
+    <define name="FAILSAFE_ON_BAT_CRITICAL" value="TRUE"/>
+    <define name="CRITIC_BAT_LEVEL" value="10.80" unit="V"/>
+  </section>
+
+  <section name="AUTOPILOT">
+    <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
+    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
+    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+  </section>
+
+  <section name="GCS">
+    <define name="ALT_SHIFT_PLUS_PLUS" value="5"/>
+    <define name="ALT_SHIFT_PLUS" value="1"/>
+    <define name="ALT_SHIFT_MINUS" value="-1"/>
+  </section>
+
+  <section name="SIMULATOR" prefix="NPS_">
+    <define name="ACTUATOR_NAMES" value="nw_motor, ne_motor, se_motor, sw_motor" type="string[]"/>
+    <!--define name="JSBSIM_MODEL" value="simple_x_quad_ccw" type="string"/-->
+    <define name="JSBSIM_MODEL" value="simple_x_quad" type="string"/>
+    <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
+  </section>
+</airframe>

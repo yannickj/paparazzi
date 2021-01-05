@@ -1,18 +1,20 @@
 <airframe>
 
+
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
    <define name="REF_MIN_ZDD" value="-0.4*9.81"/>
    <define name="REF_MAX_ZDD" value=" 0.4*9.81"/>
    <define name="REF_MIN_ZD" value="-1.5"/>
    <define name="REF_MAX_ZD" value=" 1."/>
-   <define name="HOVER_KP" value="300"/>
-   <define name="HOVER_KD" value="100"/>
-   <define name="HOVER_KI" value="15"/>
-   <define name="NOMINAL_HOVER_THROTTLE" value="0.30"/>
+   <define name="HOVER_KP" value="90"/>
+   <define name="HOVER_KD" value="110"/>
+   <define name="HOVER_KI" value="10"/>
+   <define name="NOMINAL_HOVER_THROTTLE" value="0.35"/>
    <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
    <define name="ADAPT_NOISE_FACTOR" value="1."/>
    <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.3"/>
   </section>
+
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
    <define name="MAX_BANK" value="20" unit="deg"/>
@@ -22,9 +24,8 @@
    <define name="NGAIN" value="0"/>
    <!-- feedforward -->
    <define name="AGAIN" value="0"/>
-   <!--define name="REF_MAX_SPEED" value="0.2"/>
-   <define name="REF_MAX_ACCEL" value="1."/-->
+   <define name="REF_MAX_SPEED" value="4.0"/>
+   <define name="REF_MAX_ACCEL" value="2.0"/>
   </section>
 
 </airframe>
-

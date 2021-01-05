@@ -1,5 +1,4 @@
 <airframe>
-
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
 
     <!-- setpoints -->
@@ -46,7 +45,4 @@
     <define name="THETA_AGAIN" value="0"/>
     <define name="PSI_AGAIN" value="0"/>
   </section>
-
-
-</airframe>
-
+</airframe>  

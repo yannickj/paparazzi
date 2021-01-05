@@ -1,0 +1,35 @@
+<airframe>
+
+  <section name="IMU" prefix="IMU_">
+    <define name="GYRO_P_SIGN" value="-1"/>
+    <define name="GYRO_Q_SIGN" value="-1"/>
+    <define name="GYRO_R_SIGN" value="1"/>
+
+    <define name="ACCEL_X_SIGN" value="-1"/>
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="1"/>
+
+    <define name="ACCEL_X_NEUTRAL" value="-44"/>
+    <define name="ACCEL_Y_NEUTRAL" value="54"/>
+    <define name="ACCEL_Z_NEUTRAL" value="77"/>
+    <define name="ACCEL_X_SENS" value="2.58809979303" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.45304411383" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.44818719426" integer="16"/>
+
+    <define name="MAG_X_SIGN" value="-1"/>
+    <define name="MAG_Y_SIGN" value="-1"/>
+    <define name="MAG_Z_SIGN" value="1"/>
+    <define name="MAG_X_NEUTRAL" value="-1536"/>
+    <define name="MAG_Y_NEUTRAL" value="-6416"/>
+    <define name="MAG_Z_NEUTRAL" value="-1155"/>
+    <define name="MAG_X_SENS" value="0.681949567277" integer="16"/>
+    <define name="MAG_Y_SENS" value="0.671291264901" integer="16"/>
+    <define name="MAG_Z_SENS" value="0.671773407886" integer="16"/>
+
+    <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
+    <define name="BODY_TO_IMU_PSI" value="0." unit="deg"/>
+  </section>
+
+
+</airframe>  
