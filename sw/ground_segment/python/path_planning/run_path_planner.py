@@ -50,7 +50,8 @@ def main():
     print(start_x)
     print(start_y)
     
-    start_point = ( int(start_x*scale + x_voliere_offset), int(start_y*scale + y_voliere_offset) )
+    #start_point = ( int(start_x*scale + x_voliere_offset), int(start_y*scale + y_voliere_offset) )
+    start_point = (100, 50)
     print(start_point)
         
     # Define goal points in the grid (cm)
