@@ -22,6 +22,7 @@
   </description>
 
   <firmware name="rotorcraft">
+
     <configure name="PERIODIC_FREQUENCY" value="1000"/>
     <configure name="AHRS_PROPAGATE_FREQUENCY" value="$(PERIODIC_FREQUENCY)"/>
     <define name="LOW_NOISE_THRESHOLD" value="10000"/>
@@ -29,6 +30,9 @@
     <target name="nps" board="pc">
       <module name="fdm" type="jsbsim"/>
       <module name="radio_control" type="ppm"/>
+      <!--configure name="USE_MAGNETOMETER" value="TRUE"/>
+      <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
+      <module name="ins" type="extended"/-->
     </target>
     <target name="ap" board="tawaki_1.0">
     <!--target name="ap" board="apogee_1.0_chibios"-->
@@ -72,13 +76,19 @@
       <configure name="USE_MAGNETOMETER" value="FALSE"/>
     </module>
     <!-- OUTDOOR -->
-    <!--module name="gps" type="ublox">
+    <!--module name="ins"/>
+    <module name="ahrs" type="int_cmpl_quat">
+      <configure name="USE_MAGNETOMETER" value="TRUE"/>
+      <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
+    </module>
+    <module name="gps" type="ublox">
       <configure name="GPS_BAUD" value="B115200"/>
       <define name="USE_GPS_UBX_RTCM" value="TRUE"/>
     </module-->
 
-    <!--module name="actuators" type="pwm"/-->
-    <module name="actuators" type="dshot"/>
+
+    <module name="actuators" type="pwm"/>
+    <!--module name="actuators" type="dshot"/-->
 
     <module name="stabilization" type="int_quat"/>
     <!--module name="stabilization" type="indi"/>
@@ -88,11 +98,11 @@
       <define name="GUIDANCE_INDI_RC_DEBUG" value="FALSE"/>
     </module-->
 
-    <!--module name="telemetry" type="xbee_api"/-->
-    <module name="telemetry" type="transparent">
+    <module name="telemetry" type="xbee_api"/>
+    <!--module name="telemetry" type="transparent">
       <configure name="MODEM_BAUD" value="B115200"/>
       <configure name="MODEM_PORT" value="UART2"/>
-    </module>
+    </module-->
 
     <module name="motor_mixing"/>
     <module name="tlsf"/>
@@ -105,14 +115,15 @@
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_apogee_$AC_ID.xml"/-->
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_tawaki_$AC_ID.xml"/>
 
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_$AC_ID.xml"/-->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_$AC_ID.xml"/>
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_$AC_ID.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_$AC_ID.xml"/-->
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_int_quat.xml"/>
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_indi.xml"/-->
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_ins_ahrs_indoor.xml"/>
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_ins_ahrs_outdoor.xml"/-->
+
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance.xml"/>
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_common.xml"/>
