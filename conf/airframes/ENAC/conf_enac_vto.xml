@@ -36,12 +36,12 @@
   <aircraft
    name="BEBOP2_210"
    ac_id="210"
-   airframe="airframes/ENAC/quadrotor/bebop2_optitrack_swarm.xml"
+   airframe="airframes/ENAC/quadrotor/bebop2_fish.xml"
    radio="radios/cockpitSX.xml"
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/ENAC/rotorcraft_optitrack_survey_enac.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/air_data.xml modules/gps.xml modules/guidance_indi.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_indi_simple.xml"
+   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/air_data.xml modules/gps.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/ins_extended.xml modules/nav_basic_rotorcraft.xml modules/nav_fish.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_indi_simple.xml"
    gui_color="#3e25c9283404"
   />
   <aircraft
@@ -102,12 +102,12 @@
   <aircraft
    name="Explorer_114"
    ac_id="114"
-   airframe="airframes/ENAC/quadrotor/explorer_indi_tawaki_114.xml"
+   airframe="airframes/ENAC/quadrotor/xp_karpet.xml"
    radio="radios/FrSky_X-Lite.xml"
    telemetry="telemetry/ENAC/explorer_2telem_vto.xml"
-   flight_plan="flight_plans/ENAC/rotorcraft_optitrack_QR_Survey_enac.xml"
+   flight_plan="flight_plans/ENAC/rotorcraft_optitrack_survey_enac.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/air_data.xml modules/filter_1euro_imu.xml modules/gps.xml modules/guidance_indi.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_indi.xml"
+   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/gps.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_int_quat.xml"
    gui_color="blue"
   />
   <aircraft
@@ -146,13 +146,13 @@
   <aircraft
    name="Karpet"
    ac_id="113"
-   airframe="airframes/ENAC/quadrotor/karpet.xml"
+   airframe="airframes/ENAC/quadrotor/xp_karpet.xml"
    radio="radios/cockpitSX.xml"
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/ENAC/rotorcraft_optitrack_survey_enac.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/gps.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_int_quat.xml"
-   gui_color="white"
+   settings_modules="modules/ahrs_int_cmpl_quat.xml modules/gps.xml modules/guidance_rotorcraft.xml modules/imu_common.xml modules/ins_extended.xml modules/nav_basic_rotorcraft.xml modules/nav_survey_rectangle_rotorcraft.xml modules/stabilization_int_quat.xml"
+   gui_color="#1b2c634a2428"
   />
   <aircraft
    name="OSTRICH"

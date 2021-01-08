@@ -28,8 +28,8 @@
       <module name="fdm"      type="jsbsim"/>
     </target>
 
-    <!--target name="ap" board="tawaki_1.0"/-->
-    <target name="ap" board="apogee_1.0_chibios" >
+    <!--target name="ap" board="apogee_1.0_chibios" -->
+    <target name="ap" board="tawaki_1.0" >
       <configure name="AHRS_PROPAGATE_FREQUENCY" value="$(PERIODIC_FREQUENCY)"/>
     </target>
 
@@ -53,17 +53,17 @@
     <define name="AHRS_H_Y" value="-0.00242783"/>
     <define name="AHRS_H_Z" value="0.858336"/>
 
-    <!--module name="board" type="tawaki">
+    <module name="board" type="tawaki">
       <define name="IMU_MPU_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
       <define name="IMU_MPU_ACCEL_LOWPASS_FILTER" value="MPU60X0_DLPF_ACC_218HZ"/>
-      <define name="IMU_MPU_SMPLRT_DIV" value="0"/-->
+      <define name="IMU_MPU_SMPLRT_DIV" value="0"/>
       <!--configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/-->
-    <!--/module-->
+    </module>
 
-    <module name="imu" type="apogee_mpu9150">
+    <!--module name="imu" type="apogee_mpu9150">
       <define name="APOGEE_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
       <define name="APOGEE_SMPLRT_DIV"     value="1"/>
-    </module>
+    </module-->
     <!--module name="imu" type="apogee"/-->
     <!-- DROTEK-GPS board NeoM8T + HMC58 / USB plug rightside -->
     <!--module name="mag_hmc58xx.xml">
@@ -120,8 +120,8 @@
 
   </firmware>
 
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_apogee_$AC_ID.xml"/>
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_tawaki_$AC_ID.xml"/-->
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_apogee_$AC_ID.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_tawaki_$AC_ID.xml"/>
 
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_$AC_ID.xml"/-->
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_$AC_ID.xml"/>

@@ -1,0 +1,18 @@
+<airframe>
+
+  <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
+    <define name="HOVER_KP"  value="125"/>
+    <define name="HOVER_KD"  value="85"/>
+    <define name="HOVER_KI"  value="30"/>
+    <define name="NOMINAL_HOVER_THROTTLE" value="0.4"/>
+    <define name="ADAPT_THROTTLE_ENABLED" value="FALSE"/>
+  </section>
+
+  <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
+    <define name="REF_MAX_SPEED"  value="0.5" unit="m/s"/>
+    <define name="PGAIN"          value="265"/>
+    <define name="DGAIN"          value="174"/>
+    <define name="IGAIN"          value="20"/>
+  </section>
+
+</airframe>

@@ -1,0 +1,27 @@
+<airframe>
+  <section name="IMU" prefix="IMU_">
+    <define name="GYRO_P_SIGN" value="-1"/>
+    <define name="GYRO_Q_SIGN" value="-1"/>
+    <define name="GYRO_R_SIGN" value="1"/>
+
+    <define name="ACCEL_X_SIGN" value="-1"/>
+    <define name="ACCEL_Y_SIGN" value="-1"/>
+    <define name="ACCEL_Z_SIGN" value="1"/>
+
+    <define name="ACCEL_X_NEUTRAL" value="-57"/>
+    <define name="ACCEL_Y_NEUTRAL" value="-4"/>
+    <define name="ACCEL_Z_NEUTRAL" value="-192"/>
+    <define name="ACCEL_X_SENS" value="2.46154229935" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.43602916679" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.46158796549" integer="16"/>
+
+    <!-- imu apogee = apogee_mpu9150 Mag on IMU -->
+    <define name="MAG_X_NEUTRAL" value="6"/>
+    <define name="MAG_Y_NEUTRAL" value="-8"/>
+    <define name="MAG_Z_NEUTRAL" value="45"/>
+    <define name="MAG_X_SENS" value="15.406512237311269" integer="16"/>
+    <define name="MAG_Y_SENS" value="14.315784652910315" integer="16"/>
+    <define name="MAG_Z_SENS" value="16.04339395369838" integer="16"/>
+
+  </section>
+</airframe>  
