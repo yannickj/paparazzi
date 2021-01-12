@@ -1,0 +1,9 @@
+<airframe>
+
+  <section name="LIS3MDL" prefix="LIS3MDL_">
+    <define name="MAG_TO_IMU_PHI" value="0."/>
+    <define name="MAG_TO_IMU_THETA" value="0."/>
+    <define name="MAG_TO_IMU_PSI" value="90." unit="deg"/>
+  </section>
+
+</airframe>  
