@@ -1,18 +1,11 @@
 <airframe>
+
   <commands>	
     <axis name="ROLL" failsafe_value="0"/>
     <axis name="PITCH" failsafe_value="0"/>
     <axis name="YAW" failsafe_value="0"/>
     <axis name="THRUST" failsafe_value="0"/>
   </commands>	
-
-  <command_laws>	
-      <call fun="motor_mixing_run(autopilot_get_motors_on(),FALSE,values)"/>
-      <set servo="FL" value="motor_mixing.commands[MOTOR_FRONT_LEFT]"/>
-      <set servo="FR" value="motor_mixing.commands[MOTOR_FRONT_RIGHT]"/>
-      <set servo="BR" value="motor_mixing.commands[MOTOR_BACK_RIGHT]"/>
-      <set servo="BL" value="motor_mixing.commands[MOTOR_BACK_LEFT]"/>
-  </command_laws>	
 
   <section name="NAV">
     <define name="ARRIVED_AT_WAYPOINT" value="0.25"/>

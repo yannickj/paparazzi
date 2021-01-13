@@ -1,6 +1,13 @@
 <airframe>
 
-    <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
+  <command_laws>
+    <set servo="FR" value="autopilot_get_motors_on() ? actuators_pprz[0] : -MAX_PPRZ"/>
+    <set servo="BR" value="autopilot_get_motors_on() ? actuators_pprz[1] : -MAX_PPRZ"/>
+    <set servo="BL" value="autopilot_get_motors_on() ? actuators_pprz[2] : -MAX_PPRZ"/>
+    <set servo="FL" value="autopilot_get_motors_on() ? actuators_pprz[3] : -MAX_PPRZ"/>
+  </command_laws>
+
+  <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
     <!-- setpoint limits for attitude stabilization rc flight -->
     <define name="SP_MAX_PHI" value="45" unit="deg"/>
     <define name="SP_MAX_THETA" value="45" unit="deg"/>
@@ -11,7 +18,6 @@
   </section>
 
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
-
 
     <!-- reference acceleration for attitude control -->
     <define name="REF_ERR_P" value="111.0"/>

@@ -103,6 +103,7 @@
       <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module-->
 
+
     <!--module name="stabilization" type="int_quat"/-->
     <module name="stabilization" type="indi"/>
     <module name="guidance" type="indi">
@@ -141,15 +142,15 @@
       <define name="WS2812_SEQUENCE" value="2"/>
     </module>
 
+    <!-- Used by int_quat and needed for indi nps -->
     <module name="motor_mixing"/>
+
     <module name="tlsf"/>
     <module name="pprzlog"/>
     <module name="logger" type="sd_chibios"/>
     <module name="flight_recorder"/>
 
   </firmware>
-
-
 
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_apogee_$AC_ID.xml"/-->
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_tawaki_$AC_ID.xml"/>
@@ -161,12 +162,12 @@
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_apogee_$AC_ID.xml"/-->
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_apogee_$AC_ID.xml"/-->
 
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_mix_$AC_ID.xml"/>
-
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_int_quat_$AC_ID.xml"/-->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_indi.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_intquat_$AC_ID.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/>
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance_$AC_ID.xml"/>
+
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_mix_sim_$AC_ID.xml"/>
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_common.xml"/>
 
