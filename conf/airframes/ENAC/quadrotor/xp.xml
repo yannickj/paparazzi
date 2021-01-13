@@ -103,18 +103,27 @@
       <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module-->
 
-    <module name="stabilization" type="int_quat"/>
-    <!--module name="stabilization" type="indi"/>
+    <!--module name="stabilization" type="int_quat"/-->
+    <module name="stabilization" type="indi"/>
     <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
       <define name="GUIDANCE_INDI_THRUST_DYNAMICS" value="0.03"/>
       <define name="GUIDANCE_INDI_RC_DEBUG" value="FALSE"/>
+    </module>
+
+    <!--Apogee: 300, Tawaki: SRVb1-b4, default -->
+    <module name="actuators" type="dshot">
+      <!--define name="DSHOT_SPEED" value="300"/-->
+    </module>
+    <!--Tawaki: SRVb1-b4, Tim4 -->
+    <!--module name="actuators" type="pwm">
+      <define name="TIM4_SERVO_HZ" value="400"/>
+      <define name="USE_PWM5"      value="TRUE"/>
+      <define name="USE_PWM6"      value="TRUE"/>
+      <define name="USE_PWM7"      value="TRUE"/>
+      <define name="USE_PWM8"      value="TRUE"/>
     </module-->
 
-    <!--Apogee: 300, Tawaki: 400 (default) -->
-    <module name="actuators" type="dshot">
-      <define name="DSHOT_SPEED" value="300"/>
-    </module>
 
     <module name="telemetry" type="xbee_api"/>
     <!--module name="telemetry" type="transparent">
@@ -147,13 +156,15 @@
 
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_imu_extmag_$AC_ID.xml"/-->
 
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_$AC_ID.xml"/-->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_$AC_ID.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_tawaki_$AC_ID.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_tawaki_$AC_ID.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_apogee_$AC_ID.xml"/-->
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_apogee_$AC_ID.xml"/-->
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_mix_$AC_ID.xml"/>
 
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_int_quat_$AC_ID.xml"/>
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_indi.xml"/-->
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_int_quat_$AC_ID.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_stab_indi.xml"/>
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance_$AC_ID.xml"/>
 

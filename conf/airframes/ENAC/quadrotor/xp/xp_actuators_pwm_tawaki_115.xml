@@ -1,0 +1,8 @@
+<airframe>
+    <servos driver="Pwm">	
+    <servo name="FR" no="5" min="1000" neutral="1100" max="1900"/>
+    <servo name="FL" no="6" min="1000" neutral="1100" max="1900"/>
+    <servo name="BR" no="7" min="1000" neutral="1100" max="1900"/>
+    <servo name="BL" no="8" min="1000" neutral="1100" max="1900"/>
+  </servos>	
+</airframe>
