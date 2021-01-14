@@ -104,14 +104,14 @@
     </module-->
 
     <!--module name="stabilization" type="int_quat"/-->
-    <module name="stabilization" type="indi_simple"/>
+    <!--module name="stabilization" type="indi_simple"/-->
     <!--Pb. Indi cannot be simulated in nps -->
-    <!--module name="stabilization" type="indi"/>
+    <module name="stabilization" type="indi"/>
     <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
       <define name="GUIDANCE_INDI_THRUST_DYNAMICS" value="0.03"/>
       <define name="GUIDANCE_INDI_RC_DEBUG" value="FALSE"/>
-    </module-->
+    </module>
 
     <!--Apogee: 300, Tawaki: SRVb1-b4, default -->
     <module name="actuators" type="dshot">
@@ -132,10 +132,11 @@
       <configure name="MODEM_BAUD" value="B115200"/>
     </module-->
 
-    <!--module name="extra_dl">
+    <!--Tawaki -->
+    <module name="extra_dl">
       <configure name="EXTRA_DL_PORT" value="UART7"/>
       <configure name="EXTRA_DL_BAUD" value="B115200"/>
-    </module-->
+    </module>
 
     <!--Info: Tawaki: Auxa1, Apogee: PPMin -->
     <module name="light_scheduler">
@@ -164,8 +165,8 @@
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_apogee_$AC_ID.xml"/-->
 
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_intquat_$AC_ID.xml"/-->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi_simple.xml"/>
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/-->
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi_simple.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/>
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance_$AC_ID.xml"/>
 
