@@ -103,8 +103,9 @@
       <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module-->
 
-
     <!--module name="stabilization" type="int_quat"/-->
+    <!--module name="stabilization" type="indi_simple"/-->
+    <!--Pb. Indi cannot be simulated in nps -->
     <module name="stabilization" type="indi"/>
     <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
@@ -163,6 +164,7 @@
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_apogee_$AC_ID.xml"/-->
 
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_intquat_$AC_ID.xml"/-->
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi_simple.xml"/-->
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/>
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance_$AC_ID.xml"/>

@@ -1,4 +1,4 @@
-<airframe>
+<airframe>	
 
   <command_laws>
     <set servo="FR" value="autopilot_get_motors_on() ? actuators_pprz[0] : -MAX_PPRZ"/>
