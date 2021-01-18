@@ -97,21 +97,21 @@
     </module-->
 
     <!-- DROTEK-GPS board NeoM8P + LIS3ML / USB plug backside >
-    <    Apogee: i2c1, Tawaki: i2c2 -->
+    <    Apogee: i2c1, Tawaki: i2c2(5V) -->
     <!--module name="mag_lis3mdl"> 
       <define name="MODULE_LIS3MDL_UPDATE_AHRS"/>
       <configure name="MAG_LIS3MDL_I2C_DEV" value="i2c2"/>
     </module-->
 
-    <!--module name="stabilization" type="int_quat"/-->
+    <module name="stabilization" type="int_quat"/>
     <!--module name="stabilization" type="indi_simple"/-->
     <!--Pb. Indi cannot be simulated in nps -->
-    <module name="stabilization" type="indi"/>
+    <!--module name="stabilization" type="indi"/>
     <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
       <define name="GUIDANCE_INDI_THRUST_DYNAMICS" value="0.03"/>
       <define name="GUIDANCE_INDI_RC_DEBUG" value="FALSE"/>
-    </module>
+    </module-->
 
     <!--Apogee: 300, Tawaki: SRVb1-b4, default -->
     <module name="actuators" type="dshot">
@@ -133,9 +133,13 @@
     </module-->
 
     <!--Tawaki -->
-    <module name="extra_dl">
+    <!--module name="extra_dl">
       <configure name="EXTRA_DL_PORT" value="UART7"/>
       <configure name="EXTRA_DL_BAUD" value="B115200"/>
+    </module-->
+    <module name="e_identification_fr">
+      <configure name="E_ID_PORT" value="UART7"/>
+      <configure name="E_ID_BAUD" value="B115200"/>
     </module>
 
     <!--Info: Tawaki: Auxa1, Apogee: PPMin -->
@@ -164,9 +168,9 @@
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_pwm_apogee_$AC_ID.xml"/-->
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_actuators_dshot_apogee_$AC_ID.xml"/-->
 
-  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_intquat_$AC_ID.xml"/-->
+  <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_intquat_$AC_ID.xml"/>
   <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi_simple.xml"/-->
-  <include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/>
+  <!--include href="conf/airframes/ENAC/quadrotor/xp/xp_cmd_stab_indi.xml"/-->
 
   <include href="conf/airframes/ENAC/quadrotor/xp/xp_guidance_$AC_ID.xml"/>
 
