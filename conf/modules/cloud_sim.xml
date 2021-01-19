@@ -1,0 +1,14 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+<module name="cloud_sim" dir="meteo">
+  <doc>
+    <description>Basic cloud simulation for testing adaptive navigation patterns</description>
+  </doc>
+  <header>
+    <file name="cloud_sim.h"/>
+  </header>
+  <init fun="cloud_sim_init()"/>
+  <periodic fun="cloud_sim_periodic()" freq="1.0" autorun="FALSE"/>
+  <makefile>
+    <file name="cloud_sim.c"/>
+  </makefile>
+</module>

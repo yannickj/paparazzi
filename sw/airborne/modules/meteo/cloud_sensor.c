@@ -337,7 +337,7 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
 
     // Here we are in nominal processing. Finding the median value in
     // filter.values.
-    
+
     if (filter->values[0] >= filter->values[1]) {
         if (filter->values[0] < filter->values[2]) {
             return filter->values[0];
@@ -366,7 +366,7 @@ float median_filter_update(float new_sample, struct MedianFilter* filter) {
             }
         }
     }
-    
+
     // we should never get here
     return new_sample; // always return something just in case.
 }
@@ -400,7 +400,6 @@ void cloud_sensor_callback(uint8_t *buf)
     // copy raw values in cloud_sensor.raw
     memcpy(cloud_sensor.raw, values, cloud_sensor.nb_raw * sizeof(float));
     uint32_t stamp = get_sys_time_usec();
-    
 
     if (cloud_sensor_compute_coef == CLOUD_SENSOR_COEF_SINGLE) {
       const uint8_t channel = CLOUD_SENSOR_SINGLE_CHANNEL; // short name for single channel
