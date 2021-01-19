@@ -77,8 +77,18 @@ let expand_aicraft x =
     Xml.Element ("ignoring_aircraft",["name", ac_name],[])
   in
   try
+    (* parse aircraft *)
     let ac = Aircraft.parse_aircraft ~parse_all:true "" x in
-    if List.length ac.Aircraft.xml > 0 then Xml.Element (Xml.tag x, Xml.attribs x, ac.Aircraft.xml)
+    (* Add latest generated settings if any with a special tag as it is the only way to have this information.
+     * The settings parsed by Aircraft module will not include module settings as we don't know the target.
+     * It should be the correct settings, unless an aircraft is rebuilt with different parameters or target
+     * and with the server already running and not restarted. *)
+    let settings_xml = try
+        let xml = ExtXml.parse_file (Env.paparazzi_home // "var" // "aircrafts" // ac_name // "settings.xml") in
+        [Xml.Element ("generated_settings", [], Xml.children xml)]
+      with _ -> []
+    in
+    if List.length ac.Aircraft.xml > 0 then Xml.Element (Xml.tag x, Xml.attribs x, ac.Aircraft.xml @ settings_xml)
     else failwith "Nothing to parse"
   with
     | Failure msg -> handle_error_message "Fail with" msg
@@ -679,6 +689,11 @@ let listen_acs = fun log timestamp ->
   if !replay_old_log then
     ignore (Tm_Pprz.message_bind "PPRZ_MODE" (ident_msg log timestamp))
 
+(* Remove aicraft on AIRCRAFT_DIE message.  *)
+let remove_aircraft = fun _sender vs ->
+  let ac_id = PprzLink.string_assoc "ac_id" vs in
+  Hashtbl.remove aircrafts ac_id
+
 let send_intruder_acinfo = fun id intruder ->
   let cm_of_m_32 = fun f -> PprzLink.Int32 (Int32.of_int (truncate (100. *. f))) in
   let cm_of_m = fun f -> PprzLink.Int (truncate (100. *. f)) in
@@ -739,9 +754,9 @@ let listen_intruders = fun log ->
   ignore(Ground_Pprz.message_bind "INTRUDER" (update_intruder log))
 
 let send_config = fun http _asker args ->
-  let ac_id' = PprzLink.string_assoc "ac_id" args in
+  let real_id = PprzLink.string_assoc "ac_id" args in
   try
-    let _is_replayed, ac_id, root_dir, conf_xml = replayed ac_id' in
+    let _is_replayed, ac_id, root_dir, conf_xml = replayed real_id in
 
     let conf = ExtXml.child conf_xml "aircraft" ~select:(fun x -> ExtXml.attrib x "ac_id" = ac_id) in
     let ac_name = ExtXml.attrib conf "name" in
@@ -760,7 +775,7 @@ let send_config = fun http _asker args ->
                                                        "settings.xml") else "file://replay" in
     let col = try Xml.attrib conf "gui_color" with _ -> new_color () in
     let ac_name = try Xml.attrib conf "name" with _ -> "" in
-    [ "ac_id", PprzLink.String ac_id;
+    [ "ac_id", PprzLink.String real_id;
       "flight_plan", PprzLink.String fp;
       "airframe", PprzLink.String af;
       "radio", PprzLink.String rc;
@@ -769,7 +784,7 @@ let send_config = fun http _asker args ->
       "ac_name", PprzLink.String ac_name ]
   with
       Not_found ->
-        failwith (sprintf "ground UNKNOWN %s" ac_id')
+        failwith (sprintf "ground UNKNOWN %s" real_id)
 
 let ivy_server = fun http ->
   ignore (Ground_Pprz.message_answerer my_id "AIRCRAFTS" send_aircrafts_msg);
@@ -810,10 +825,12 @@ let setting = fun logging _sender vs ->
              "value", List.assoc "value" vs] in
   Dl_Pprz.message_send dl_id "SETTING" vs;
   log logging ac_id "SETTING" vs;
-  (* mark the setting as not yet confirmed *)
-  let ac = Hashtbl.find aircrafts ac_id in
-  let idx = PprzLink.int_of_value (List.assoc "index" vs) in
-  ac.dl_setting_values.(idx) <- None
+  try
+    (* mark the setting as not yet confirmed *)
+    let ac = Hashtbl.find aircrafts ac_id in
+    let idx = PprzLink.int_of_value (List.assoc "index" vs) in
+    ac.dl_setting_values.(idx) <- None
+  with Not_found -> ()
 
 
 (** Got a GET_DL_SETTING, and send an GET_SETTING *)
@@ -823,10 +840,12 @@ let get_setting = fun logging _sender vs ->
              "ac_id", PprzLink.String ac_id ] in
   Dl_Pprz.message_send dl_id "GET_SETTING" vs;
   log logging ac_id "GET_SETTING" vs;
-  (* mark the setting as not yet confirmed *)
-  let ac = Hashtbl.find aircrafts ac_id in
-  let idx = PprzLink.int_of_value (List.assoc "index" vs) in
-  ac.dl_setting_values.(idx) <- None
+  try
+    (* mark the setting as not yet confirmed *)
+    let ac = Hashtbl.find aircrafts ac_id in
+    let idx = PprzLink.int_of_value (List.assoc "index" vs) in
+    ac.dl_setting_values.(idx) <- None
+  with Not_found -> ()
 
 
 (** Got a JUMP_TO_BLOCK, and send an BLOCK *)
@@ -917,6 +936,8 @@ let () =
 
   (* Waits for new aircrafts *)
   listen_acs logging !timestamp;
+
+  ignore(Ground_Pprz.message_bind "AIRCRAFT_DIE" remove_aircraft);
 
   (* wait for new external vehicles/intruders *)
   listen_intruders logging;

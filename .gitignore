@@ -26,6 +26,7 @@
 *.gdb_history
 
 .cache.xml
+.directory
 
 # Eclipse IDE project files
 *.cproject
