@@ -32,20 +32,18 @@
 #define CLOUD_SIM_WP      0
 #define CLOUD_SIM_POLYGON 1
 
-#ifndef CLOUD_SIM_WPS_NB
-#define CLOUD_SIM_WPS_NB 1
-#endif
-
 struct CloudSim {
   bool reset;
   uint8_t mode;
-  uint8_t ids[CLOUD_SIM_WPS_NB];
-  struct FloatVect2 speed[CLOUD_SIM_WPS_NB];
+  struct FloatVect2 speed;
+  float radius; ///< radius in WP mode
 };
 
 extern struct CloudSim cloud_sim;
 
 extern void cloud_sim_init(void);
-extern void cloud_sim_periodic(void);
+extern void cloud_sim_detect(void);
+extern void cloud_sim_move(void);
+extern void cloud_sim_reset(bool reset);
 
 #endif  // CLOUD_SIM_H

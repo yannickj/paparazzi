@@ -810,6 +810,9 @@ let print_inside_polygon_global = fun out pts ->
 type sector_type = StaticSector | DynamicSector
 
 let print_inside_sector = fun out t (s, pts) ->
+  let (ids, _) = List.split pts in
+  Xml2h.define_out out ("SECTOR_"^(Compat.uppercase_ascii s)^"_NB") (string_of_int (List.length pts));
+  Xml2h.define_out out ("SECTOR_"^(Compat.uppercase_ascii s)) ("{ "^(String.concat ", " ids)^" }");
   lprintf out "static inline bool %s(float _x, float _y) {\n" (inside_function s);
   right ();
   begin
@@ -818,7 +821,7 @@ let print_inside_sector = fun out t (s, pts) ->
     | DynamicSector -> print_inside_polygon_global out pts
   end;
   left ();
-  lprintf out "}\n"
+  lprintf out "}\n\n"
 
 
 let parse_wpt_sector = fun indexes waypoints xml ->
@@ -1081,13 +1084,7 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
       _ -> ()
   end;
 
-  (* start "C" part *)
-  lprintf out "\n#ifdef NAV_C\n\n";
-
-  (* print variables and ABI initialization *)
-  List.iter (fun v -> print_var_impl out abi_msgs v) variables;
   lprintf out "\n";
-  print_auto_init_bindings out abi_msgs variables;
 
   (* index of waypoints *)
   let index_of_waypoints =
@@ -1101,8 +1098,25 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   let sectors = List.map (parse_wpt_sector index_of_waypoints waypoints) sectors in
   List.iter2 (print_inside_sector out) sectors_type sectors;
 
+  (* geofencing sector FIXME why here ? *)
+  begin
+    try
+      let geofence_sector = Xml.attrib xml "geofence_sector" in
+      lprintf out "\n#define InGeofenceSector(_x, _y) %s(_x, _y)\n" (inside_function geofence_sector)
+    with
+        _ -> ()
+  end;
+
+  (* start "C" part *)
+  lprintf out "\n#ifdef NAV_C\n\n";
+
+  (* print variables and ABI initialization *)
+  List.iter (fun v -> print_var_impl out abi_msgs v) variables;
+  lprintf out "\n";
+  print_auto_init_bindings out abi_msgs variables;
+
   (* print main flight plan state machine *)
-  lprintf out "\nstatic inline void auto_nav(void) {\n";
+  lprintf out "static inline void auto_nav(void) {\n";
   right ();
   List.iter (print_exception out) global_exceptions;
   lprintf out "switch (nav_block) {\n";
@@ -1114,15 +1128,6 @@ let print_flight_plan_h = fun xml utm0 xml_file out_file ->
   left ();
   lprintf out "}\n";
   lprintf out "#endif // NAV_C\n";
-
-  (* geofencing sector FIXME why here ? *)
-  begin
-    try
-      let geofence_sector = Xml.attrib xml "geofence_sector" in
-      lprintf out "#define InGeofenceSector(_x, _y) %s(_x, _y)\n" (inside_function geofence_sector)
-    with
-        _ -> ()
-  end;
 
   Xml2h.finish_out out h_name;
   close_out out

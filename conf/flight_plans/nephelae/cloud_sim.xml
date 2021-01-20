@@ -1,9 +1,7 @@
 <!DOCTYPE flight_plan SYSTEM "../flight_plan.dtd">
 
-<flight_plan alt="260" ground_alt="185" lat0="43.46223" lon0="1.27289" max_dist_from_home="1500" name="Basic" security_height="25">
-  <header>
-#include "subsystems/datalink/datalink.h"
-</header>
+<flight_plan alt="260" ground_alt="185" lat0="43.46223" lon0="1.27289" max_dist_from_home="15000" name="Cloud Sim" security_height="25">
+  <header/>
   <waypoints>
     <waypoint name="HOME" x="0" y="0"/>
     <waypoint name="STDBY" x="49.5" y="100.1"/>
@@ -31,12 +29,13 @@
     </sector>
   </sectors>
   <variables>
-    <variable init="150." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
+    <variable init="80." max="500." min="80." step="1.0" type="float" var="fp_radius"/>
+    <variable init="0." max="10." min="-10." step="0.1" type="float" var="fp_vx"/>
+    <variable init="0." max="10." min="-10." step="0.1" type="float" var="fp_vy"/>
+    <variable init="0." max="10." min="-10." step="0.1" type="float" var="fp_vz"/>
   </variables>
   <modules>
-    <module name="cloud_sim">
-      <define name="CLOUD_SIM_WP_ID" value="WP_CLOUD"/>
-    </module>
+    <module name="cloud_sim"/>
     <module name="nav" type="lace"/>
     <module name="nav" type="rosette"/>
     <module name="nav" type="trinity"/>
@@ -65,7 +64,7 @@
       <circle radius="nav_radius" wp="STDBY"/>
     </block>
     <block group="adaptive" name="Trinity" strip_button="Trinity">
-      <call_once fun="nav_trinity_setup(WaypointX(WP_TARGET), WaypointY(WP_TARGET), WaypointAlt(WP_TARGET), 1, fp_radius, 0.0, 0.0, 0.0)"/>
+      <call_once fun="nav_trinity_setup(WaypointX(WP_TARGET), WaypointY(WP_TARGET), WaypointAlt(WP_TARGET)-GetAltRef(), 1, fp_radius, fp_vx, fp_vy, fp_vz)"/>
       <call fun="nav_trinity_run()"/>
       <deroute block="Standby"/>
     </block>
