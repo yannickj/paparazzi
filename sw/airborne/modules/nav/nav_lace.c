@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+ * Copyright (C) 2018-2021 Gautier Hattenberger <gautier.hattenberger@enac.fr>
  *                         Titouan Verdu <titouan.verdu@enac.fr>
  *
  * This file is part of paparazzi.
@@ -36,8 +36,12 @@
 
 enum LaceStatus {
   LACE_ENTER,
+  LACE_INSIDE_START,
   LACE_INSIDE,
-  LACE_OUTSIDE
+  LACE_OUTSIDE_START,
+  LACE_OUTSIDE,
+  LACE_RECOVER_START,
+  LACE_RECOVER
 };
 
 enum RotationDir {
@@ -52,10 +56,17 @@ struct NavLace {
   struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
+  struct EnuCoor_f last_border;
+  struct EnuCoor_f estim_border;
+  struct EnuCoor_f recover_circle;
   struct FloatVect3 pos_incr;
   float direction;
   float radius;
   float radius_sign;
+  float tps_in;
+  float tps_out;
+  float last_border_time;
+  float recover_radius;
 };
 
 static struct NavLace nav_lace;
@@ -143,6 +154,7 @@ void nav_lace_init(void)
 {
   nav_lace.status = LACE_ENTER;
   nav_lace.radius = DEFAULT_CIRCLE_RADIUS;
+  nav_lace.recover_radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.inside_cloud = false;
 
   AbiBindMsgPAYLOAD_DATA(NAV_LACE_LWC_ID, &lwc_ev, lwc_cb);
@@ -180,49 +192,116 @@ void nav_lace_setup(float init_x, float init_y,
 bool nav_lace_run(void)
 {
   float pre_climb = 0.f;
+  float max_recover_radius = 0.0;
 
   NavVerticalAutoThrottleMode(0.f); /* No pitch */
 
   switch (nav_lace.status) {
     case LACE_ENTER:
+      // reach target point
       nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.target.x, nav_lace.target.y);
       NavVerticalAltitudeMode(nav_lace.target.z + ground_alt, pre_climb);
 
       if (nav_lace.inside_cloud) {
-        nav_lace.status = LACE_INSIDE;
-        nav_lace.actual = *stateGetPositionEnu_f();
-        nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
+        // found border or already inside
+        nav_lace.status = LACE_INSIDE_START;
       }
+      break;
+    case LACE_INSIDE_START:
+      // prepare inside circle
+      nav_lace.actual = *stateGetPositionEnu_f();
+      nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
+      nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
+      // reset circle counter
+      nav_circle_radians = 0;
+      nav_circle_radians_no_rewind = 0;
+      // pepare recover
+      nav_lace.last_border = nav_lace.actual;
+      nav_lace.estim_border = nav_lace.actual;
+      // fly inside
+      nav_lace.status = LACE_INSIDE;
       break;
     case LACE_INSIDE:
       // increment center position
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
+      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
+      pre_climb = nav_lace.pos_incr.z / nav_dt;
       NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
 
       if (!nav_lace.inside_cloud) {
-        nav_lace.status = LACE_OUTSIDE;
-        nav_lace.actual = *stateGetPositionEnu_f();
-        nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
+        // found border, start outside
+        nav_lace.status = LACE_OUTSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
-      pre_climb = nav_lace.pos_incr.z / nav_dt;
+      else if (NavCircleCountNoRewind() > MAX_CIRCLE_TURN) {
+        // most likely lost inside
+        nav_lace.status = LACE_RECOVER_START;
+      }
+      break;
+    case LACE_OUTSIDE_START:
+      // prepare outside circle
+      nav_lace.actual = *stateGetPositionEnu_f();
+      nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
+      nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
+      // reset circle counter
+      nav_circle_radians = 0;
+      nav_circle_radians_no_rewind = 0;
+      // prepare recover
+      nav_lace.last_border = nav_lace.actual;
+      nav_lace.estim_border = nav_lace.actual;
+      // fly outside
+      nav_lace.status = LACE_OUTSIDE;
       break;
     case LACE_OUTSIDE:
+      // increment center position
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
+      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
+      pre_climb = nav_lace.pos_incr.z / nav_dt;
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
       NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
 
-      if(nav_lace.inside_cloud){
-        nav_lace.status = LACE_INSIDE;
-        nav_lace.actual = *stateGetPositionEnu_f();
-        nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
+      if (nav_lace.inside_cloud) {
+        // found border, start inside
+        nav_lace.status = LACE_INSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
-      pre_climb = nav_lace.pos_incr.z / nav_dt;
+      else if (NavCircleCountNoRewind() > MAX_CIRCLE_TURN) {
+        // most likely lost outside
+        nav_lace.status = LACE_RECOVER_START;
+        nav_lace.state_changed = true;
+      }
+      break;
+    case LACE_RECOVER_START:
+      // prepare recovery circle
+      nav_lace.recover_circle.x = nav_lace.estim_border.x;
+      nav_lace.recover_circle.y = nav_lace.estim_border.y;
+      nav_lace.recover_circle.z = nav_lace.estim_border.z;
+      // initial recovery radius
+      nav_lace.recover_radius = nav_lace.radius;
+      // FIXME
+      max_recover_radius = sinf(Recover_angle) * sqrtf(powf(nav_lace.last_border.x - nav_lace.recover_circle.x, 2.0) + powf(nav_lace.last_border.y - nav_lace.recover_circle.y, 2.0));
+      // reset circle counter
+      nav_circle_radians = 0;
+      nav_circle_radians_no_rewind = 0;
+      break;
+    case LACE_RECOVER:
+      // increment center position
+      VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
+      nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * current_recover_radius);
+
+      if (current_recover_radius < max_recover_radius) {
+        current_recover_radius += 0.5;
+      }
+
+      if (nav_lace.inside_cloud) {
+        nav_lace.status = LACE_INSIDE_START;
+        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+      }
+      else {
+        nav_lace.status = LACE_OUTSIDE_START;
+        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+      }
       break;
     default:
       // error, leaving

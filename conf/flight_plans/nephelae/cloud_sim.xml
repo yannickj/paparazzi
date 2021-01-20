@@ -68,10 +68,24 @@
       <call fun="nav_trinity_run()"/>
       <deroute block="Standby"/>
     </block>
-    <block group="base_pattern" name="Oval 1-2" strip_button="Oval" strip_icon="oval.png">
+    <block group="adaptive" name="Lace" strip_button="Lace">
+      <call_once fun="nav_lace_setup(WaypointX(WP_TARGET), WaypointY(WP_TARGET), WaypointAlt(WP_TARGET)-GetAltRef(), 1, fp_radius, fp_vx, fp_vy, fp_vz)"/>
+      <call fun="nav_lace_run()"/>
+      <deroute block="Standby"/>
+    </block>
+    <block group="adaptive" name="Rosette" strip_button="Rosette">
+      <call_once fun="nav_rosette_setup(WaypointX(WP_TARGET), WaypointY(WP_TARGET), WaypointAlt(WP_TARGET)-GetAltRef(), 1, fp_radius, fp_vx, fp_vy, fp_vz)"/>
+      <call fun="nav_rosette_run()"/>
+      <deroute block="Standby"/>
+    </block>
+    <block group="adaptive" name="Mission" strip_button="Mission">
+      <call fun="mission_run()"/>
+      <deroute block="Standby"/>
+    </block>
+    <block group="std_pattern" name="Oval 1-2" strip_button="Oval" strip_icon="oval.png">
       <oval p1="O1" p2="O2" radius="nav_radius"/>
     </block>
-    <block group="extra_pattern" name="Survey 1-2" strip_button="Survey" strip_icon="survey.png">
+    <block group="std_pattern" name="Survey 1-2" strip_button="Survey" strip_icon="survey.png">
       <survey_rectangle grid="150" wp1="O1" wp2="O2"/>
     </block>
     <block group="land" name="Land Right AF-TD" strip_button="Land right (wp AF-TD)" strip_icon="land-right.png">
