@@ -34,6 +34,10 @@
 #include "generated/flight_plan.h"
 #include "subsystems/abi.h"
 
+#ifndef NAV_LACE_RECOVER_MAX_TURN
+#define NAV_LACE_RECOVER_MAX_TURN 1.5f
+#endif
+
 enum LaceStatus {
   LACE_ENTER,
   LACE_INSIDE_START,
@@ -41,7 +45,8 @@ enum LaceStatus {
   LACE_OUTSIDE_START,
   LACE_OUTSIDE,
   LACE_RECOVER_START,
-  LACE_RECOVER
+  LACE_RECOVER_INSIDE,
+  LACE_RECOVER_OUTSIDE
 };
 
 enum RotationDir {
@@ -67,6 +72,7 @@ struct NavLace {
   float tps_out;
   float last_border_time;
   float recover_radius;
+  float max_recover_radius;
 };
 
 static struct NavLace nav_lace;
@@ -155,6 +161,7 @@ void nav_lace_init(void)
   nav_lace.status = LACE_ENTER;
   nav_lace.radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.recover_radius = DEFAULT_CIRCLE_RADIUS;
+  nav_lace.max_recover_radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.inside_cloud = false;
 
   AbiBindMsgPAYLOAD_DATA(NAV_LACE_LWC_ID, &lwc_ev, lwc_cb);
@@ -192,7 +199,6 @@ void nav_lace_setup(float init_x, float init_y,
 bool nav_lace_run(void)
 {
   float pre_climb = 0.f;
-  float max_recover_radius = 0.0;
 
   NavVerticalAutoThrottleMode(0.f); /* No pitch */
 
@@ -234,7 +240,7 @@ bool nav_lace_run(void)
         nav_lace.status = LACE_OUTSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
-      else if (NavCircleCountNoRewind() > MAX_CIRCLE_TURN) {
+      else if (NavCircleCountNoRewind() > NAV_LACE_RECOVER_MAX_TURN) {
         // most likely lost inside
         nav_lace.status = LACE_RECOVER_START;
       }
@@ -266,10 +272,9 @@ bool nav_lace_run(void)
         nav_lace.status = LACE_INSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
-      else if (NavCircleCountNoRewind() > MAX_CIRCLE_TURN) {
+      else if (NavCircleCountNoRewind() > NAV_LACE_RECOVER_MAX_TURN) {
         // most likely lost outside
         nav_lace.status = LACE_RECOVER_START;
-        nav_lace.state_changed = true;
       }
       break;
     case LACE_RECOVER_START:
@@ -279,27 +284,43 @@ bool nav_lace_run(void)
       nav_lace.recover_circle.z = nav_lace.estim_border.z;
       // initial recovery radius
       nav_lace.recover_radius = nav_lace.radius;
-      // FIXME
-      max_recover_radius = sinf(Recover_angle) * sqrtf(powf(nav_lace.last_border.x - nav_lace.recover_circle.x, 2.0) + powf(nav_lace.last_border.y - nav_lace.recover_circle.y, 2.0));
+      //nav_lace.max_recover_radius = sinf(Recover_angle) * sqrtf(powf(nav_lace.last_border.x - nav_lace.recover_circle.x, 2.0) + powf(nav_lace.last_border.y - nav_lace.recover_circle.y, 2.0));
+      nav_lace.max_recover_radius = 2.0f * nav_lace.recover_radius; // FIXME ?
       // reset circle counter
       nav_circle_radians = 0;
       nav_circle_radians_no_rewind = 0;
-      break;
-    case LACE_RECOVER:
-      // increment center position
-      VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
-      nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * current_recover_radius);
-
-      if (current_recover_radius < max_recover_radius) {
-        current_recover_radius += 0.5;
-      }
-
       if (nav_lace.inside_cloud) {
-        nav_lace.status = LACE_INSIDE_START;
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.status = LACE_RECOVER_INSIDE;
       }
       else {
+        nav_lace.status = LACE_RECOVER_OUTSIDE;
+      }
+      break;
+    case LACE_RECOVER_INSIDE:
+      // increment center position
+      VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
+      nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * nav_lace.recover_radius);
+      // increment recover circle radius
+      if (nav_lace.recover_radius < nav_lace.max_recover_radius) {
+        nav_lace.recover_radius += 0.5;
+      }
+      // found a new border
+      if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE_START;
+        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+      }
+      break;
+    case LACE_RECOVER_OUTSIDE:
+      // increment center position
+      VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
+      nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * nav_lace.recover_radius);
+      // increment recover circle radius
+      if (nav_lace.recover_radius < nav_lace.max_recover_radius) {
+        nav_lace.recover_radius += 0.5;
+      }
+      // found a new border
+      if (nav_lace.inside_cloud) {
+        nav_lace.status = LACE_INSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
       }
       break;
