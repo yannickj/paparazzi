@@ -97,12 +97,18 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
     nav_lace.rotation = LACE_RIGHT;
   }
 
-  new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_lace.radius);
-  new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_lace.radius);
+  new_point.x = position->x + (cosf(rot_angle + uav_direction) * nav_lace.radius);
+  new_point.y = position->y + (sinf(rot_angle + uav_direction) * nav_lace.radius);
   new_point.z = alt_sp;
 
   return new_point;
 }
+
+static void update_target_point(struct EnuCoor_f *target, struct EnuCoor_f *border, float dt, float tau)
+{
+  float alpha = dt / (dt + tau); // FIXME
+}
+
 
 #if USE_MISSION
 #include "modules/mission/mission_common.h"
@@ -278,13 +284,13 @@ bool nav_lace_run(void)
       }
       break;
     case LACE_RECOVER_START:
-      // prepare recovery circle
+      // prepare recovery circle or line
       nav_lace.recover_circle.x = nav_lace.estim_border.x;
       nav_lace.recover_circle.y = nav_lace.estim_border.y;
       nav_lace.recover_circle.z = nav_lace.estim_border.z;
+      nav_lace.actual = *stateGetPositionEnu_f();
       // initial recovery radius
       nav_lace.recover_radius = nav_lace.radius;
-      //nav_lace.max_recover_radius = sinf(Recover_angle) * sqrtf(powf(nav_lace.last_border.x - nav_lace.recover_circle.x, 2.0) + powf(nav_lace.last_border.y - nav_lace.recover_circle.y, 2.0));
       nav_lace.max_recover_radius = 2.0f * nav_lace.recover_radius; // FIXME ?
       // reset circle counter
       nav_circle_radians = 0;
@@ -297,14 +303,9 @@ bool nav_lace_run(void)
       }
       break;
     case LACE_RECOVER_INSIDE:
-      // increment center position
-      VECT3_ADD(nav_lace.recover_circle, nav_lace.pos_incr);
-      nav_circle_XY(nav_lace.recover_circle.x, nav_lace.recover_circle.y , nav_lace.radius_sign * nav_lace.recover_radius);
-      // increment recover circle radius
-      if (nav_lace.recover_radius < nav_lace.max_recover_radius) {
-        nav_lace.recover_radius += 0.5;
-      }
-      // found a new border
+      // increment border position
+      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
+      nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.estim_border.x, nav_lace.estim_border.y);
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
