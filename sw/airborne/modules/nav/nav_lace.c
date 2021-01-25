@@ -71,8 +71,6 @@ struct NavLace {
   float direction;
   float radius;
   float radius_sign;
-  float tps_in;
-  float tps_out;
   float last_border_time;
   float recover_radius;
   float max_recover_radius;
@@ -323,7 +321,7 @@ bool nav_lace_run(void)
       break;
     case LACE_RECOVER_INSIDE:
       // increment border position
-      //nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.estim_border.x, nav_lace.estim_border.y);
+      // fly in opposite direction to cover more space
       nav_route_xy(nav_lace.estim_border.x, nav_lace.estim_border.y, nav_lace.actual.x, nav_lace.actual.y);
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE_START;
