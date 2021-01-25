@@ -28,7 +28,6 @@
 #include "generated/flight_plan.h"
 #include "generated/airframe.h"
 #include "subsystems/abi.h"
-#include "subsystems/datalink/downlink.h"
 #include "state.h"
 
 // default radius in WP mode
@@ -86,15 +85,6 @@ static float distance_to_wp(struct EnuCoor_f * pos, uint8_t id)
   }
 }
 
-static void send_wp(uint8_t id, struct point * wp)
-{
-  struct UtmCoor_f utm;
-  utm.zone = nav_utm_zone0;
-  utm.east = wp->x + nav_utm_east0;
-  utm.north = wp->y + nav_utm_north0;
-  DOWNLINK_SEND_WP_MOVED(DefaultChannel, DefaultDevice, &id, &utm.east, &utm.north, &utm.alt, &utm.zone);
-}
-
 /**********************
  * External functions *
  **********************/
@@ -145,7 +135,7 @@ void cloud_sim_move(void)
       wp.x += cloud_sim.speed.x; // assuming dt = 1.
       wp.y += cloud_sim.speed.y; // assuming dt = 1.
       nav_move_waypoint_point(cloud_sim_circle_id, &wp);
-      send_wp(cloud_sim_circle_id, &wp);
+      nav_send_waypoint(cloud_sim_circle_id);
     }
   } else if (cloud_sim.mode == CLOUD_SIM_POLYGON) {
     for (int i = 0; i < CLOUD_SIM_WPS_NB; i++) {
@@ -154,7 +144,7 @@ void cloud_sim_move(void)
         wp.x += cloud_sim.speed.x; // assuming dt = 1.
         wp.y += cloud_sim.speed.y; // assuming dt = 1.
         nav_move_waypoint_point(cloud_sim_polygon[i], &wp);
-        send_wp(cloud_sim_polygon[i], &wp);
+        nav_send_waypoint(cloud_sim_polygon[i]);
       }
     }
   }
@@ -168,12 +158,12 @@ void cloud_sim_reset(bool reset)
     // reset WP
     if (cloud_sim_circle_id > 0 && cloud_sim_circle_id < NB_WAYPOINT) {
       nav_move_waypoint_point(cloud_sim_circle_id, &wps[cloud_sim_circle_id]);
-      send_wp(cloud_sim_circle_id, &waypoints[cloud_sim_circle_id]);
+      nav_send_waypoint(cloud_sim_circle_id);
     }
     for (int i = 0; i < CLOUD_SIM_WPS_NB; i++) {
       if (cloud_sim_polygon[i] > 0 && cloud_sim_polygon[i] < NB_WAYPOINT) {
         nav_move_waypoint_point(cloud_sim_polygon[i], &wps[cloud_sim_polygon[i]]);
-        send_wp(cloud_sim_polygon[i], &waypoints[cloud_sim_polygon[i]]);
+        nav_send_waypoint(cloud_sim_polygon[i]);
       }
     }
   }

@@ -38,6 +38,10 @@
 #define NAV_LACE_RECOVER_MAX_TURN 1.5f
 #endif
 
+#ifndef NAV_LACE_BORDER_FILTER
+#define NAV_LACE_BORDER_FILTER 20.f
+#endif
+
 enum LaceStatus {
   LACE_ENTER,
   LACE_INSIDE_START,
@@ -61,7 +65,6 @@ struct NavLace {
   struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
-  struct EnuCoor_f last_border;
   struct EnuCoor_f estim_border;
   struct EnuCoor_f recover_circle;
   struct FloatVect3 pos_incr;
@@ -106,7 +109,14 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
 
 static void update_target_point(struct EnuCoor_f *target, struct EnuCoor_f *border, float dt, float tau)
 {
-  float alpha = dt / (dt + tau); // FIXME
+  // with a proper discrete transform, coeff should be exp(-dt/tau) and (1-exp(-dt/tau))
+  // but to make it simpler with the same behavior at the limits, we use tau/(dt+tau) and dt/(dt+tau)
+  // with a positive value for tau
+  if (tau > 1e-4) {
+    float alpha = dt / (dt + tau);
+    target->x = (border->x * alpha) + (target->x * (1.f - alpha));
+    target->y = (border->y * alpha) + (target->y * (1.f - alpha));
+  }
 }
 
 
@@ -125,6 +135,14 @@ static bool nav_lace_mission(uint8_t nb, float *params, enum MissionRunFlag flag
     float vy = params[6];
     float vz = params[7];
     nav_lace_setup(start_x, start_y, start_z, first_turn, circle_radius, vx, vy, vz);
+    return true;
+  }
+  else if (flag == MissionUpdate && nb == 3) {
+    // update target 3D position (ENU frame, above ground alt)
+    float x = params[0];
+    float y = params[1];
+    float z = params[2];
+    VECT3_ASSIGN(nav_lace.target, x, y, z);
     return true;
   }
   else if (flag == MissionUpdate && nb == 2) {
@@ -168,6 +186,7 @@ void nav_lace_init(void)
   nav_lace.radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.recover_radius = DEFAULT_CIRCLE_RADIUS;
   nav_lace.max_recover_radius = DEFAULT_CIRCLE_RADIUS;
+  nav_lace.last_border_time = 0.f;
   nav_lace.inside_cloud = false;
 
   AbiBindMsgPAYLOAD_DATA(NAV_LACE_LWC_ID, &lwc_ev, lwc_cb);
@@ -205,6 +224,7 @@ void nav_lace_setup(float init_x, float init_y,
 bool nav_lace_run(void)
 {
   float pre_climb = 0.f;
+  float time = get_sys_time_float();
 
   NavVerticalAutoThrottleMode(0.f); /* No pitch */
 
@@ -217,6 +237,7 @@ bool nav_lace_run(void)
       if (nav_lace.inside_cloud) {
         // found border or already inside
         nav_lace.status = LACE_INSIDE_START;
+        nav_lace.target = *stateGetPositionEnu_f();
       }
       break;
     case LACE_INSIDE_START:
@@ -227,16 +248,16 @@ bool nav_lace_run(void)
       // reset circle counter
       nav_circle_radians = 0;
       nav_circle_radians_no_rewind = 0;
-      // pepare recover
-      nav_lace.last_border = nav_lace.actual;
+      // update border and target for recover
       nav_lace.estim_border = nav_lace.actual;
+      update_target_point(&nav_lace.target, &nav_lace.estim_border, time - nav_lace.last_border_time, NAV_LACE_BORDER_FILTER);
+      nav_lace.last_border_time = time;
       // fly inside
       nav_lace.status = LACE_INSIDE;
       break;
     case LACE_INSIDE:
       // increment center position
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
-      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
       pre_climb = nav_lace.pos_incr.z / nav_dt;
       NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
@@ -259,16 +280,16 @@ bool nav_lace_run(void)
       // reset circle counter
       nav_circle_radians = 0;
       nav_circle_radians_no_rewind = 0;
-      // prepare recover
-      nav_lace.last_border = nav_lace.actual;
+      // upadte border and target for recover
       nav_lace.estim_border = nav_lace.actual;
+      update_target_point(&nav_lace.target, &nav_lace.estim_border, time - nav_lace.last_border_time, NAV_LACE_BORDER_FILTER);
+      nav_lace.last_border_time = time;
       // fly outside
       nav_lace.status = LACE_OUTSIDE;
       break;
     case LACE_OUTSIDE:
       // increment center position
       VECT3_ADD(nav_lace.circle, nav_lace.pos_incr);
-      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
       pre_climb = nav_lace.pos_incr.z / nav_dt;
       nav_circle_XY(nav_lace.circle.x, nav_lace.circle.y , nav_lace.radius_sign * nav_lace.radius);
       NavVerticalAltitudeMode(nav_lace.circle.z + ground_alt, pre_climb);
@@ -285,9 +306,7 @@ bool nav_lace_run(void)
       break;
     case LACE_RECOVER_START:
       // prepare recovery circle or line
-      nav_lace.recover_circle.x = nav_lace.estim_border.x;
-      nav_lace.recover_circle.y = nav_lace.estim_border.y;
-      nav_lace.recover_circle.z = nav_lace.estim_border.z;
+      nav_lace.recover_circle = nav_lace.target;
       nav_lace.actual = *stateGetPositionEnu_f();
       // initial recovery radius
       nav_lace.recover_radius = nav_lace.radius;
@@ -304,8 +323,8 @@ bool nav_lace_run(void)
       break;
     case LACE_RECOVER_INSIDE:
       // increment border position
-      VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
-      nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.estim_border.x, nav_lace.estim_border.y);
+      //nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.estim_border.x, nav_lace.estim_border.y);
+      nav_route_xy(nav_lace.estim_border.x, nav_lace.estim_border.y, nav_lace.actual.x, nav_lace.actual.y);
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE_START;
         nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
@@ -329,6 +348,13 @@ bool nav_lace_run(void)
       // error, leaving
       return false;
   }
+  // increment border and target positions
+  VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
+  VECT3_ADD(nav_lace.target, nav_lace.pos_incr);
+#ifdef WP_TARGET
+  nav_move_waypoint_enu(WP_TARGET, nav_lace.target.x, nav_lace.target.y, nav_lace.target.z);
+  RunOnceEvery(10, nav_send_waypoint(WP_TARGET));
+#endif
 
   return true;
 }
