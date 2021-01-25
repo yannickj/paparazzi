@@ -95,7 +95,7 @@ static struct EnuCoor_f process_new_point_lace(struct EnuCoor_f *position, float
   if (nav_lace.rotation == LACE_RIGHT) {
     rot_angle = -M_PI_2;
     nav_lace.rotation = LACE_LEFT;
-  } else{
+  } else {
     rot_angle = M_PI_2;
     nav_lace.rotation = LACE_RIGHT;
   }
@@ -265,7 +265,7 @@ bool nav_lace_run(void)
       if (!nav_lace.inside_cloud) {
         // found border, start outside
         nav_lace.status = LACE_OUTSIDE_START;
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.radius_sign = -1.0f * nav_lace.radius_sign;
       }
       else if (NavCircleCountNoRewind() > NAV_LACE_RECOVER_MAX_TURN) {
         // most likely lost inside
@@ -297,7 +297,7 @@ bool nav_lace_run(void)
       if (nav_lace.inside_cloud) {
         // found border, start inside
         nav_lace.status = LACE_INSIDE_START;
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.radius_sign = -1.0f * nav_lace.radius_sign;
       }
       else if (NavCircleCountNoRewind() > NAV_LACE_RECOVER_MAX_TURN) {
         // most likely lost outside
@@ -327,7 +327,7 @@ bool nav_lace_run(void)
       nav_route_xy(nav_lace.estim_border.x, nav_lace.estim_border.y, nav_lace.actual.x, nav_lace.actual.y);
       if (!nav_lace.inside_cloud) {
         nav_lace.status = LACE_OUTSIDE_START;
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.radius_sign = -1.0f * nav_lace.radius_sign;
       }
       break;
     case LACE_RECOVER_OUTSIDE:
@@ -341,7 +341,7 @@ bool nav_lace_run(void)
       // found a new border
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_INSIDE_START;
-        nav_lace.radius_sign = -1.0 * nav_lace.radius_sign;
+        nav_lace.radius_sign = -1.0f * nav_lace.radius_sign;
       }
       break;
     default:
@@ -352,7 +352,7 @@ bool nav_lace_run(void)
   VECT3_ADD(nav_lace.estim_border, nav_lace.pos_incr);
   VECT3_ADD(nav_lace.target, nav_lace.pos_incr);
 #ifdef WP_TARGET
-  nav_move_waypoint_enu(WP_TARGET, nav_lace.target.x, nav_lace.target.y, nav_lace.target.z);
+  nav_move_waypoint_enu(WP_TARGET, nav_lace.target.x, nav_lace.target.y, nav_lace.target.z + ground_alt);
   RunOnceEvery(10, nav_send_waypoint(WP_TARGET));
 #endif
 

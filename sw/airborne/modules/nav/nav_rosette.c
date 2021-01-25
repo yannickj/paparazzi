@@ -31,12 +31,24 @@
 #include "state.h"
 #include "autopilot.h"
 #include "generated/flight_plan.h"
-#include <stdio.h>
+#include "subsystems/abi.h"
+
+#ifndef NAV_ROSETTE_RECOVER_MAX_TURN
+#define NAV_ROSETTE_RECOVER_MAX_TURN 1.5f
+#endif
+
+#ifndef NAV_ROSETTE_BORDER_FILTER
+#define NAV_ROSETTE_BORDER_FILTER 60.f
+#endif
 
 enum RosetteStatus {
   RSTT_ENTER,
+  RSTT_CROSSING_START,
   RSTT_CROSSING,
-  RSTT_TURNING
+  RSTT_TURNING_START,
+  RSTT_TURNING,
+  RSTT_RECOVER_START,
+  RSTT_RECOVER_OUTSIDE
 };
 
 enum RotationDir {
@@ -51,12 +63,15 @@ struct NavRosette {
   struct EnuCoor_f actual;
   struct EnuCoor_f target;
   struct EnuCoor_f circle;
-  struct EnuCoor_f barycenter;
+  struct EnuCoor_f estim_border;
+  struct EnuCoor_f recover_circle;
   struct FloatVect3 pos_incr;
   float direction;
   float radius;
   float radius_sign;
   float last_border_time;
+  float recover_radius;
+  float max_recover_radius;
   int nb_border_point;
 };
 
@@ -69,79 +84,44 @@ static float change_rep(float dir)
   return M_PI_2 - dir;
 }
 
-//static float calc_dist(struct EnuCoor_f *pos_actual, struct EnuCoor_f *pos_wanted){
-//  float res = sqrtf(powf((pos_wanted->x - pos_actual->x),2) + powf((pos_wanted->y - pos_actual->y),2));
-//
-//  return res;
-//}
-
-static void update_barycenter(struct EnuCoor_f *new_coord, float alt_sp, struct EnuCoor_f *bary, float dt)
+static void update_barycenter(struct EnuCoor_f *bary, struct EnuCoor_f *border, float alt_sp, float dt, float tau)
 {
-  //struct EnuCoor_f new_point;
-  nav_rosette.nb_border_point += 1;
+  if (tau > 1e-4) {
+    nav_rosette.nb_border_point += 1;
 
-  if(nav_rosette.nb_border_point == 1){
-    bary->x = new_coord->x;
-    bary->y = new_coord->y;
-    bary->z = alt_sp;
-
-    //printf("[1]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
-    //printf("[1]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
-
-  } else if(nav_rosette.nb_border_point >= 2){
-    //new_point.x = ((nav_rosette.barycenter.x * (nav_rosette.nb_border_point - 1)) + new_coord->x ) / nav_rosette.nb_border_point;
-    //new_point.y = ((nav_rosette.barycenter.y * (nav_rosette.nb_border_point - 1)) + new_coord->y ) / nav_rosette.nb_border_point;
-    float alpha = dt / (dt + 5.f);
-    bary->x = (bary->x * (1.f - alpha)) + (new_coord->x * alpha);
-    bary->y = (bary->y * (1.f - alpha)) + (new_coord->y * alpha);
-    bary->z = alt_sp;
-
-    //printf("[2+]CordActual X = %f ; Y = %f ; Z = %f \n", new_coord->x, new_coord->y, new_coord->z + ground_alt);
-    //printf("[2+]New bary X = %f ; Y = %f ; Z = %f \n", bary->x, bary->y, bary->z);
-
+    //if (nav_rosette.nb_border_point == 1) {
+    //  bary->x = border->x;
+    //  bary->y = border->y;
+    //  bary->z = alt_sp;
+    //} else if (nav_rosette.nb_border_point >= 2) {
+      float alpha = dt / (dt + tau);
+      bary->x = (border->x * alpha) + (bary->x * (1.f - alpha));
+      bary->y = (border->y * alpha) + (bary->y * (1.f - alpha));
+      bary->z = alt_sp;
+    //}
   }
 }
-
-//static struct EnuCoor_f update_point(struct EnuCoor_f *pos_actual){
-//  struct EnuCoor_f new_point;
-//  float distance;
-//
-//  new_point.x = truncf(nav_rosette.target.x + (2 * (nav_rosette.target.x - pos_actual->x)));
-//  new_point.y = truncf(nav_rosette.target.y + (2 * (nav_rosette.target.y - pos_actual->y)));
-//  distance = calc_dist(pos_actual, &new_point);
-//
-//  while(distance < nav_rosette.dis_min){
-//    new_point.x = truncf(new_point.x + ((1/2) * (new_point.x - pos_actual->x)));
-//    new_point.y = truncf(new_point.y + ((1/2) * (new_point.y - pos_actual->y)));
-//    distance = calc_dist(pos_actual, &new_point);
-//  }
-//
-//  new_point.z = nav_rosette.target.z + ground_alt;
-//
-//  return new_point;
-//}
 
 static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, float uav_direction)
 {
   struct EnuCoor_f new_point;
   float rot_angle;
 
-  if (nav_rosette.rotation == RSTT_RIGHT)
-  {
+  if (nav_rosette.rotation == RSTT_RIGHT) {
     rot_angle = -M_PI_2;
-  } else{
+  } else {
     rot_angle = M_PI_2;
   }
 
-  if(nav_rosette.inside_cloud == true && nav_rosette.nb_border_point > 2){
-    new_point.x = nav_rosette.barycenter.x;
-    new_point.y = nav_rosette.barycenter.y;
-    new_point.z = nav_rosette.barycenter.z;
+  if (nav_rosette.inside_cloud == true && nav_rosette.nb_border_point > 2) {
+    new_point.x = nav_rosette.target.x;
+    new_point.y = nav_rosette.target.y;
+    new_point.z = nav_rosette.target.z;
   }
-  else if(nav_rosette.inside_cloud == false){
-    new_point.x = position->x + (cos(rot_angle + uav_direction) * nav_rosette.radius);
-    new_point.y = position->y + (sin(rot_angle + uav_direction) * nav_rosette.radius);
-    new_point.z = nav_rosette.barycenter.z;
+  else if (nav_rosette.inside_cloud == false) {
+    new_point.x = position->x + (cosf(rot_angle + uav_direction) * nav_rosette.radius);
+    new_point.y = position->y + (sinf(rot_angle + uav_direction) * nav_rosette.radius);
+    new_point.z = nav_rosette.target.z;
   }
 
   return new_point;
@@ -165,11 +145,11 @@ static bool nav_rosette_mission(uint8_t nb, float *params, enum MissionRunFlag f
     return true;
   }
   else if (flag == MissionUpdate && nb == 3) {
-    // update barycenter 3D position (ENU frame, above ground alt)
-    float bx = params[0];
-    float by = params[1];
-    float bz = params[2];
-    VECT3_ASSIGN(nav_rosette.barycenter, bx, by, bz);
+    // update target 3D position (ENU frame, above ground alt)
+    float x = params[0];
+    float y = params[1];
+    float z = params[2];
+    VECT3_ASSIGN(nav_rosette.target, x, y, z);
     return true;
   }
   else if (flag == MissionUpdate && nb == 2) {
@@ -212,6 +192,8 @@ void nav_rosette_init(void)
 {
   nav_rosette.status = RSTT_ENTER;
   nav_rosette.radius = DEFAULT_CIRCLE_RADIUS;
+  nav_rosette.recover_radius = DEFAULT_CIRCLE_RADIUS;
+  nav_rosette.max_recover_radius = DEFAULT_CIRCLE_RADIUS;
   nav_rosette.inside_cloud = false;
   nav_rosette.last_border_time = 0.f;
 
@@ -236,13 +218,12 @@ void nav_rosette_setup(float init_x, float init_y, float init_z,
   nav_rosette.nb_border_point = 0;
   nav_rosette.radius = desired_radius;
 
-  if (turn == 1)
-  {
-    nav_rosette.radius_sign = 1.0f;
+  if (turn == 1) {
     nav_rosette.rotation = RSTT_RIGHT;
+    nav_rosette.radius_sign = 1.0f;
   } else {
-    nav_rosette.radius_sign = -1.0f;
     nav_rosette.rotation = RSTT_LEFT;
+    nav_rosette.radius_sign = -1.0f;
   }
 
   nav_rosette.actual = *stateGetPositionEnu_f();
@@ -252,61 +233,112 @@ void nav_rosette_setup(float init_x, float init_y, float init_z,
 bool nav_rosette_run(void)
 {
   float pre_climb = 0.f;
-  float t = get_sys_time_float();
+  float time = get_sys_time_float();
 
   NavVerticalAutoThrottleMode(0.f); /* No Pitch */
 
   switch (nav_rosette.status) {
     case RSTT_ENTER:
+      // reach target point
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
       NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
-      if (nav_rosette.inside_cloud)
-      {
-        nav_rosette.status = RSTT_CROSSING;
-        nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, nav_rosette.target.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
-        nav_rosette.last_border_time = t;
+      if (nav_rosette.inside_cloud) {
+        // found border or already inside
+        nav_rosette.status = RSTT_CROSSING_START;
       }
+      break;
+    case RSTT_CROSSING_START:
+      // prepare crossing
+      nav_rosette.actual = *stateGetPositionEnu_f();
+      update_barycenter(&nav_rosette.target, &nav_rosette.actual,
+          nav_rosette.target.z, time - nav_rosette.last_border_time, NAV_ROSETTE_BORDER_FILTER);
+      nav_rosette.last_border_time = time;
+      nav_rosette.estim_border = nav_rosette.actual;
+      // cross
+      nav_rosette.status = RSTT_CROSSING;
       break;
     case RSTT_CROSSING:
-      VECT3_ADD(nav_rosette.barycenter, nav_rosette.pos_incr);
-      VECT3_ADD(nav_rosette.target, nav_rosette.pos_incr);
+      // cross towards target
+      pre_climb = nav_rosette.pos_incr.z / nav_dt;
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
       NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
-      if (!nav_rosette.inside_cloud)
-      {
-        nav_rosette.status = RSTT_TURNING;
-        nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, nav_rosette.target.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
-        nav_rosette.last_border_time = t;
-        nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
+      if (!nav_rosette.inside_cloud) {
+        // found a border, starting turning back inside
+        // note that you don't need a recover as you always expect to go out after some time
+        nav_rosette.status = RSTT_TURNING_START;
       }
-      pre_climb = nav_rosette.pos_incr.z / nav_dt;
+      break;
+    case RSTT_TURNING_START:
+      // update target
+      nav_rosette.actual = *stateGetPositionEnu_f();
+      update_barycenter(&nav_rosette.target, &nav_rosette.actual,
+          nav_rosette.target.z, time - nav_rosette.last_border_time, NAV_ROSETTE_BORDER_FILTER);
+      nav_rosette.last_border_time = time;
+      nav_rosette.estim_border = nav_rosette.actual;
+      // prepare next circle
+      nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
+      nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
+      // reset circle counter
+      nav_circle_radians = 0;
+      nav_circle_radians_no_rewind = 0;
+      // turn
+      nav_rosette.status = RSTT_TURNING;
       break;
     case RSTT_TURNING:
-      VECT3_ADD(nav_rosette.barycenter, nav_rosette.pos_incr);
+      // update circle center
       VECT3_ADD(nav_rosette.circle, nav_rosette.pos_incr);
+      pre_climb = nav_rosette.pos_incr.z / nav_dt;
       nav_circle_XY(nav_rosette.circle.x, nav_rosette.circle.y , nav_rosette.radius_sign * nav_rosette.radius);
       NavVerticalAltitudeMode(nav_rosette.circle.z + ground_alt, pre_climb);
 
-      if (nav_rosette.inside_cloud)
-      {
-        nav_rosette.status = RSTT_CROSSING;
-        nav_rosette.actual = *stateGetPositionEnu_f();
-        update_barycenter(&nav_rosette.actual, nav_rosette.circle.z, &nav_rosette.barycenter, t - nav_rosette.last_border_time);
-        nav_rosette.last_border_time = t;
-        nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
-        nav_rosette.target = nav_rosette.barycenter;
+      if (nav_rosette.inside_cloud) {
+        // found a border, cross again
+        nav_rosette.status = RSTT_CROSSING_START;
       }
-      pre_climb = nav_rosette.pos_incr.z / nav_dt;
+      else if (NavCircleCountNoRewind() > NAV_ROSETTE_RECOVER_MAX_TURN) {
+        // most likely lost outside
+        nav_rosette.status = RSTT_RECOVER_START;
+      }
+      break;
+    case RSTT_RECOVER_START:
+      // prepare recovery circle
+      nav_rosette.recover_circle = nav_rosette.target;
+      nav_rosette.actual = *stateGetPositionEnu_f();
+      // initial recovery radius
+      nav_rosette.recover_radius = nav_rosette.radius;
+      nav_rosette.max_recover_radius = 2.0f * nav_rosette.recover_radius; // FIXME ?
+      // reset circle counter
+      nav_circle_radians = 0;
+      nav_circle_radians_no_rewind = 0;
+      // recover
+      nav_rosette.status = RSTT_RECOVER_OUTSIDE;
+      break;
+    case RSTT_RECOVER_OUTSIDE:
+      // increment center position
+      VECT3_ADD(nav_rosette.recover_circle, nav_rosette.pos_incr);
+      nav_circle_XY(nav_rosette.recover_circle.x, nav_rosette.recover_circle.y , nav_rosette.radius_sign * nav_rosette.recover_radius);
+      // increment recover circle radius
+      if (nav_rosette.recover_radius < nav_rosette.max_recover_radius) {
+        nav_rosette.recover_radius += 0.5;
+      }
+      // found a new border
+      if (nav_rosette.inside_cloud) {
+        nav_rosette.status = RSTT_CROSSING_START;
+      }
       break;
     default:
       // error, leaving
       return false;
   }
+  // update target and border positions
+  VECT3_ADD(nav_rosette.estim_border, nav_rosette.pos_incr);
+  VECT3_ADD(nav_rosette.target, nav_rosette.pos_incr);
+#ifdef WP_TARGET
+  nav_move_waypoint_enu(WP_TARGET, nav_rosette.target.x, nav_rosette.target.y, nav_rosette.target.z + ground_alt);
+  RunOnceEvery(10, nav_send_waypoint(WP_TARGET));
+#endif
 
   return true;
 }
