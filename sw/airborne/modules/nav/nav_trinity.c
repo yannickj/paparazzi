@@ -43,7 +43,7 @@
 
 enum TrinityStatus {
   TRINITY_ENTER,
-  TRINITY_INSIDE_START,
+  TRINITY_INSIDE_FIRST,
   TRINITY_INSIDE,
   TRINITY_OUTSIDE_START,
   TRINITY_OUTSIDE,
@@ -236,6 +236,8 @@ bool nav_trinity_run(void)
 
   switch (nav_trinity.status) {
     case TRINITY_ENTER:
+      // init stage
+      nav_init_stage();
       // reach target point
       nav_route_xy(nav_trinity.actual.x, nav_trinity.actual.y, nav_trinity.target.x, nav_trinity.target.y);
       NavVerticalAltitudeMode(nav_trinity.target.z + ground_alt, pre_climb);
@@ -249,9 +251,8 @@ bool nav_trinity_run(void)
       nav_trinity.actual = *stateGetPositionEnu_f();
       nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
       nav_trinity.circle = process_first_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // update border and target for recover
       nav_trinity.estim_border = nav_trinity.actual;
       update_target_point(&nav_trinity.target, &nav_trinity.estim_border, time - nav_trinity.last_border_time, NAV_TRINITY_BORDER_FILTER);
@@ -280,9 +281,8 @@ bool nav_trinity_run(void)
       nav_trinity.actual = *stateGetPositionEnu_f();
       nav_trinity.direction = change_rep(stateGetHorizontalSpeedDir_f());
       nav_trinity.circle = process_new_point_trinity(&nav_trinity.actual, nav_trinity.target.z, nav_trinity.direction);
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // upadte border and target for recover
       nav_trinity.estim_border = nav_trinity.actual;
       update_target_point(&nav_trinity.target, &nav_trinity.estim_border, time - nav_trinity.last_border_time, NAV_TRINITY_BORDER_FILTER);
@@ -313,9 +313,8 @@ bool nav_trinity_run(void)
       // initial recovery radius
       nav_trinity.recover_radius = nav_trinity.radius;
       nav_trinity.max_recover_radius = 2.0f * nav_trinity.recover_radius; // FIXME ?
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       if (nav_trinity.inside_cloud) {
         nav_trinity.status = TRINITY_RECOVER_INSIDE;
       }
@@ -341,7 +340,7 @@ bool nav_trinity_run(void)
       }
       // found a new border
       if (nav_trinity.inside_cloud) {
-        nav_trinity.status = TRINITY_INSIDE_START;
+        nav_trinity.status = TRINITY_INSIDE;
       }
       break;
     default:

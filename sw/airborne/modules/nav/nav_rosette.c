@@ -43,6 +43,7 @@
 
 enum RosetteStatus {
   RSTT_ENTER,
+  RSTT_CROSSING_FIRST,
   RSTT_CROSSING_START,
   RSTT_CROSSING,
   RSTT_TURNING_START,
@@ -65,6 +66,7 @@ struct NavRosette {
   struct EnuCoor_f circle;
   struct EnuCoor_f estim_border;
   struct EnuCoor_f recover_circle;
+  struct EnuCoor_f * first;
   struct FloatVect3 pos_incr;
   float direction;
   float radius;
@@ -72,7 +74,6 @@ struct NavRosette {
   float last_border_time;
   float recover_radius;
   float max_recover_radius;
-  int nb_border_point;
 };
 
 static struct NavRosette nav_rosette;
@@ -84,21 +85,20 @@ static float change_rep(float dir)
   return M_PI_2 - dir;
 }
 
-static void update_barycenter(struct EnuCoor_f *bary, struct EnuCoor_f *border, float alt_sp, float dt, float tau)
+static void update_barycenter(struct EnuCoor_f *bary, struct EnuCoor_f *border, struct EnuCoor_f *first, float alt_sp, float dt, float tau)
 {
-  if (tau > 1e-4) {
-    nav_rosette.nb_border_point += 1;
-
-    //if (nav_rosette.nb_border_point == 1) {
-    //  bary->x = border->x;
-    //  bary->y = border->y;
-    //  bary->z = alt_sp;
-    //} else if (nav_rosette.nb_border_point >= 2) {
+  if (first != NULL) {
+    bary->x = (border->x + first->x) / 2.f;
+    bary->y = (border->y + first->y) / 2.f;
+    bary->z = alt_sp;
+  }
+  else {
+    if (tau > 1e-4) {
       float alpha = dt / (dt + tau);
       bary->x = (border->x * alpha) + (bary->x * (1.f - alpha));
       bary->y = (border->y * alpha) + (bary->y * (1.f - alpha));
       bary->z = alt_sp;
-    //}
+    }
   }
 }
 
@@ -113,7 +113,7 @@ static struct EnuCoor_f process_new_point_rosette(struct EnuCoor_f *position, fl
     rot_angle = M_PI_2;
   }
 
-  if (nav_rosette.inside_cloud == true && nav_rosette.nb_border_point > 2) {
+  if (nav_rosette.inside_cloud == true) {
     new_point.x = nav_rosette.target.x;
     new_point.y = nav_rosette.target.y;
     new_point.z = nav_rosette.target.z;
@@ -215,8 +215,8 @@ void nav_rosette_setup(float init_x, float init_y, float init_z,
   nav_rosette.target = start;
   nav_rosette.status = RSTT_ENTER;
   nav_rosette.inside_cloud = false;
-  nav_rosette.nb_border_point = 0;
   nav_rosette.radius = desired_radius;
+  nav_rosette.first = NULL;
 
   if (turn == 1) {
     nav_rosette.rotation = RSTT_RIGHT;
@@ -239,22 +239,37 @@ bool nav_rosette_run(void)
 
   switch (nav_rosette.status) {
     case RSTT_ENTER:
+      // init stage
+      nav_init_stage();
       // reach target point
       nav_route_xy(nav_rosette.actual.x, nav_rosette.actual.y, nav_rosette.target.x, nav_rosette.target.y);
       NavVerticalAltitudeMode(nav_rosette.target.z + ground_alt, pre_climb);
 
       if (nav_rosette.inside_cloud) {
         // found border or already inside
-        nav_rosette.status = RSTT_CROSSING_START;
+        nav_rosette.status = RSTT_CROSSING_FIRST;
       }
+      break;
+    case RSTT_CROSSING_FIRST:
+      // prepare first crossing
+      nav_rosette.actual = *stateGetPositionEnu_f();
+      nav_rosette.last_border_time = time;
+      nav_rosette.estim_border = nav_rosette.actual;
+      nav_rosette.first = &nav_rosette.estim_border;
+      // init stage
+      nav_init_stage();
+      // cross
+      nav_rosette.status = RSTT_CROSSING;
       break;
     case RSTT_CROSSING_START:
       // prepare crossing
       nav_rosette.actual = *stateGetPositionEnu_f();
-      update_barycenter(&nav_rosette.target, &nav_rosette.actual,
+      update_barycenter(&nav_rosette.target, &nav_rosette.actual, nav_rosette.first,
           nav_rosette.target.z, time - nav_rosette.last_border_time, NAV_ROSETTE_BORDER_FILTER);
       nav_rosette.last_border_time = time;
       nav_rosette.estim_border = nav_rosette.actual;
+      // init stage
+      nav_init_stage();
       // cross
       nav_rosette.status = RSTT_CROSSING;
       break;
@@ -273,16 +288,16 @@ bool nav_rosette_run(void)
     case RSTT_TURNING_START:
       // update target
       nav_rosette.actual = *stateGetPositionEnu_f();
-      update_barycenter(&nav_rosette.target, &nav_rosette.actual,
+      update_barycenter(&nav_rosette.target, &nav_rosette.actual, nav_rosette.first,
           nav_rosette.target.z, time - nav_rosette.last_border_time, NAV_ROSETTE_BORDER_FILTER);
       nav_rosette.last_border_time = time;
       nav_rosette.estim_border = nav_rosette.actual;
+      nav_rosette.first = NULL;
       // prepare next circle
       nav_rosette.direction = change_rep(stateGetHorizontalSpeedDir_f());
       nav_rosette.circle = process_new_point_rosette(&nav_rosette.actual, nav_rosette.direction);
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // turn
       nav_rosette.status = RSTT_TURNING;
       break;
@@ -309,9 +324,8 @@ bool nav_rosette_run(void)
       // initial recovery radius
       nav_rosette.recover_radius = nav_rosette.radius;
       nav_rosette.max_recover_radius = 2.0f * nav_rosette.recover_radius; // FIXME ?
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // recover
       nav_rosette.status = RSTT_RECOVER_OUTSIDE;
       break;

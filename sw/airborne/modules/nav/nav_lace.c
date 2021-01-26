@@ -228,6 +228,8 @@ bool nav_lace_run(void)
 
   switch (nav_lace.status) {
     case LACE_ENTER:
+      // init stage
+      nav_init_stage();
       // reach target point
       nav_route_xy(nav_lace.actual.x, nav_lace.actual.y, nav_lace.target.x, nav_lace.target.y);
       NavVerticalAltitudeMode(nav_lace.target.z + ground_alt, pre_climb);
@@ -243,9 +245,8 @@ bool nav_lace_run(void)
       nav_lace.actual = *stateGetPositionEnu_f();
       nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
       nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.target.z, nav_lace.direction);
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // update border and target for recover
       nav_lace.estim_border = nav_lace.actual;
       update_target_point(&nav_lace.target, &nav_lace.estim_border, time - nav_lace.last_border_time, NAV_LACE_BORDER_FILTER);
@@ -275,9 +276,8 @@ bool nav_lace_run(void)
       nav_lace.actual = *stateGetPositionEnu_f();
       nav_lace.direction = change_rep(stateGetHorizontalSpeedDir_f());
       nav_lace.circle = process_new_point_lace(&nav_lace.actual, nav_lace.circle.z, nav_lace.direction);
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       // upadte border and target for recover
       nav_lace.estim_border = nav_lace.actual;
       update_target_point(&nav_lace.target, &nav_lace.estim_border, time - nav_lace.last_border_time, NAV_LACE_BORDER_FILTER);
@@ -309,9 +309,8 @@ bool nav_lace_run(void)
       // initial recovery radius
       nav_lace.recover_radius = nav_lace.radius;
       nav_lace.max_recover_radius = 2.0f * nav_lace.recover_radius; // FIXME ?
-      // reset circle counter
-      nav_circle_radians = 0;
-      nav_circle_radians_no_rewind = 0;
+      // init stage
+      nav_init_stage();
       if (nav_lace.inside_cloud) {
         nav_lace.status = LACE_RECOVER_INSIDE;
       }
