@@ -24,6 +24,7 @@
  */
 
 #include "firmwares/rotorcraft/stabilization.h"
+#include "subsystems/datalink/telemetry.h"
 
 #if (STABILIZATION_FILTER_COMMANDS_ROLL_PITCH || STABILIZATION_FILTER_COMMANDS_YAW)
 #include "filters/low_pass_filter.h"
@@ -52,6 +53,15 @@ struct SecondOrderLowPass_int filter_pitch;
 struct SecondOrderLowPass_int filter_yaw;
 #endif
 
+static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *dev)
+{
+  pprz_msg_send_ROTORCRAFT_CMD(trans, dev, AC_ID,
+                               &stabilization_cmd[COMMAND_ROLL],
+                               &stabilization_cmd[COMMAND_PITCH],
+                               &stabilization_cmd[COMMAND_YAW],
+                               &stabilization_cmd[COMMAND_THRUST]);
+}
+
 void stabilization_init(void)
 {
   for (uint8_t i = 0; i < COMMANDS_NB; i++) {
@@ -70,6 +80,7 @@ void stabilization_init(void)
   init_second_order_low_pass_int(&filter_yaw, STABILIZATION_FILTER_CMD_YAW_CUTOFF, 0.7071, 1.0 / PERIODIC_FREQUENCY, 0.0);
 #endif
 
+  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_CMD, send_rotorcraft_cmd);
 }
 
 void stabilization_filter_commands(void)

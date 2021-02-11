@@ -178,15 +178,6 @@ static void send_rotorcraft_rc(struct transport_tx *trans, struct link_device *d
 }
 #endif
 
-static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *dev)
-{
-  pprz_msg_send_ROTORCRAFT_CMD(trans, dev, AC_ID,
-                               &stabilization_cmd[COMMAND_ROLL],
-                               &stabilization_cmd[COMMAND_PITCH],
-                               &stabilization_cmd[COMMAND_YAW],
-                               &stabilization_cmd[COMMAND_THRUST]);
-}
-
 
 void autopilot_firmware_init(void)
 {
@@ -198,7 +189,6 @@ void autopilot_firmware_init(void)
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ENERGY, send_energy);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_FP, send_fp);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_FP_MIN, send_fp_min);
-  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_CMD, send_rotorcraft_cmd);
 #ifdef RADIO_CONTROL
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_RADIO_CONTROL, send_rotorcraft_rc);
 #endif
@@ -232,7 +222,11 @@ void autopilot_reset_in_flight_counter(void)
 }
 
 /** in flight check utility function
+ *
+ * Only if COMMAND_THRUST is defined, otherwise this function should be implemented
+ * elsewhere based on drone internal feedback or use default empty weak function
  */
+#ifdef COMMAND_THRUST
 void autopilot_check_in_flight(bool motors_on)
 {
   if (autopilot.in_flight) {
@@ -266,4 +260,5 @@ void autopilot_check_in_flight(bool motors_on)
     }
   }
 }
+#endif
 

@@ -1,0 +1,102 @@
+<!DOCTYPE airframe SYSTEM "../../airframe.dtd">
+
+<airframe name="Ryzen Tello">
+
+  <firmware name="rotorcraft">
+    <autopilot name="tello.xml"/>
+
+    <target name="ap" board="tello">
+    </target>
+
+    <module name="radio_control"  type="datalink"/>
+    <module name="telemetry"      type="transparent_udp"/>
+    <module name="gps"            type="ublox">
+      <configure name="GPS_BAUD" value="B115200"/>
+    </module>
+    <module name="ins"            type="gps_passthrough">
+      <configure name="USE_MAGNETOMETER" value="FALSE"/>
+      <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
+      <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
+      <define name="USE_SONAR" value="0"/>
+    </module>
+    <module name="nav" type="basic_rotorcraft"/>
+    <module name="air_data"/>
+  </firmware>
+
+  <commands>
+    <axis name="SPEED_X"  failsafe_value="0"/>
+    <axis name="SPEED_Y"  failsafe_value="0"/>
+    <axis name="SPEED_Z"  failsafe_value="0"/>
+    <axis name="YAW_RATE" failsafe_value="0"/>
+  </commands>
+
+  <!--command_laws>
+    <call fun="motor_mixing_run(autopilot_get_motors_on(),FALSE,values)"/>
+    <set servo="FL" value="motor_mixing.commands[MOTOR_FRONT_LEFT]"/>
+    <set servo="FR" value="motor_mixing.commands[MOTOR_FRONT_RIGHT]"/>
+    <set servo="BR" value="motor_mixing.commands[MOTOR_BACK_RIGHT]"/>
+    <set servo="BL" value="motor_mixing.commands[MOTOR_BACK_LEFT]"/>
+  </command_laws-->
+
+  <!--section name="IMU" prefix="IMU_">
+    <define name="ACCEL_X_NEUTRAL" value="-55"/>
+    <define name="ACCEL_Y_NEUTRAL" value="3"/>
+    <define name="ACCEL_Z_NEUTRAL" value="-141"/>
+    <define name="ACCEL_X_SENS" value="2.44645099697" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.44618333167" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.43722535075" integer="16"/>
+    <define name="MAG_X_NEUTRAL" value="-86"/>
+    <define name="MAG_Y_NEUTRAL" value="41"/>
+    <define name="MAG_Z_NEUTRAL" value="-32"/>
+    <define name="MAG_X_SENS" value="3.73940141026" integer="16"/>
+    <define name="MAG_Y_SENS" value="3.81423665322" integer="16"/>
+    <define name="MAG_Z_SENS" value="4.15369264623" integer="16"/>
+    <define name="BODY_TO_IMU_PHI"   value="0." unit="deg"/>
+    <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
+    <define name="BODY_TO_IMU_PSI"   value="0." unit="deg"/>
+  </section-->
+
+  <section name="INS" prefix="INS_">
+    <define name="H_X" value="1."/>
+    <define name="H_Y" value="0."/>
+    <define name="H_Z" value="0."/>
+  </section>
+
+  <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
+    <define name="HOVER_KP"    value="150"/>
+    <define name="HOVER_KD"    value="80"/>
+    <define name="HOVER_KI"    value="20"/>
+    <define name="NOMINAL_HOVER_THROTTLE" value="0.5"/>
+    <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
+  </section>
+
+  <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
+    <define name="MAX_BANK" value="20" unit="deg"/>
+    <define name="USE_SPEED_REF" value="TRUE"/>
+    <define name="PGAIN" value="50"/>
+    <define name="DGAIN" value="100"/>
+    <define name="AGAIN" value="70"/>
+    <define name="IGAIN" value="20"/>
+  </section>
+
+  <section name="AUTOPILOT">
+    <define name="MODE_MANUAL" value="AP_MODE_SPEED"/>
+    <define name="MODE_AUTO1"  value="AP_MODE_GUIDED"/>
+    <define name="MODE_AUTO2"  value="AP_MODE_NAV"/>
+  </section>
+
+  <section name="BAT">
+    <define name="CATASTROPHIC_BAT_LEVEL" value="3.1" unit="V"/>
+    <define name="CRITIC_BAT_LEVEL" value="3.3" unit="V"/>
+    <define name="LOW_BAT_LEVEL" value="3.5" unit="V"/>
+    <define name="MAX_BAT_LEVEL" value="4.1" unit="V"/>
+  </section>
+
+  <section name="GCS">
+    <define name="ALT_SHIFT_PLUS_PLUS" value="5"/>
+    <define name="ALT_SHIFT_PLUS"      value="1"/>
+    <define name="ALT_SHIFT_MINUS"     value="-1"/>
+    <define name="AC_ICON"             value="quadrotor_x"/>
+  </section>
+
+</airframe>
