@@ -98,11 +98,13 @@ static void send_status(struct transport_tx *trans, struct link_device *dev)
   uint8_t in_flight = autopilot.in_flight;
   uint8_t motors_on = autopilot.motors_on;
   uint16_t time_sec = sys_time.nb_sec;
+  uint8_t dummy = 0; // FIXME
   pprz_msg_send_ROTORCRAFT_STATUS(trans, dev, AC_ID,
                                   &imu_nb_err, &_motor_nb_err,
                                   &radio_control.status, &radio_control.frame_rate,
                                   &fix, &autopilot.mode, &in_flight, &motors_on,
-                                  &autopilot.arming_status, &guidance_h.mode, &guidance_v_mode,
+                                  //&autopilot.arming_status, &guidance_h.mode, &guidance_v_mode,
+                                  &autopilot.arming_status, &dummy, &dummy,
                                   &time_sec, &electrical.vsupply);
 }
 
@@ -116,8 +118,9 @@ static void send_energy(struct transport_tx *trans, struct link_device *dev)
 
 static void send_fp(struct transport_tx *trans, struct link_device *dev)
 {
-  int32_t carrot_up = -guidance_v_z_sp;
-  int32_t carrot_heading = ANGLE_BFP_OF_REAL(guidance_h.sp.heading);
+  int32_t carrot_up = 0;// -guidance_v_z_sp;
+  int32_t carrot_heading = 0;  //ANGLE_BFP_OF_REAL(guidance_h.sp.heading);
+  int32_t dummy = 0; // FIXME
   int32_t thrust = (int32_t)autopilot.throttle;
 #if GUIDANCE_INDI_HYBRID
   struct FloatEulers eulers_zxy;
@@ -136,8 +139,10 @@ static void send_fp(struct transport_tx *trans, struct link_device *dev)
                               &(stateGetNedToBodyEulers_i()->phi),
                               &(stateGetNedToBodyEulers_i()->theta),
                               &state_psi,
-                              &guidance_h.sp.pos.y,
-                              &guidance_h.sp.pos.x,
+                              //&guidance_h.sp.pos.y,
+                              //&guidance_h.sp.pos.x,
+                              &dummy,
+                              &dummy,
                               &carrot_up,
                               &carrot_heading,
                               &thrust,

@@ -56,7 +56,7 @@ CXXFLAGS += -std=c++0x
 CXXFLAGS += $(shell pkg-config --cflags-only-I ivy-glib)
 CXXFLAGS += -D_GNU_SOURCE
 
-LDFLAGS	+= $($(TARGET).LDFLAGS)
+LDFLAGS	+= $($(TARGET).LDFLAGS) -pthread
 LDFLAGS += $(BOARD_LDFLAGS)
 LDFLAGS += $(patsubst %,-L%,$(DLIBDIR) $(RUST_DIRS))
 LDFLAGS += $(RUST_LIBS)

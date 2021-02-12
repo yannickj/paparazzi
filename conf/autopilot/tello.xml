@@ -9,7 +9,7 @@
       <include name="autopilot.h"/>
       <include name="autopilot_rc_helpers.h"/>
       <include name="navigation.h"/>
-      <include name="guidance.h"/>
+      <include name="guidance/guidance_speed.h"/>
       <include name="subsystems/radio_control.h"/>
       <include name="subsystems/gps.h"/>
       <define name="MODE_MANUAL" value="AP_MODE_SPEED" cond="ifndef MODE_MANUAL"/>
@@ -36,82 +36,78 @@
         <call fun="nav_periodic_task()"/>
       </control>
       <control>
+        <call fun="guidance_speed_read_rc(autopilot_in_flight())"/>
+        <call fun="guidance_speed_run(autopilot_in_flight())"/>
         <call_block name="speed_loop"/>
       </control>
-      <exception cond="RCLost()" deroute="KILL"/>
+      <exception cond="RCLost()" deroute="FAILSAFE"/>
     </mode>
 
     <mode name="GUIDED">
       <select cond="RCMode1()" exception="HOME"/>
       <on_enter>
-        <call fun="guidance_h_hover_enter()"/>
-        <call fun="guidance_v_mode = GUIDANCE_V_MODE_GUIDED"/>
-        <call fun="guidance_v_guided_enter()"/>
+        <call fun="guidance_speed_hover_enter()"/>
+        <!--call fun="guidance_v_guided_enter()"/-->
       </on_enter>
       <control freq="NAV_FREQ">
         <call fun="nav_periodic_task()"/>
       </control>
       <control>
-        <call fun="guidance_v_read_rc()"/>
-        <!--call fun="guidance_v_thrust_adapt(autopilot_in_flight())"/-->
-        <call fun="guidance_v_guided_run(autopilot_in_flight())"/>
-        <call fun="guidance_h_guided_run(autopilot_in_flight())"/>
+        <!--call fun="guidance_speed_read_rc()"/-->
+        <call fun="guidance_speed_guided_run(autopilot_in_flight())"/>
         <call_block name="speed_loop"/>
       </control>
-      <exception cond="GpsIsLost() && autopilot_in_flight()" deroute="KILL"/>
+      <exception cond="GpsIsLost() && autopilot_in_flight()" deroute="FAILSAFE"/>
     </mode>
 
     <mode name="NAV">
       <select cond="$DEFAULT_MODE"/>
       <select cond="RCMode2()" exception="HOME"/>
       <on_enter>
-        <call fun="guidance_h_nav_enter()"/>
-        <call fun="guidance_v_z_enter()"/>
+        <call fun="guidance_speed_nav_enter()"/>
       </on_enter>
       <control freq="NAV_FREQ">
         <call fun="nav_periodic_task()"/>
       </control>
       <control>
-        <call fun="guidance_v_read_rc()"/>
-        <!--call fun="guidance_v_thrust_adapt(autopilot_in_flight())"/-->
-        <call fun="guidance_v_from_nav(autopilot_in_flight())"/>
-        <call fun="guidance_h_from_nav(autopilot_in_flight())"/>
+        <!--call fun="guidance_speed_read_rc()"/-->
+        <call fun="guidance_speed_from_nav(autopilot_in_flight())"/>
         <call_block name="speed_loop"/>
       </control>
-      <exception cond="GpsIsLost() && autopilot_in_flight()" deroute="KILL"/>
+      <exception cond="GpsIsLost() && autopilot_in_flight()" deroute="FAILSAFE"/>
     </mode>
 
     <mode name="HOME">
       <on_enter>
-        <call fun="guidance_h_nav_enter()"/>
-        <call fun="guidance_v_z_enter()"/>
+        <call fun="guidance_speed_nav_enter()"/>
       </on_enter>
       <control freq="NAV_FREQ">
         <call fun="nav_home()"/>
       </control>
       <control>
-        <call fun="guidance_v_read_rc()"/>
-        <!--call fun="guidance_v_thrust_adapt(autopilot_in_flight())"/-->
-        <call fun="guidance_v_from_nav(autopilot_in_flight())"/>
-        <call fun="guidance_h_from_nav(autopilot_in_flight())"/>
+        <call fun="guidance_speed_from_nav(autopilot_in_flight())"/>
         <call_block name="speed_loop"/>
       </control>
-      <exception cond="GpsIsLost()" deroute="KILL"/>
+      <exception cond="GpsIsLost()" deroute="FAILSAFE"/>
     </mode>
 
     <!-- Safe landing -->
-    <mode name="KILL">
+    <mode name="FAILSAFE" shortname="FAIL">
       <on_enter>
         <!--call fun="tello_land()"/-->
       </on_enter>
       <control>
-        <!--call fun="stabilization_attitude_set_failsafe_setpoint()"/>
-        <call fun="stabilization_attitude_run(autopilot_in_flight())"/>
-        <call fun="gv_update_ref_from_zd_sp(guidance_v_zd_sp, stateGetPositionNed_i()->z)"/>
-        <call fun="run_hover_loop(autopilot_in_flight())"/>
-        <call_block name="set_actuators"/-->
       </control>
-      <exception cond="!GpsIsLost()" deroute="$LAST_MODE"/>
+      <!--exception cond="!GpsIsLost()" deroute="$LAST_MODE"/-->
+    </mode>
+
+    <!-- Kill throttle mode -->
+    <mode name="KILL">
+      <on_enter>
+        <!--call fun="tello_emergency()"/-->
+      </on_enter>
+      <control>
+      </control>
     </mode>
 
   </state_machine>

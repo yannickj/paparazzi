@@ -1,6 +1,6 @@
 <!DOCTYPE module SYSTEM "module.dtd">
 
-<module name="guidance_rotorcraft" dir="guidance">
+<module name="guidance_rotorcraft_speed" dir="guidance">
   <doc>
     <description>
       Guidance code for rotorcraft with speed output Only
@@ -9,52 +9,39 @@
       - vertical guidance with reference
       Can be used with drones like Tello
     </description>
-    <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
-      <define name="PGAIN" value="79" description="feedback horizontal control P gain"/>
-      <define name="DGAIN" value="100" description="feedback horizontal control D gain"/>
-      <define name="IGAIN" value="30" description="feedback horizontal control I gain"/>
-    </section>
-    <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
-      <define name="HOVER_KP" value="283" description="feedback vertical control P gain"/>
-      <define name="HOVER_KD" value="82" description="feedback vertical control D gain"/>
-      <define name="HOVER_KI" value="13" description="feedback vertical control I gain"/>
+    <section name="GUIDANCE_SPEED" prefix="GUIDANCE_SPEED_">
+      <define name="H_PGAIN" value="79" description="feedback horizontal control P gain"/>
+      <define name="H_DGAIN" value="100" description="feedback horizontal control D gain"/>
+      <define name="H_IGAIN" value="30" description="feedback horizontal control I gain"/>
+      <define name="V_PGAIN" value="283" description="feedback vertical control P gain"/>
+      <define name="V_DGAIN" value="82" description="feedback vertical control D gain"/>
+      <define name="V_IGAIN" value="13" description="feedback vertical control I gain"/>
     </section>
   </doc>
   <settings target="ap|nps">
     <dl_settings>
       <dl_settings NAME="Vert Loop">
-        <dl_setting var="guidance_v_kp" min="0" step="1" max="600" shortname="kp" param="GUIDANCE_V_HOVER_KP" persistent="true" module="guidance/guidance_v"/>
-        <dl_setting var="guidance_v_kd" min="0" step="1" max="600" shortname="kd" param="GUIDANCE_V_HOVER_KD" persistent="true"/>
-        <dl_setting var="guidance_v_ki" min="0" step="1" max="300" shortname="ki" handler="SetKi" param="GUIDANCE_V_HOVER_KI" persistent="true" module="guidance/guidance_v"/>
-        <dl_setting var="guidance_v_z_sp" min="-5" step="0.5" max="3" shortname="sp" unit="2e-8m" alt_unit="m" alt_unit_coef="0.00390625"/>
+        <dl_setting var="guidance_speed.max_v_speed" min="0.1" step="0.1" max="15.0" shortname="max_speed" param="GUIDANCE_SPEED_MAX_V_SPEED" type="float" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.v_gains.p" min="0." step="0.001" max="10." shortname="kp" handler="set_v_pgain" param="GUIDANCE_SPEED_H_PGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.v_gains.d" min="0." step="0.001" max="10." shortname="kd" handler="set_v_dgain" param="GUIDANCE_SPEED_H_DGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.v_gains.i" min="0." step="0.001" max="10." shortname="ki" handler="set_v_igain" param="GUIDANCE_SPEED_H_IGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.sp.pos.z" min="-10." step="0.5" max="3." shortname="sp" unit="m"/>
       </dl_settings>
       <dl_settings NAME="Horiz Loop">
-        <dl_setting var="guidance_h.use_ref" min="0" step="1" max="1" shortname="use_ref" values="FALSE|TRUE" handler="SetUseRef" param="GUIDANCE_H_USE_REF" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="gh_ref.max_speed" min="0.1" step="0.1" max="15.0" shortname="max_speed" handler="SetMaxSpeed" param="GUIDANCE_H_REF_MAX_SPEED" type="float" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="gh_ref.tau" min="0.1" step="0.1" max="1.0" shortname="tau" handler="SetTau" param="GUIDANCE_H_REF_TAU" type="float" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="gh_ref.omega" min="0.1" step="0.1" max="3.0" shortname="omega" handler="SetOmega" param="GUIDANCE_H_REF_OMEGA" type="float" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="gh_ref.zeta" min="0.7" step="0.05" max="1.0" shortname="zeta" handler="SetZeta" param="GUIDANCE_H_REF_ZETA" type="float" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="guidance_h.gains.p" min="0" step="1" max="400" shortname="kp" param="GUIDANCE_H_PGAIN" type="int32" persistent="true"/>
-        <dl_setting var="guidance_h.gains.d" min="0" step="1" max="400" shortname="kd" param="GUIDANCE_H_DGAIN" type="int32" persistent="true"/>
-        <dl_setting var="guidance_h.gains.i" min="0" step="1" max="400" shortname="ki" handler="set_igain" param="GUIDANCE_H_IGAIN" type="int32" persistent="true" module="guidance/guidance_h"/>
-        <dl_setting var="guidance_h.gains.v" min="0" step="1" max="400" shortname="kv" param="GUIDANCE_H_VGAIN" type="int32" persistent="true"/>
-        <dl_setting var="guidance_h.gains.a" min="0" step="1" max="400" shortname="ka" param="GUIDANCE_H_AGAIN" type="int32" persistent="true"/>
-        <dl_setting var="guidance_h.sp.pos.x" MIN="-10" MAX="10" STEP="1" shortname="sp_x_ned" unit="1/2^8m" alt_unit="m" alt_unit_coef="0.00390625"/>
-        <dl_setting var="guidance_h.sp.pos.y" MIN="-10" MAX="10" STEP="1" shortname="sp_y_ned" unit="1/2^8m" alt_unit="m" alt_unit_coef="0.00390625"/>
+        <dl_setting var="guidance_speed.max_h_speed" min="0.1" step="0.1" max="15.0" shortname="max_speed" param="GUIDANCE_SPEED_MAX_H_SPEED" type="float" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.h_gains.p" min="0." step="0.001" max="10." shortname="kp" handler="set_h_pgain" param="GUIDANCE_SPEED_PGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.h_gains.d" min="0." step="0.001" max="10." shortname="kd" handler="set_h_dgain" param="GUIDANCE_SPEED_DGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.h_gains.i" min="0." step="0.001" max="10." shortname="ki" handler="set_h_igain" param="GUIDANCE_SPEED_IGAIN" persistent="true" module="guidance/guidance_speed"/>
+        <dl_setting var="guidance_speed.sp.pos.x" MIN="-10" MAX="10" STEP="1" shortname="sp_x_ned" unit="m"/>
+        <dl_setting var="guidance_speed.sp.pos.y" MIN="-10" MAX="10" STEP="1" shortname="sp_y_ned" unit="m"/>
       </dl_settings>
     </dl_settings>
   </settings>
   <header>
-    <file name="guidance_h.h"/>
-    <file name="guidance_v.h"/>
+    <file name="guidance_speed.h"/>
   </header>
-  <init fun="guidance_h_init()"/>
-  <init fun="guidance_v_init()"/>
+  <init fun="guidance_speed_init()"/>
   <makefile target="ap|nps|hitl" firmware="rotorcraft">
-    <file name="guidance_h.c" dir="$(SRC_FIRMWARE)/guidance"/>
-    <file name="guidance_h_ref.c" dir="$(SRC_FIRMWARE)/guidance"/>
-    <file name="guidance_v.c" dir="$(SRC_FIRMWARE)/guidance"/>
-    <file name="guidance_v_ref.c" dir="$(SRC_FIRMWARE)/guidance"/>
-    <file name="guidance_v_adapt.c" dir="$(SRC_FIRMWARE)/guidance"/>
+    <file name="guidance_speed.c" dir="$(SRC_FIRMWARE)/guidance"/>
   </makefile>
 </module>

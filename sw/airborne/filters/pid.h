@@ -69,15 +69,43 @@ static inline float update_pid_f(struct PID_f *pid, float value, float dt)
 {
   pid->e[1] = pid->e[0];
   pid->e[0] = value;
-  float integral = pid->g[2] * (pid->sum + value);
+  float incr = value * dt;
+  float integral = pid->g[2] * (pid->sum + incr);
   if (integral > pid->max_sum) {
     integral = pid->max_sum;
   } else if (integral < -pid->max_sum) {
     integral = -pid->max_sum;
   } else {
-    pid->sum += value;
+    pid->sum += incr;
   }
   pid->u = pid->g[0] * pid->e[0] + pid->g[1] * (pid->e[0] - pid->e[1]) / dt + integral;
+  return pid->u;
+}
+
+/** Update PID with a new value and its derivative
+ *  instead of computing it numerically.
+ *  Returns new command.
+ *
+ * @param pid pointer to PID structure
+ * @param value new input value of the PID
+ * @param d_value new input derivative value
+ * @param dt time since last input (in seconds)
+ * @return new output command
+ */
+static inline float update_pid_derivative_f(struct PID_f *pid, float value, float d_value, float dt)
+{
+  pid->e[1] = pid->e[0];
+  pid->e[0] = value;
+  float incr = value * dt;
+  float integral = pid->g[2] * (pid->sum + incr);
+  if (integral > pid->max_sum) {
+    integral = pid->max_sum;
+  } else if (integral < -pid->max_sum) {
+    integral = -pid->max_sum;
+  } else {
+    pid->sum += incr;
+  }
+  pid->u = pid->g[0] * pid->e[0] + pid->g[1] * d_value + integral;
   return pid->u;
 }
 
@@ -103,20 +131,6 @@ static inline void reset_pid_f(struct PID_f *pid)
   pid->sum = 0.f;
 }
 
-/** Set gains of the PID struct.
- *
- * @param pid pointer to PID structure
- * @param Kp proportional gain
- * @param Kd derivative gain
- * @param Ki integral gain
- */
-static inline void set_gains_pid_f(struct PID_f *pid, float Kp, float Kd, float Ki)
-{
-  pid->g[0] = Kp;
-  pid->g[1] = Kd;
-  pid->g[2] = Ki;
-}
-
 /** Set integral part, can be used to reset.
  *  The new sum of errors is calculated from current gains and bounds.
  *
@@ -136,6 +150,21 @@ static inline void set_integral_pid_f(struct PID_f *pid, float value)
   } else {
     pid->sum = integral / pid->g[2];
   }
+}
+
+/** Set gains of the PID struct.
+ *  Reset integral part.
+ *
+ * @param pid pointer to PID structure
+ * @param Kp proportional gain
+ * @param Kd derivative gain
+ * @param Ki integral gain
+ */
+static inline void set_gains_pid_f(struct PID_f *pid, float Kp, float Kd, float Ki)
+{
+  pid->g[0] = Kp;
+  pid->g[1] = Kd;
+  pid->g[2] = Ki;
 }
 
 

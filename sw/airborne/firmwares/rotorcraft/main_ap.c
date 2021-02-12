@@ -41,8 +41,9 @@
 #include "subsystems/settings.h"
 
 #include "subsystems/commands.h"
+#ifdef ACTUATORS
 #include "subsystems/actuators.h"
-
+#endif
 #if USE_IMU
 #include "subsystems/imu.h"
 #endif
@@ -128,7 +129,9 @@ void main_init(void)
   stateInit();
 
 #ifndef INTER_MCU_AP
+#ifdef ACTUATORS
   actuators_init();
+#endif
 #else
   intermcu_init();
 #endif
@@ -250,10 +253,12 @@ void main_periodic(void)
   throttle_curve_run(commands, autopilot_get_mode());
 #endif
 
+#ifdef ACTUATORS
 #ifndef INTER_MCU_AP
   SetActuatorsFromCommands(commands, autopilot_get_mode());
 #else
   intermcu_set_actuators(commands, autopilot_get_mode());
+#endif
 #endif
 
   if (autopilot_in_flight()) {

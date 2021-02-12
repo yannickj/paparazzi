@@ -1,10 +1,9 @@
 <!DOCTYPE module SYSTEM "module.dtd">
 
-<module name="nav_basic_rotorcraft" dir="nav">
+<module name="nav_rotorcraft" dir="nav">
   <doc>
     <description>
-      Standard navigation patterns and flight plan handling for rotorcraft
-      Autoload standard guidance
+      Navigation and flight plan handling for rotorcraft
     </description>
   </doc>
   <settings>
@@ -18,7 +17,6 @@
       </dl_settings>
     </dl_settings>
   </settings>
-  <autoload name="guidance" type="rotorcraft"/>
   <header>
     <file name="navigation.h" dir="firmwares/rotorcraft"/>
   </header>

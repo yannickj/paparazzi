@@ -27,10 +27,16 @@
 #include "firmwares/rotorcraft/guidance/guidance_speed.h"
 #include "firmwares/rotorcraft/navigation.h"
 #include "subsystems/radio_control.h"
+#include "filters/pid.h"
 #include "state.h"
 
-PRINT_CONFIG_VAR(GUIDANCE_H_USE_REF)
-PRINT_CONFIG_VAR(GUIDANCE_H_USE_SPEED_REF)
+/** Use horizontal guidance reference trajectory.
+ * Default is TRUE, define to FALSE to always disable it.
+ */
+#ifndef GUIDANCE_SPEED_USE_REF
+#define GUIDANCE_SPEED_USE_REF TRUE
+#endif
+PRINT_CONFIG_VAR(GUIDANCE_SPEED_USE_REF)
 
 // Navigation can set heading freely
 // This is false if sideslip is a problem
@@ -38,32 +44,53 @@ PRINT_CONFIG_VAR(GUIDANCE_H_USE_SPEED_REF)
 #define GUIDANCE_HEADING_IS_FREE TRUE
 #endif
 
+#ifndef GUIDANCE_SPEED_MAX_H_SPEED
+#define GUIDANCE_SPEED_MAX_H_SPEED 5.f
+#endif
+
+#ifndef GUIDANCE_SPEED_MAX_V_SPEED
+#define GUIDANCE_SPEED_MAX_V_SPEED 3.f
+#endif
+
+// Global variable
 struct GuidanceSpeed guidance_speed;
 
 /*
  * internal variables
  */
-static struct FloatVect3 guidance_speed_pos_err;
-static struct FloatVect3 guidance_speed_speed_err;
-static struct FloatVect3 guidance_speed_trim_att_integrator;
 
-/** horizontal guidance command.
- */
-static struct FloatVect3  guidance_speed_cmd_earth;
+struct GuidanceSpeedReference {
+  struct FloatVect3 pos;
+  struct FloatVect3 speed;
+  struct FloatVect3 accel;
+};
 
-static void guidance_speed_update_reference(void);
-static void guidance_speed_traj_run(bool in_flight);
-static void read_rc_setpoint_speed_i(struct FloatVect3 *speed_sp, bool in_flight);
+struct GuidanceSpeedPrivate {
+  struct FloatVect3 pos_err;
+  struct FloatVect3 speed_err;
+  struct FloatVect3 cmd_earth;
+  //struct GuidanceSpeedReference ref; ///< reference calculated from setpoints
+  struct PID_f pid_vx;
+  struct PID_f pid_vy;
+  struct PID_f pid_vz;
+};
 
+// Internal private variables
+static struct GuidanceSpeedPrivate gsp;
+
+//static void guidance_speed_update_reference(void);
+
+static const float guidance_dt = (1.f / PERIODIC_FREQUENCY);
 
 void guidance_speed_init(void)
 {
-  guidance_speed.h_mode = GUIDANCE_SPEED_H_MODE_KILL;
+  guidance_speed.h_mode = GUIDANCE_SPEED_MODE_KILL;
+  guidance_speed.v_mode = GUIDANCE_SPEED_MODE_KILL;
   guidance_speed.use_ref = GUIDANCE_SPEED_USE_REF;
 
   guidance_speed.sp.mask = 0; // pos x,y,z,yaw
   FLOAT_VECT3_ZERO(guidance_speed.sp.pos);
-  FLOAT_VECT3_ZERO(guidance_speed_trim_att_integrator);
+  FLOAT_VECT3_ZERO(guidance_speed.commanded_speed);
   FLOAT_VECT3_ZERO(guidance_speed.rc_sp);
   guidance_speed.rc_yaw_sp = 0.f;
   guidance_speed.sp.heading = 0.f;
@@ -74,20 +101,24 @@ void guidance_speed_init(void)
   guidance_speed.v_gains.p = GUIDANCE_SPEED_V_PGAIN;
   guidance_speed.v_gains.i = GUIDANCE_SPEED_V_IGAIN;
   guidance_speed.v_gains.d = GUIDANCE_SPEED_V_DGAIN;
+  guidance_speed.max_h_speed = GUIDANCE_SPEED_MAX_H_SPEED;
+  guidance_speed.max_v_speed = GUIDANCE_SPEED_MAX_V_SPEED;
 
-  //gh_ref_init();
+  // init PID
+  init_pid_f(&gsp.pid_vx, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i, 2.f);
+  init_pid_f(&gsp.pid_vy, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i, 2.f);
+  init_pid_f(&gsp.pid_vz, guidance_speed.v_gains.p, guidance_speed.v_gains.d, guidance_speed.v_gains.i, 2.f);
 }
 
 
-static inline void reset_guidance_reference_from_current_position(void)
-{
-  VECT3_COPY(guidance_speed.ref.pos, *stateGetPositionNed_i());
-  VECT3_COPY(guidance_speed.ref.speed, *stateGetSpeedNed_i());
-  FLOAT_VECT3_ZERO(guidance_speed.ref.accel);
-  //gh_set_ref(guidance_speed.ref.pos, guidance_speed.ref.speed, guidance_speed.ref.accel);
-
-  FLOAT_VECT3_ZERO(guidance_speed_trim_att_integrator);
-}
+//static inline void reset_guidance_reference_from_current_position(void)
+//{
+//  VECT3_COPY(guidance_speed.ref.pos, *stateGetPositionNed_i());
+//  VECT3_COPY(guidance_speed.ref.speed, *stateGetSpeedNed_i());
+//  FLOAT_VECT3_ZERO(guidance_speed.ref.accel);
+//  //gh_set_ref(guidance_speed.ref.pos, guidance_speed.ref.speed, guidance_speed.ref.accel);
+//
+//}
 
 
 void guidance_speed_read_rc(bool in_flight)
@@ -98,20 +129,21 @@ void guidance_speed_read_rc(bool in_flight)
     // negative pitch is forward
     int64_t rc_x = -radio_control.values[RADIO_PITCH];
     int64_t rc_y = radio_control.values[RADIO_ROLL];
+    int64_t rc_z = radio_control.values[RADIO_THROTTLE];
     DeadBand(rc_x, MAX_PPRZ / 20);
     DeadBand(rc_y, MAX_PPRZ / 20);
-    DeadBand(rc_Z, MAX_PPRZ / 20);
+    DeadBand(rc_z, MAX_PPRZ / 20);
 
     rc_x = rc_x * guidance_speed.max_h_speed / MAX_PPRZ;
     rc_y = rc_y * guidance_speed.max_h_speed / MAX_PPRZ;
-    rc_z = rc_z * guidance_speed.max_v_speed / MAX_PPRZ
+    rc_z = rc_z * guidance_speed.max_v_speed / MAX_PPRZ;
 
     /* Rotate from body to NED frame by negative psi angle */
     float psi = -stateGetNedToBodyEulers_f()->psi;
     float s_psi = sinf(psi);
     float c_psi = cosf(psi);
-    guidance_speed.rc_sp.x = (int32_t)(((int64_t)c_psi * rc_x + (int64_t)s_psi * rc_y) >> INT32_TRIG_FRAC);
-    guidance_speed.rc_sp.y = (int32_t)((-(int64_t)s_psi * rc_x + (int64_t)c_psi * rc_y) >> INT32_TRIG_FRAC);
+    guidance_speed.rc_sp.x = c_psi * rc_x + s_psi * rc_y;
+    guidance_speed.rc_sp.y = -s_psi * rc_x + c_psi * rc_y;
     // TODO Z, yaw
   } else {
     FLOAT_VECT3_ZERO(guidance_speed.rc_sp);
@@ -119,31 +151,9 @@ void guidance_speed_read_rc(bool in_flight)
   }
 }
 
-void guidance_speed_run(bool  in_flight)
-{
-  switch (guidance_speed.mode) {
 
-    case GUIDANCE_H_MODE_HOVER:
-      /* set psi command from RC */
-      guidance_speed.sp.heading = guidance_speed.rc_sp.psi;
-      /* fall trough to GUIDED to update ref, run traj and set final attitude setpoint */
-
-      /* Falls through. */
-    case GUIDANCE_H_MODE_GUIDED:
-      guidance_speed_guided_run(in_flight);
-      break;
-
-    case GUIDANCE_H_MODE_NAV:
-      guidance_speed_from_nav(in_flight);
-      break;
-    default:
-      break;
-  }
-}
-
-
-static void guidance_speed_update_reference(void)
-{
+//static void guidance_speed_update_reference(void)
+//{
 //  /* compute reference even if usage temporarily disabled via guidance_speed_use_ref */
 //#if GUIDANCE_H_USE_REF
 //  if (bit_is_set(guidance_speed.sp.mask, 5)) {
@@ -176,115 +186,105 @@ static void guidance_speed_update_reference(void)
 //    guidance_speed.sp.heading += guidance_speed.sp.heading_rate / PERIODIC_FREQUENCY;
 //    FLOAT_ANGLE_NORMALIZE(guidance_speed.sp.heading);
 //  }
-}
+//}
 
 #define MAX_POS_ERR   20.
 #define MAX_SPEED_ERR 10.
 
-#if !GUIDANCE_INDI
-static void guidance_speed_traj_run(bool in_flight)
+void guidance_speed_run(bool in_flight)
 {
-  /* maximum bank angle: default 20 deg, max 40 deg*/
-  static const int32_t traj_max_bank = Min(BFP_OF_REAL(GUIDANCE_H_MAX_BANK, INT32_ANGLE_FRAC),
-                                       BFP_OF_REAL(RadOfDeg(40), INT32_ANGLE_FRAC));
-  static const int32_t total_max_bank = BFP_OF_REAL(RadOfDeg(45), INT32_ANGLE_FRAC);
-
-  /* compute position error    */
-  VECT2_DIFF(guidance_speed_pos_err, guidance_speed.ref.pos, *stateGetPositionNed_i());
-  /* saturate it               */
-  VECT2_STRIM(guidance_speed_pos_err, -MAX_POS_ERR, MAX_POS_ERR);
-
-  /* compute speed error    */
-  VECT2_DIFF(guidance_speed_speed_err, guidance_speed.ref.speed, *stateGetSpeedNed_i());
-  /* saturate it               */
-  VECT2_STRIM(guidance_speed_speed_err, -MAX_SPEED_ERR, MAX_SPEED_ERR);
-
-  /* run PID */
-  int32_t pd_x =
-    ((guidance_speed.gains.p * guidance_speed_pos_err.x) >> (INT32_POS_FRAC - GH_GAIN_SCALE)) +
-    ((guidance_speed.gains.d * (guidance_speed_speed_err.x >> 2)) >> (INT32_SPEED_FRAC - GH_GAIN_SCALE - 2));
-  int32_t pd_y =
-    ((guidance_speed.gains.p * guidance_speed_pos_err.y) >> (INT32_POS_FRAC - GH_GAIN_SCALE)) +
-    ((guidance_speed.gains.d * (guidance_speed_speed_err.y >> 2)) >> (INT32_SPEED_FRAC - GH_GAIN_SCALE - 2));
-  guidance_speed_cmd_earth.x = pd_x +
-                           ((guidance_speed.gains.v * guidance_speed.ref.speed.x) >> (INT32_SPEED_FRAC - GH_GAIN_SCALE)) + /* speed feedforward gain */
-                           ((guidance_speed.gains.a * guidance_speed.ref.accel.x) >> (INT32_ACCEL_FRAC -
-                               GH_GAIN_SCALE));   /* acceleration feedforward gain */
-  guidance_speed_cmd_earth.y = pd_y +
-                           ((guidance_speed.gains.v * guidance_speed.ref.speed.y) >> (INT32_SPEED_FRAC - GH_GAIN_SCALE)) + /* speed feedforward gain */
-                           ((guidance_speed.gains.a * guidance_speed.ref.accel.y) >> (INT32_ACCEL_FRAC -
-                               GH_GAIN_SCALE));   /* acceleration feedforward gain */
-
-  /* trim max bank angle from PD */
-  VECT2_STRIM(guidance_speed_cmd_earth, -traj_max_bank, traj_max_bank);
-
-  /* Update pos & speed error integral, zero it if not in_flight.
-   * Integrate twice as fast when not only POS but also SPEED are wrong,
-   * but do not integrate POS errors when the SPEED is already catching up.
-   */
-  if (in_flight) {
-    /* ANGLE_FRAC (12) * GAIN (8) * LOOP_FREQ (9) -> INTEGRATOR HIGH RES ANGLE_FRAX (28) */
-    guidance_speed_trim_att_integrator.x += (guidance_speed.gains.i * pd_x);
-    guidance_speed_trim_att_integrator.y += (guidance_speed.gains.i * pd_y);
-    /* saturate it  */
-    VECT2_STRIM(guidance_speed_trim_att_integrator, -(traj_max_bank << (INT32_ANGLE_FRAC + GH_GAIN_SCALE * 2)),
-                (traj_max_bank << (INT32_ANGLE_FRAC + GH_GAIN_SCALE * 2)));
-    /* add it to the command */
-    guidance_speed_cmd_earth.x += (guidance_speed_trim_att_integrator.x >> (INT32_ANGLE_FRAC + GH_GAIN_SCALE * 2));
-    guidance_speed_cmd_earth.y += (guidance_speed_trim_att_integrator.y >> (INT32_ANGLE_FRAC + GH_GAIN_SCALE * 2));
-  } else {
-    INT_VECT2_ZERO(guidance_speed_trim_att_integrator);
+  // horizontal speed
+  if (!bit_is_set(guidance_speed.sp.mask, GUIDANCE_SPEED_VXY_BIT)) {
+    // compute position error and saturate TODO use ref ?
+    VECT2_DIFF(gsp.pos_err, guidance_speed.sp.pos, *stateGetPositionNed_f());
+    VECT2_STRIM(gsp.pos_err, -MAX_POS_ERR, MAX_POS_ERR);
+    // compute speed error and saturate TODO use ref ?
+    struct FloatVect2 zero = { 0.f, 0.f };
+    VECT2_DIFF(gsp.speed_err, zero, *stateGetSpeedNed_f());
+    VECT2_STRIM(gsp.speed_err, -MAX_SPEED_ERR, MAX_SPEED_ERR);
+    // run PID
+    gsp.cmd_earth.x = update_pid_derivative_f(&gsp.pid_vx, gsp.pos_err.x, gsp.speed_err.x, guidance_dt);
+    gsp.cmd_earth.y = update_pid_derivative_f(&gsp.pid_vy, gsp.pos_err.y, gsp.speed_err.y, guidance_dt);
+  }
+  else {
+    VECT2_COPY(gsp.cmd_earth, guidance_speed.sp.speed);
   }
 
-  /* compute a better approximation of force commands by taking thrust into account */
-  if (guidance_speed.approx_force_by_thrust && in_flight) {
-    static int32_t thrust_cmd_filt;
-    int32_t vertical_thrust = (stabilization_cmd[COMMAND_THRUST] * guidance_v_thrust_coeff) >> INT32_TRIG_FRAC;
-    thrust_cmd_filt = (thrust_cmd_filt * GUIDANCE_H_THRUST_CMD_FILTER + vertical_thrust) /
-                      (GUIDANCE_H_THRUST_CMD_FILTER + 1);
-    guidance_speed_cmd_earth.x = ANGLE_BFP_OF_REAL(atan2f((guidance_speed_cmd_earth.x * MAX_PPRZ / INT32_ANGLE_PI_2),
-                             thrust_cmd_filt));
-    guidance_speed_cmd_earth.y = ANGLE_BFP_OF_REAL(atan2f((guidance_speed_cmd_earth.y * MAX_PPRZ / INT32_ANGLE_PI_2),
-                             thrust_cmd_filt));
+  // vertical speed
+  if (!bit_is_set(guidance_speed.sp.mask, GUIDANCE_SPEED_VZ_BIT)) {
+    // compute position error and saturate TODO use ref ?
+    gsp.pos_err.z = guidance_speed.sp.pos.z - stateGetPositionNed_f()->z;
+    BoundAbs(gsp.pos_err.z, MAX_POS_ERR);
+    // compute speed error and saturate TODO use ref ?
+    gsp.speed_err.z = - stateGetSpeedNed_f()->z;
+    BoundAbs(gsp.speed_err.z , MAX_SPEED_ERR);
+    // run PID
+    gsp.cmd_earth.z = update_pid_derivative_f(&gsp.pid_vz, gsp.pos_err.z, gsp.speed_err.z, guidance_dt);
+  }
+  else {
+    gsp.cmd_earth.z = guidance_speed.sp.speed.z;
   }
 
-  VECT2_STRIM(guidance_speed_cmd_earth, -total_max_bank, total_max_bank);
+  // TODO yaw
+
+  // reset integrators if not in flight
+  if (!in_flight) {
+    set_integral_pid_f(&gsp.pid_vx, 0.f);
+    set_integral_pid_f(&gsp.pid_vy, 0.f);
+    set_integral_pid_f(&gsp.pid_vz, 0.f);
+  }
+
+  // saturate commanded speed
+  VECT2_STRIM(gsp.cmd_earth, -guidance_speed.max_h_speed, guidance_speed.max_h_speed);
+  BoundAbs(gsp.cmd_earth.z, guidance_speed.max_v_speed);
+
+  // commanded speed, in body frame for now
+  // TODO option to have it in earth or body frame ?
+  float psi = stateGetNedToBodyEulers_f()->psi;
+  float s_psi = sinf(psi);
+  float c_psi = cosf(psi);
+  guidance_speed.commanded_speed.x =  c_psi * gsp.cmd_earth.x + s_psi * gsp.cmd_earth.y;
+  guidance_speed.commanded_speed.y = -s_psi * gsp.cmd_earth.x + c_psi * gsp.cmd_earth.y;
+  guidance_speed.commanded_speed.z = gsp.cmd_earth.z;
 }
-#endif
 
 void guidance_speed_hover_enter(void)
 {
   /* reset speed setting */
-  guidance_speed.sp.speed.x = 0;
-  guidance_speed.sp.speed.y = 0;
+  FLOAT_VECT3_ZERO(guidance_speed.sp.speed);
 
-  /* disable horizontal velocity setpoints,
-   * might still be activated in guidance_speed_read_rc if GUIDANCE_H_USE_SPEED_REF
-   */
-  ClearBit(guidance_speed.sp.mask, 5);
-  ClearBit(guidance_speed.sp.mask, 7);
+  /* disable horizontal velocity setpoints */
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VXY_BIT);
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VZ_BIT);
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VYAW_BIT);
 
-  /* set horizontal setpoint to current position */
-  VECT2_COPY(guidance_speed.sp.pos, *stateGetPositionNed_i());
+  /* setpoint to current position */
+  VECT3_COPY(guidance_speed.sp.pos, *stateGetPositionNed_f());
 
   /* reset guidance reference */
-  reset_guidance_reference_from_current_position();
+  //reset_guidance_reference_from_current_position();
 
   /* set guidance to current heading and position */
-  guidance_speed.rc_sp.psi = stateGetNedToBodyEulers_f()->psi;
-  guidance_speed.sp.heading = guidance_speed.rc_sp.psi;
+  guidance_speed.rc_yaw_sp = stateGetNedToBodyEulers_f()->psi;
+  guidance_speed.sp.heading = guidance_speed.rc_yaw_sp;
 }
 
 void guidance_speed_nav_enter(void)
 {
-  ClearBit(guidance_speed.sp.mask, 5);
-  ClearBit(guidance_speed.sp.mask, 7);
+  /* disable horizontal velocity setpoints */
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VXY_BIT);
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VZ_BIT);
+  ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VYAW_BIT);
 
-  /* horizontal position setpoint from navigation/flightplan */
-  INT32_VECT2_NED_OF_ENU(guidance_speed.sp.pos, navigation_carrot);
+  /* horizontal position setpoint from navigation/flightplan with ENU int to NED float */
+  VECT3_ASSIGN(guidance_speed.sp.pos,
+      POS_FLOAT_OF_BFP(navigation_carrot.y),
+      POS_FLOAT_OF_BFP(navigation_carrot.x),
+      -POS_FLOAT_OF_BFP(navigation_carrot.z)); // FIXME check if correct alt
 
-  reset_guidance_reference_from_current_position();
+  //reset_guidance_reference_from_current_position();
 
+  // set navigation heading to current heading
   nav_heading = stateGetNedToBodyEulers_i()->psi;
   guidance_speed.sp.heading = stateGetNedToBodyEulers_f()->psi;
 }
@@ -295,20 +295,14 @@ void guidance_speed_from_nav(bool in_flight)
     guidance_speed_nav_enter();
   }
 
-  if (horizontal_mode == HORIZONTAL_MODE_MANUAL) {
-    stabilization_cmd[COMMAND_ROLL]  = nav_cmd_roll;
-    stabilization_cmd[COMMAND_PITCH] = nav_cmd_pitch;
-    stabilization_cmd[COMMAND_YAW]   = nav_cmd_yaw;
-  } else if (horizontal_mode == HORIZONTAL_MODE_ATTITUDE) {
-    struct Int32Eulers sp_cmd_i;
-    sp_cmd_i.phi = nav_roll;
-    sp_cmd_i.theta = nav_pitch;
-    sp_cmd_i.psi = nav_heading;
-    stabilization_attitude_set_rpy_setpoint_i(&sp_cmd_i);
-    stabilization_attitude_run(in_flight);
-  } else {
-    INT32_VECT2_NED_OF_ENU(guidance_speed.sp.pos, navigation_carrot);
-    guidance_speed_update_reference();
+  // nothing to do in manual and attitude submodes
+  if (horizontal_mode != HORIZONTAL_MODE_MANUAL && horizontal_mode != HORIZONTAL_MODE_ATTITUDE) {
+    /* horizontal position setpoint from navigation/flightplan with ENU int to NED float */
+    VECT3_ASSIGN(guidance_speed.sp.pos,
+        POS_FLOAT_OF_BFP(navigation_carrot.y),
+        POS_FLOAT_OF_BFP(navigation_carrot.x),
+        -POS_FLOAT_OF_BFP(navigation_carrot.z)); // FIXME check if correct alt
+    //guidance_speed_update_reference();
 
 #if GUIDANCE_HEADING_IS_FREE
     /* set psi command */
@@ -316,23 +310,55 @@ void guidance_speed_from_nav(bool in_flight)
     FLOAT_ANGLE_NORMALIZE(guidance_speed.sp.heading);
 #endif
 
-    /* compute x,y earth commands */
-    guidance_speed_traj_run(in_flight);
-    /* set final attitude setpoint */
-    int32_t heading_sp_i = ANGLE_BFP_OF_REAL(guidance_speed.sp.heading);
-    stabilization_attitude_set_earth_cmd_i(&guidance_speed_cmd_earth,
-                                           heading_sp_i);
-
-    stabilization_attitude_run(in_flight);
+    /* compute commands */
+    guidance_speed_run(in_flight);
   }
 }
 
-void guidance_speed_set_igain(uint32_t igain)
+void guidance_speed_set_h_pgain(float pgain)
 {
-  guidance_speed.gains.i = igain;
-  INT_VECT2_ZERO(guidance_speed_trim_att_integrator);
+  guidance_speed.h_gains.p = pgain;
+  set_gains_pid_f(&gsp.pid_vx, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
+  set_gains_pid_f(&gsp.pid_vy, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
 }
 
+void guidance_speed_set_h_dgain(float dgain)
+{
+  guidance_speed.h_gains.d = dgain;
+  set_gains_pid_f(&gsp.pid_vx, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
+  set_gains_pid_f(&gsp.pid_vy, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
+}
+
+void guidance_speed_set_h_igain(float igain)
+{
+  guidance_speed.h_gains.i = igain;
+  set_gains_pid_f(&gsp.pid_vx, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
+  set_gains_pid_f(&gsp.pid_vy, guidance_speed.h_gains.p, guidance_speed.h_gains.d, guidance_speed.h_gains.i);
+  set_integral_pid_f(&gsp.pid_vx, 0.f);
+  set_integral_pid_f(&gsp.pid_vz, 0.f);
+}
+
+void guidance_speed_set_v_pgain(float pgain)
+{
+  guidance_speed.v_gains.p = pgain;
+  set_gains_pid_f(&gsp.pid_vz, guidance_speed.v_gains.p, guidance_speed.v_gains.d, guidance_speed.v_gains.i);
+}
+
+void guidance_speed_set_v_dgain(float dgain)
+{
+  guidance_speed.v_gains.d = dgain;
+  set_gains_pid_f(&gsp.pid_vz, guidance_speed.v_gains.p, guidance_speed.v_gains.d, guidance_speed.v_gains.i);
+}
+
+void guidance_speed_set_v_igain(float igain)
+{
+  guidance_speed.v_gains.i = igain;
+  set_gains_pid_f(&gsp.pid_vz, guidance_speed.v_gains.p, guidance_speed.v_gains.d, guidance_speed.v_gains.i);
+  set_integral_pid_f(&gsp.pid_vz, 0.f);
+}
+
+
+#ifdef AP_MODE_GUIDED
 
 void guidance_speed_guided_run(bool in_flight)
 {
@@ -340,36 +366,26 @@ void guidance_speed_guided_run(bool in_flight)
   if (!in_flight) {
     guidance_speed_hover_enter();
   }
-
-  guidance_speed_update_reference();
-
-#if GUIDANCE_INDI
-  guidance_indi_run(&guidance_speed.sp.heading);
-#else
-  /* compute x,y earth commands */
-  guidance_speed_traj_run(in_flight);
-  /* set final attitude setpoint */
-  int32_t heading_sp_i = ANGLE_BFP_OF_REAL(guidance_speed.sp.heading);
-  stabilization_attitude_set_earth_cmd_i(&guidance_speed_cmd_earth, heading_sp_i);
-#endif
-  stabilization_attitude_run(in_flight);
+  //guidance_speed_update_reference();
+  /* compute commands */
+  guidance_speed_run(in_flight);
 }
 
-bool guidance_speed_set_guided_pos(float x, float y)
+bool guidance_h_set_guided_pos(float x, float y)
 {
-  if (guidance_speed.mode == GUIDANCE_H_MODE_GUIDED) {
-    ClearBit(guidance_speed.sp.mask, 5);
-    guidance_speed.sp.pos.x = POS_BFP_OF_REAL(x);
-    guidance_speed.sp.pos.y = POS_BFP_OF_REAL(y);
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VXY_BIT);
+    guidance_speed.sp.pos.x = x;
+    guidance_speed.sp.pos.y = y;
     return true;
   }
   return false;
 }
 
-bool guidance_speed_set_guided_heading(float heading)
+bool guidance_h_set_guided_heading(float heading)
 {
-  if (guidance_speed.mode == GUIDANCE_H_MODE_GUIDED) {
-    ClearBit(guidance_speed.sp.mask, 7);
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VYAW_BIT);
     guidance_speed.sp.heading = heading;
     FLOAT_ANGLE_NORMALIZE(guidance_speed.sp.heading);
     return true;
@@ -377,36 +393,53 @@ bool guidance_speed_set_guided_heading(float heading)
   return false;
 }
 
-bool guidance_speed_set_guided_body_vel(float vx, float vy)
+bool guidance_h_set_guided_body_vel(float vx, float vy)
 {
   float psi = stateGetNedToBodyEulers_f()->psi;
   float newvx =  cosf(-psi) * vx + sinf(-psi) * vy;
   float newvy = -sinf(-psi) * vx + cosf(-psi) * vy;
-  return guidance_speed_set_guided_vel(newvx, newvy);
+  return guidance_h_set_guided_vel(newvx, newvy);
 }
 
-bool guidance_speed_set_guided_vel(float vx, float vy)
+bool guidance_h_set_guided_vel(float vx, float vy)
 {
-  if (guidance_speed.mode == GUIDANCE_H_MODE_GUIDED) {
-    SetBit(guidance_speed.sp.mask, 5);
-    guidance_speed.sp.speed.x = SPEED_BFP_OF_REAL(vx);
-    guidance_speed.sp.speed.y = SPEED_BFP_OF_REAL(vy);
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    SetBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VXY_BIT);
+    guidance_speed.sp.speed.x = vx;
+    guidance_speed.sp.speed.y = vy;
     return true;
   }
   return false;
 }
 
-bool guidance_speed_set_guided_heading_rate(float rate)
+bool guidance_h_set_guided_heading_rate(float rate)
 {
-  if (guidance_speed.mode == GUIDANCE_H_MODE_GUIDED) {
-    SetBit(guidance_speed.sp.mask, 7);
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    SetBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VYAW_BIT);
     guidance_speed.sp.heading_rate = rate;
     return true;
   }
   return false;
 }
 
-const struct Int32Vect2 *guidance_speed_get_pos_err(void)
+bool guidance_v_set_guided_z(float z)
 {
-  return &guidance_speed_pos_err;
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    ClearBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VZ_BIT);
+    guidance_speed.sp.pos.z = z;
+    return true;
+  }
+  return false;
 }
+
+bool guidance_v_set_guided_vz(float vz)
+{
+  if (autopilot_get_mode() == AP_MODE_GUIDED) {
+    SetBit(guidance_speed.sp.mask, GUIDANCE_SPEED_VZ_BIT);
+    guidance_speed.sp.speed.z = vz;
+    return true;
+  }
+  return false;
+}
+
+#endif // AP_MODE_GUIDED

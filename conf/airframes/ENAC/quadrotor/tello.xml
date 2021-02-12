@@ -10,16 +10,15 @@
 
     <module name="radio_control"  type="datalink"/>
     <module name="telemetry"      type="transparent_udp"/>
-    <module name="gps"            type="ublox">
-      <configure name="GPS_BAUD" value="B115200"/>
-    </module>
+    <module name="gps"            type="datalink"/>
     <module name="ins"            type="gps_passthrough">
       <configure name="USE_MAGNETOMETER" value="FALSE"/>
       <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
       <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
       <define name="USE_SONAR" value="0"/>
     </module>
-    <module name="nav" type="basic_rotorcraft"/>
+    <module name="guidance" type="rotorcraft_speed"/>
+    <module name="nav" type="rotorcraft"/>
     <module name="air_data"/>
   </firmware>
 
@@ -62,21 +61,13 @@
     <define name="H_Z" value="0."/>
   </section>
 
-  <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
-    <define name="HOVER_KP"    value="150"/>
-    <define name="HOVER_KD"    value="80"/>
-    <define name="HOVER_KI"    value="20"/>
-    <define name="NOMINAL_HOVER_THROTTLE" value="0.5"/>
-    <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
-  </section>
-
-  <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
-    <define name="MAX_BANK" value="20" unit="deg"/>
-    <define name="USE_SPEED_REF" value="TRUE"/>
-    <define name="PGAIN" value="50"/>
-    <define name="DGAIN" value="100"/>
-    <define name="AGAIN" value="70"/>
-    <define name="IGAIN" value="20"/>
+  <section name="GUIDANCE_SPEED" prefix="GUIDANCE_SPEED_">
+    <define name="H_PGAIN" value="1."/>
+    <define name="H_DGAIN" value="1."/>
+    <define name="H_IGAIN" value="0."/>
+    <define name="V_PGAIN" value="1."/>
+    <define name="V_DGAIN" value="1."/>
+    <define name="V_IGAIN" value="0."/>
   </section>
 
   <section name="AUTOPILOT">
